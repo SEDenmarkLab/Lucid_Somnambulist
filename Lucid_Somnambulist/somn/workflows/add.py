@@ -9,7 +9,8 @@ from pathlib import Path
 from datetime import date
 from openbabel import openbabel as ob
 
-temp_work = r"C:\Users\rineharn\workspace/"
+# temp_work = r"C:\Users\rineharn\workspace/"
+temp_work = r"/mnt/c/Users/rineharn/workspace/linux/"
 
 
 def get_mol_from_graph(user_input):
@@ -98,17 +99,17 @@ if __name__ == "__main__":
     collection = get_mol_from_graph(
         args.fmt[1]
     )  # Temp name generated; this will be corrected later, when they are databased, and the names will be set
-    collection.to_zip(r"C:\Users\rineharn\workspace/cdxml_parse.zip")
+    collection.to_zip(temp_work + "cdxml_parse.zip")
     for mol in collection:
-        with open(rf"C:\Users\rineharn\workspace/{mol.name}.mol2", "w") as g:
+        with open(temp_work + "{mol.name}.mol2", "w") as g:
             g.write(mol.to_mol2())
     col_h = add_hydrogens(collection)
     ID_ = date.today()
     col_h.to_zip(temp_work + f"new_{args.r}_input_{ID_}.zip")
     for mol in col_h:
-        with open(rf"C:\Users\rineharn\workspace/{mol.name}_hadd.mol2", "w") as g:
+        with open(temp_work + "{mol.name}_hadd.mol2", "w") as g:
             g.write(mol.to_mol2())
     preopt = preopt_geom(col_h)
     for mol in preopt:
-        with open(rf"C:\Users\rineharn\workspace/{mol.name}_preopt.mol2", "w") as g:
+        with open(temp_work + "{mol.name}_preopt.mol2", "w") as g:
             g.write(mol.to_mol2())
