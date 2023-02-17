@@ -39,6 +39,13 @@ def get_mol_from_smiles(user_input):
 
 
 def add_hydrogens(col: ml.Collection):
+    """
+    Openbabel can at least do this one thing right - add hydrogens.
+
+    Note: any explicit hydrogens in a parsed structure will cause this to fail...
+
+    """
+
     output = []
     for mol in col:
         obmol = ob.OBMol()
