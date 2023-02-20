@@ -1,0 +1,41 @@
+
+From add workflow before class/function format for input
+
+# col = prep_collection(collection)
+### Replaced by function
+# collection.to_zip(temp_work + "cdxml_parse.zip")
+# for mol in collection:
+#     with open(temp_work + "{mol.name}.mol2", "w") as g:
+#         g.write(mol.to_mol2())
+# col_h = add_hydrogens(collection)
+# ID_ = date.today()
+# col_h.to_zip(temp_work + f"new_{args.r}_input_{ID_}.zip")
+# for mol in col_h:
+#     with open(temp_work + "{mol.name}_hadd.mol2", "w") as g:
+#         g.write(mol.to_mol2())
+# preopt = preopt_geom(col_h)
+# for mol in preopt:
+#     with open(temp_work + "{mol.name}_preopt.mol2", "w") as g:
+#         g.write(mol.to_mol2())
+
+
+Openbabel is terribly documented, but really powerful. The C++ version is documented,
+but the python stuff is weird.
+
+Pybel seems to be the "more pythonic" version of openbabel.openbabel
+
+To do 3d coordinate generation:
+
+gen3d = ob.OBOp.FindType("gen3D")
+then
+gen3d.Do(molecule,option{speed of method; required..."fastest" works on normal molecules})
+
+Don't need to explicitly call OBConversion.Convert(), which is weird...but if you call WriteString(),
+it seems to execute convert anyway. 
+
+If you use AddOptions() to the conversion class, it does absolutely nothing with 3d coords. You can,
+however, add hydrogens with the "h" option. Not sure why...but the gen3d is a "plugin" class, and you have
+to call up the "FindType" on OBOp, NOT GetPlugin("gen3d") or anything else like that. 
+
+No docs that I can find anywhere talk about this, just this github thread from like 2020ish:
+https://github.com/openbabel/openbabel/issues/2108
