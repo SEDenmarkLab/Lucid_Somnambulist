@@ -19,9 +19,13 @@ if __name__ == "__main__":
     ### Use molli for cdxml parse - it is better than openbabel. Use openbabel for smiles parsing and adding hydrogens (to both)
     assert len(argv) > 1
     parse = parsing.InputParser(serialize=True, path_to_write=temp_work)
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        usage="Specify format (smi or cdxml), then a smiles string/file with smiles or cdxml file, and finally indicate 'el' or 'nuc' for electrophile or nucleophile"
+    )
     parser.add_argument(
-        "fmt", nargs=2, help="Format for the input - cdxml or (eventually) smiles"
+        "fmt",
+        nargs=2,
+        help="Format for the input - cdxml or smi, followed by file or smiles string",
     )
     parser.add_argument(
         "r", help="The type of input - nucleophile (nuc) or electrophile (el)"
@@ -38,7 +42,10 @@ if __name__ == "__main__":
                 "Something went wrong with openbabel smiles parsing - check input/output"
             )
         prep, err = parse.preopt_geom(collection)
-
+    elif args.fmt[0] == "multsmi":
+        print("got to multsmi")
+        collection = parse.scrape_smiles_csv(args.fmt[1])
+        prep, err = parse.prep_collection(collection, update=20)
     elif args.fmt[0] == "cdxml":
         try:
             p = Path(args.fmt[1])
