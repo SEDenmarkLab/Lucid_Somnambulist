@@ -1,0 +1,35 @@
+<?xml version="1.0" ?>
+<!--MOLLI PACKAGE EXPERIMENTAL XML FORMAT-->
+<molecule name="prELN032036-132">
+	<atoms>
+		<a id="1" s="F" t="F" l="F"/>
+		<a id="2" s="C" t="C.ar" l="C"/>
+		<a id="3" s="N" t="N.ar" l="N"/>
+		<a id="4" s="C" t="C.ar" l="C"/>
+		<a id="5" s="Cl" t="Cl" l="CL"/>
+		<a id="6" s="C" t="C.ar" l="C"/>
+		<a id="7" s="C" t="C.ar" l="C"/>
+		<a id="8" s="C" t="C.ar" l="C"/>
+		<a id="9" s="Br" t="Br" l="BR"/>
+		<a id="10" s="H" t="H" l="H"/>
+		<a id="11" s="H" t="H" l="H"/>
+	</atoms>
+	<bonds>
+		<b id="1" c="1 2" t="1"/>
+		<b id="2" c="2 3" t="ar"/>
+		<b id="3" c="3 4" t="ar"/>
+		<b id="4" c="4 5" t="1"/>
+		<b id="5" c="4 6" t="ar"/>
+		<b id="6" c="6 7" t="ar"/>
+		<b id="7" c="7 8" t="ar"/>
+		<b id="8" c="2 8" t="ar"/>
+		<b id="9" c="8 9" t="1"/>
+		<b id="10" c="6 10" t="1"/>
+		<b id="11" c="7 11" t="1"/>
+	</bonds>
+	<geometry>
+		<g u="A" t="cart/3d">#11,3:1.0638,0.0450,0.2457;2.3809,-0.0005,0.0843;2.9949,1.1527,0.0059;4.3055,1.1668,-0.1537;5.0347,2.7078,-0.2491;5.0719,0.0097,-0.2434;4.4163,-1.2063,-0.1592;3.0374,-1.2275,0.0088;2.0850,-2.8543,0.1322;6.1395,0.0639,-0.3743;4.9635,-2.1343,-0.2227;</g>
+	</geometry>
+	<conformers/>
+	<properties/>
+</molecule>

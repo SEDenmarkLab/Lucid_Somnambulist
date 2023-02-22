@@ -3,7 +3,7 @@ from os import makedirs
 from datetime import date
 from openbabel import openbabel as ob
 from openbabel import pybel
-from somn._core._core import check_parsed_mols
+import somn
 import warnings
 
 
@@ -30,7 +30,7 @@ class InputParser:
 
         Later, this should be implemented for a GUI-based input.
 
-        For now, the names are enumerated with a prefix "pr" for easy detection. Later, these can be  \
+        For now, the names are enumerated with a prefix "pr" for easy detection. Later, these can be
         changed to final names (or ELN numbers)
         """
         if user_input.split(".")[1] != "cdxml":
@@ -72,8 +72,7 @@ class InputParser:
             assert type(user_input) == list
             if type(names) == list and len(names) != len(user_input):
                 warnings.warn(
-                    "Warning: list of names passed were not the same length as input SMILES; \
-                              failed to infer naming scheme, so enumerating structures."
+                    "Warning: list of names passed were not the same length as input SMILES; failed to infer naming scheme, so enumerating structures."
                 )
                 names = None
             mols_out = []
@@ -127,11 +126,10 @@ class InputParser:
             obmol.AddHydrogens()
             newmol = ml.Molecule.from_mol2(obconv.WriteString(obmol), mol_.name)
             output.append(newmol)
-        mols, errs = check_parsed_mols(output, col)
+        mols, errs = somn.core.check_parsed_mols(output, col)
         if len(errs) > 0:
             warnings.warn(
-                message="It looks like adding hydrogens to at least one input structure failed... \
-            try removing ALL explicit hydrogens from input."
+                message="It looks like adding hydrogens to at least one input structure failed...try removing ALL explicit hydrogens from input."
             )
         if self.ser == True:
             self.serialize(errs, specific_msg="addH_err")
@@ -152,11 +150,9 @@ class InputParser:
             )(xtb.optimize)(method="gfn2")
         else:
             raise Exception(
-                "Optional update argument passed for input structure preoptimization, but the \
-                value passed was not an integer. Either do not use this optional feature and accept 2 second \
-                update cycles, or input a valid integer value of seconds."
+                "Optional update argument passed for input structure preoptimization, but the value passed was not an integer. Either do not use this optional feature and accept 2 second update cycles, or input a valid integer value of seconds."
             )
-        mols, errs = check_parsed_mols(opt, col)
+        mols, errs = somn.core.check_parsed_mols(opt, col)
         if self.ser == True:
             self.serialize(errs, specific_msg="preopt_err")
             self.serialize(mols, specific_msg="preopt_suc")

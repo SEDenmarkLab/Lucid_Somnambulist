@@ -5,4 +5,8 @@
 # from ..build import parsing
 
 # from parsing import InputParser
-from somn.build import parsing
+
+
+from .parsing import InputParser
+
+# from somn.database import databasing, dtypes

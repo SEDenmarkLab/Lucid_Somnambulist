@@ -2,7 +2,14 @@
 
 # from somn.build import parsing
 
-import somn.build
+from . import build
+from . import calculate
+from . import database
+from . import workflows
+from . import core
+
+
+# import somn.build
 
 # from .workflows import *
 
