@@ -16,6 +16,12 @@ class somn_DB:
                 self.entries[ent.name + str(i + 1)] = ent
             self.entries[ent.name] = ent
 
+    @property
+    def unique_couplings(self):
+        return sorted(
+            list(set([f.strip().rsplit("_", 3)[0] for f in self.entries.keys()]))
+        )
+
     def add_entry():
         ...
 
