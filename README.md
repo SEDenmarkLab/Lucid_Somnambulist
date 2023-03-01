@@ -26,4 +26,7 @@ Modeling takes two main forms: (1) establishing the coverage of reaction space b
 This process is automated for ease-of-use. Grimme's xTB python package is used to (1) generate initial 3D geometries from 2D graphs input by the user, (2) search for and screen conformers using Grimme's CREST package, and (3) scrape relevant atomic property data and serialize it for conformer ensembles of structures in a heirarchical dictionary (for reactants) or align and store 3D structures (for catalysts). Then, reactant descriptors are computed using 3D coordinates and atomic properties to (1) bin atoms into radial bins for each conformer of each reactant, and (2) tabulate the relevant descriptor from the relevant atomic property of said atom. Finally, values are averaged across conformers and serialized. Finally, catalyst descriptors are calculated by using the alignment to define a plane of forced symmetry, construct a grid around the catalyst conformer ensembles, then prune that grid to half of the 3D structures. Finally, grid-based descriptors developed in the Denmark Laboratories and described elsewhere are calculated and serialized for each catalyst. The descriptor calculation for reactants is more rapid, as these are intended to be generalizable parameters. 
 
 
+Temporary sketch:
+![Lucid Somnambulist_3_1_2023](https://user-images.githubusercontent.com/46203561/222112280-61d2485f-3b9b-43a3-9af2-7b3ae113cb98.svg)
+
 
