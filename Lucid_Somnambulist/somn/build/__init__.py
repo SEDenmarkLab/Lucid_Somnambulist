@@ -7,6 +7,7 @@
 # from parsing import InputParser
 
 
-from .parsing import InputParser
+from .parsing import InputParser, DataHandler, cleanup_handles
+from .assemble import assemble_descriptors_from_handles, preprocess_feature_arrays
 
 # from somn.database import databasing, dtypes

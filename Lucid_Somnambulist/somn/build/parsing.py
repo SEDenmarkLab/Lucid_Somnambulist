@@ -260,204 +260,6 @@ class DataHandler:
 
     ### This is for handling IO operations with dataset, partitioning, handle/label
 
-    def zero_nonzero_rand_splits(
-        self,
-        validation=False,
-        n_splits=1,
-        fold=7,
-        yield_cutoff=1,
-    ):
-        """
-        Split zero/nonzero data, THEN apply random splits function
-
-        Get two output streams for zero and nonzero data to train classification models
-
-        Can set "fuzzy" yield cutoff. This is percent yield that where at or below becomes class zero.
-
-        """
-        zero_mask = self.data.to_numpy() < yield_cutoff
-        nonzero_data = self.data[~zero_mask]
-        zero_data = self.data[zero_mask]
-        if validation == False:
-            tr_z, te_z = self.random_splits(zero_data, n_splits=n_splits, fold=fold)
-            tr_n, te_n = self.random_splits(nonzero_data, n_splits=n_splits, fold=fold)
-            tr = pd.concat(tr_z, tr_n, axis=1)
-            te = pd.concat(te_z, te_n, axis=1)
-            return tr, te
-        elif validation == True:
-            tr_z, va_z, te_z = self.random_splits(
-                zero_data, n_splits=n_splits, fold=fold, validation=validation
-            )
-            tr_n, va_n, te_n = self.random_splits(
-                nonzero_data, n_splits=n_splits, fold=fold, validation=validation
-            )
-            tr = pd.concat((tr_z, tr_n), axis=1)
-            va = pd.concat((va_z, va_n), axis=1)
-            te = pd.concat((te_z, te_n), axis=1)
-            return tr, va, te
-        else:
-            raise ValueError(
-                "validation parameter for zero/nonzero split function must be Boolean"
-            )
-
-
-def assemble_descriptors_from_handles(handle_input, am_dict, br_dict):
-    """
-    General utility for assembling ordered descriptors based on input reaction handles and
-    calculated amine and bromide rdf descriptor dictionaries. This can be used to automate
-    testing hypertuning of rdf calculator hyperparams.
-
-
-    use sysargv[1] for handle input
-
-    sys.argv[1] should be list of truncated handles:
-    amine_bromide,amine_bromide,....
-
-    OR
-
-    pass a list of ALL handles:
-    amine_br_cat_solv_base
-
-    This will assemble only descriptors as required by the list of handles, and will
-    return the descriptors in the appropriate order
-
-    Can also be all handles from a datafile; whatever.
-
-    This is meant to use am_dict and br_dict as conformer-averaged descriptors.
-    This lets the user apply different parameters to descriptor tabulation flexibly.
-
-    """
-    if type(handle_input) == str:
-        rxn_hndls = [f for f in handle_input.split(",") if f != ""]
-        prophetic = True
-    elif type(handle_input) == list:
-        rxn_hndls = [tuple(f.rsplit("_")) for f in handle_input]
-        prophetic = False
-    else:
-        raise ValueError(
-            "Must pass manual string input of handles OR list from dataset"
-        )
-
-    # print(handle_input)
-    # print(rxn_hndls)
-    # outfile_name = date_+'_desc_input'
-    directory = "descriptors/"
-    basefile = directory + "base_params.csv"
-    basedf = pd.read_csv(basefile, header=None, index_col=0).transpose()
-    solvfile = directory + "solvent_params.csv"
-    solvdf = pd.read_csv(solvfile, header=None, index_col=0).transpose()
-    # catfile = directory+'cat_aso_aeif_combined_11_2021.csv' ##Normal ASO/AEIF cats CHANGED TEST
-    catfile = (
-        directory + "iso_catalyst_embedding.csv"
-    )  ##isomap embedded cats CHANGED FOR SIMPLIFICATION
-    catdf = pd.read_csv(catfile, header=None, index_col=0).transpose()
-
-    ### Trying to assemble descriptors for labelled examples with specific conditions ###
-    if prophetic == False:
-        columns = []
-        labels = []
-        for i, handle in enumerate(rxn_hndls):
-            am, br, cat, solv, base = handle
-            catdesc = catdf[cat].tolist()
-            solvdesc = solvdf[int(solv)].tolist()
-            basedesc = basedf[base].tolist()
-            amdesc = []
-            for key, val in am_dict[am].iteritems():  # This is a pd df
-                amdesc.extend(val.tolist())
-            brdesc = []
-            for key, val in br_dict[br].iteritems():
-                brdesc.extend(val.tolist())
-            handlestring = handle_input[i]
-            columns.append(amdesc + brdesc + catdesc + solvdesc + basedesc)
-            labels.append(handlestring)
-        outdf = pd.DataFrame(columns, index=labels).transpose()
-        return outdf
-
-    ### Trying to assemble descriptors for ALL conditions for specific amine/bromide couplings ###
-    elif prophetic == True:
-        solv_base_cond = ["1_a", "1_b", "1_c", "2_a", "2_b", "2_c", "3_a", "3_b", "3_c"]
-        allcats = [str(f + 1) for f in range(21) if f != 14]
-        s = "{}_{}_{}"
-        exp_handles = []
-        for combination in itertools.product(rxn_hndls, allcats, solv_base_cond):
-            exp_handles.append(s.format(*combination))
-        columns = []
-        labels = []
-        for handle in exp_handles:
-            am, br, cat, solv, base = tuple(handle.split("_"))
-            catdesc = catdf[cat].tolist()
-            solvdesc = solvdf[int(solv)].tolist()
-            basedesc = basedf[base].tolist()
-            amdesc = []
-            for key, val in am_dict[am].iteritems():  # This is a pd df
-                amdesc.extend(val.tolist())
-            brdesc = []
-            for key, val in br_dict[br].iteritems():
-                brdesc.extend(val.tolist())
-            columns.append(amdesc + brdesc + catdesc + solvdesc + basedesc)
-            labels.append(handle)
-            # outdf[handle] = amdesc+brdesc+catdesc+solvdesc+basedesc
-        outdf = pd.DataFrame(columns, index=labels).transpose()
-        # print(outdf)
-        return outdf
-
-    @staticmethod
-    def random_splits(df, validation=False, n_splits: int = 1, fold: int = 7):
-        """
-        Get split handles in tuple.
-
-        Validation boolean decides if output is (train,test) or (train,validate,test)
-
-        Each is a list of handles, train, (val), test
-
-        """
-        no_exp = len(df.index)
-        rand_arr = np.random.randint(1, high=fold + 1, size=no_exp, dtype=int)
-        if validation == False:
-            train_mask = (rand_arr > 1).tolist()
-            test_mask = (rand_arr == 1).tolist()
-            mask_list = [train_mask, test_mask]
-        elif validation == True:
-            train_mask = (rand_arr > 2).tolist()
-            validate_mask = (rand_arr == 2).tolist()
-            test_mask = (rand_arr == 1).tolist()
-            mask_list = [train_mask, validate_mask, test_mask]
-        out = tuple([df.iloc[msk, :] for msk in mask_list])
-        return out
-
-    @staticmethod
-    def prep_for_binary_classifier(df_in, yield_cutoff: int = 1):
-        """
-        Prepare data for classifier by getting class labels from continuous yields
-        """
-        if type(df_in) == tuple:
-            out = []
-            for df in df_in:
-                df = df.where(
-                    df > yield_cutoff, other=0, inplace=True
-                )  # collapse yields at or below yield cutoff to class zero
-                df = df.where(
-                    df == 0, other=1, inplace=True
-                )  # collapse yields to class one
-                out.append(df)
-            return tuple(out)
-        elif isinstance(df_in, pd.DataFrame):
-            df = df.where(
-                df > yield_cutoff, other=0, inplace=True
-            )  # collapse yields at or below yield cutoff to class zero
-            df = df.where(
-                df == 0, other=1, inplace=True
-            )  # collapse yields to class one
-            return df
-        else:
-            raise Exception(
-                "Passed incorrect input to staticmethod of DataHandler to prep data for classification - check input."
-            )
-
-    # @classmethod
-    # def from_df(self, df: pd.DataFrame):
-    #     ...
-
     @classmethod
     def to_df(self):
         return self.data
@@ -487,3 +289,15 @@ def assemble_descriptors_from_handles(handle_input, am_dict, br_dict):
                 temp_buf.to_feather(
                     f"{path_}_cols{ext_}"
                 )  # write original cols separately
+
+
+def cleanup_handles(data_df: pd.DataFrame):
+    """
+    Catch-all for fixing weird typos in data entry for data files.
+    """
+    indices = data_df.index
+    strip_indices = pd.Series([f.strip() for f in indices])
+    data_df.index = strip_indices
+    # data_df.drop_duplicates(inplace=True) ## This does not work; it seems to drop most
+    data_df = data_df[~data_df.index.duplicated(keep="first")]
+    return data_df

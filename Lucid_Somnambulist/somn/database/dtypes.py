@@ -1,6 +1,8 @@
 import molli as ml
+from attrs import define, field
 
 
+@define
 class _entry:
     """
     Abstract class for a database entry.
@@ -8,33 +10,30 @@ class _entry:
     Optional name, CAS, smiles can be passed.
     """
 
-    def __init__(self, name=None, CAS=None, smiles=None, features=None):
-        self.name = name
-        self.cas = CAS
-        self.smi = smiles
-        self.feat = features
+    name: str = field()
+    CAS: str = field()
+    smiles: str = field()
+    role: str = field()
+    features = field(factory=list)
 
 
+@define
 class substrate(_entry):
-    def __init__(self, role=None, name=None, CAS=None, smiles=None, features=None):
-        if role == None:
-            raise Exception("Must pass a role for a substrate entry - nuc or el")
-        else:
-            self.role = role
-        super().__init__(name=None, CAS=None, smiles=None, features=None)
+    ...
 
 
+@define
 class catalyst(_entry):
-    def __init__(self, name=None, CAS=None, smiles=None, features=None):
-        super().__init__(name=None, CAS=None, smiles=None, features=None)
+    ...
 
 
+@define
 class reagent(substrate):
-    def __init__(self, role, name=None, CAS=None, smiles=None, features=None):
-        super().__init__(role=None, name=None, CAS=None, smiles=None, features=None)
+    ...
 
 
-class reaction(_entry):
+@define
+class reaction:
     """
     Database for storing reaction data.
 
@@ -44,11 +43,12 @@ class reaction(_entry):
 
     """
 
-    def __init__(self, nuc, el, cat, solv, base, name="", write_dir=""):
-        self.nuc = nuc
-        self.el = el
-        self.cat = cat
-        self.solv = solv
-        self.base = base
-        self.handle = f"{nuc.name}_{el.name}_{cat.name}_{solv.name}_{base.name}"
-        super().__init__(name="", write_dir="")
+    nuc: substrate = field()
+    el: substrate = field()
+    cat: catalyst = field()
+    solv: reagent = field()
+    base: reagent = field()
+    handle: str = field(init=False)
+
+    def __attrs_post_init__(self):
+        self.handle = f"{self.nuc.name}_{self.el.name}_{self.cat.name}_{self.solv.name}_{self.base.name}"
