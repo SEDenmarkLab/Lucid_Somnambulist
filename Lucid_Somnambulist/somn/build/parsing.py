@@ -1,10 +1,13 @@
 import molli as ml
 from os import makedirs
 from datetime import date
-from openbabel import openbabel as ob
-from openbabel import pybel
 import somn
 import warnings
+from pathlib import Path
+from os.path import splitext
+import pandas as pd
+import numpy as np
+from collections import namedtuple
 
 
 class InputParser:
@@ -46,6 +49,8 @@ class InputParser:
         Take user input of smiles string and convert it to a molli molecule object
 
         """
+        from openbabel import openbabel as ob
+
         if recursive_mode == False:
             obmol = ob.OBMol()
             obconv = ob.OBConversion()
@@ -117,6 +122,8 @@ class InputParser:
         Note: any explicit hydrogens in a parsed structure will cause this to fail...
 
         """
+        from openbabel import openbabel as ob
+
         output = []
         for mol_ in col:
             obmol = ob.OBMol()
@@ -162,6 +169,7 @@ class InputParser:
         """
         Several consistent steps to prep incoming geometries
         """
+
         col_h, errs_h = self.add_hydrogens(col)
         # ID_ = date.today()
         if update == None:
@@ -176,8 +184,6 @@ class InputParser:
 
         SMILES strings should be column index 0, and optional name should be column index 1
         """
-        import pandas as pd
-
         df = pd.read_csv(fpath, header=0, index_col=0)
         if len(df.columns) == 1:
             collection = self.get_mol_from_smiles(
@@ -191,3 +197,107 @@ class InputParser:
                 names=df.iloc[:, 1].to_list(),
             )
             return collection
+
+
+class DataHandler:
+    """
+    Parsing data including I/O functions for regression tasks, as well as labelling for (multi)class modeling
+
+    Designed to be robust and detect duplicate entries, absurd values (e.g. wrong scale), etc.
+
+    When serialized, the outputs should be ready for subsequent steps
+    """
+
+    def __init__(self, fpath_or_df, **kwargs):
+        """
+        CSV/XLSV should have a header AND index column. XLSV will assume first sheet unless kwarg "sheet_name" is passed.
+        """
+        if isinstance(fpath_or_df, pd.DataFrame):
+            self.data = fpath_or_df
+        elif isinstance(fpath_or_df, str):
+            if Path(fpath_or_df).exists():
+                if splitext(fpath_or_df)[1] == ".csv":
+                    df = pd.read_csv(fpath_or_df, header=0, index_col=0)
+                    self.data = df
+                elif splitext(fpath_or_df)[1] == ".xlsx":
+                    if "sheet_name" in kwargs:
+                        self.sheet_name = kwargs["sheet_name"]
+                    else:
+                        self.sheet_name = 0
+                    df = pd.read_excel(
+                        fpath_or_df, header=0, index_col=0, sheet_name=self.sheet_name
+                    )
+                    self.data = df
+                elif splitext(fpath_or_df[1]) == ".feather":
+                    df = pd.read_feather(
+                        fpath_or_df
+                    ).transpose()  # Assumes serialized columns for feather = row indices
+                    self.data = df
+            else:
+                raise Exception(
+                    "Cannot parse filepath or buffer passed to DataHandler - check path"
+                )
+        else:
+            raise Exception("Cannot parse input type for DataHandler class.")
+        self.handles = self.df.index.to_list()
+        if "name" in kwargs.keys():
+            self.name = kwargs["name"]
+        else:
+            self.name = None
+        self.cleanup_handles()
+
+    ### These are methods for this class
+
+    def cleanup_handles(self):
+        """
+        Catch-all for fixing weird typos in data entry for data files.
+        """
+        indices = self.data.index
+        strip_indices = pd.Series([f.strip() for f in indices])
+        self.data.index = strip_indices
+        # self.data.drop_duplicates(inplace=True) ## This does not work; removes more than it should
+        self.data = self.data[~self.data.index.duplicated(keep="first")]
+
+    ### This is for handling IO operations with dataset, partitioning, handle/label
+
+    @classmethod
+    def to_df(self):
+        return self.data
+
+    @classmethod
+    def to_feather(self, fpath, orient=None):
+        """
+        Write the data from DataHandler (after processing, etc) to a feather file.
+        """
+        if orient == None:
+            self.data.to_feather(fpath)
+        elif orient == "index":
+            self.data.transpose().to_feather(fpath)
+        elif orient == "column":
+            self.data.to_feather(fpath)
+        elif orient == "both":
+            i, j = self.data.shape
+            if i > j:
+                self.data.transpose().to_feather(fpath)
+                temp_buf = self.data.columns
+                path_, ext_ = splitext(fpath)
+                temp_buf.to_feather(f"{path_}_cols{ext_}")
+            if i < j:
+                self.data.transpose().to_feather(fpath)
+                temp_buf = self.data.columns  # index of original rotated into cols
+                path_, ext_ = splitext(fpath)
+                temp_buf.to_feather(
+                    f"{path_}_cols{ext_}"
+                )  # write original cols separately
+
+
+def cleanup_handles(data_df: pd.DataFrame):
+    """
+    Catch-all for fixing weird typos in data entry for data files.
+    """
+    indices = data_df.index
+    strip_indices = pd.Series([f.strip() for f in indices])
+    data_df.index = strip_indices
+    # data_df.drop_duplicates(inplace=True) ## This does not work; it seems to drop most
+    data_df = data_df[~data_df.index.duplicated(keep="first")]
+    return data_df
