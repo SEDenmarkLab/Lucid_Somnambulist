@@ -122,9 +122,7 @@ def randomize_features(feat=np.array):
     return feats
 
 
-def make_randomized_features(
-    am_dict, br_dict, catfile=None, solvfile=None, basefile=None
-):
+def make_randomized_features(am_dict, br_dict, catdf, solvdf, basedf):
     """
     For running randomized feature control
 
@@ -134,23 +132,6 @@ def make_randomized_features(
 
     output is AMINE, BROMIDE, CATALYST, SOLVENT, BASE
     """
-    directory = "descriptors/"
-
-    if basefile == None:
-        basefile = directory + "base_params.csv"
-    else:
-        basefile = basefile
-    basedf = pd.read_csv(basefile, header=None, index_col=0).transpose()
-    if solvfile == None:
-        solvfile = directory + "solvent_params.csv"
-    else:
-        solvfile == solvfile
-    solvdf = pd.read_csv(solvfile, header=None, index_col=0).transpose()
-    if catfile == None:
-        catfile = directory + "cat_aso_aeif_combined_11_2021.csv"
-    else:
-        catfile == catfile
-    catdf = pd.read_csv(catfile, header=None, index_col=0).transpose()
     cat_rand = randomize_features(catdf.to_numpy())
     catdfrand = pd.DataFrame(cat_rand, index=catdf.index, columns=catdf.columns)
     solv_rand = randomize_features(solvdf.to_numpy())
@@ -482,3 +463,59 @@ def prep_for_binary_classifier(df_in, yield_cutoff: int = 1):
         raise Exception(
             "Passed incorrect input to staticmethod of DataHandler to prep data for classification - check input."
         )
+
+
+def new_mask_random_feature_arrays(
+    real_feature_dataframes: (pd.DataFrame),
+    rand_feat_dataframes: (pd.DataFrame),
+    corr_cut=0.95,
+    _vt=None,
+):
+    """
+    Use preprocessing on real features to mask randomized feature arrays, creating an actual randomized feature test which
+    has proper component-wise randomization instead of instance-wise randomization, and preserves the actual input shapes
+    used for the real features.
+
+    rand out then real out as two tuples
+
+    """
+    labels = [str(f) for f in range(len(real_feature_dataframes))]
+    combined_df = pd.concat(
+        real_feature_dataframes, axis=1, keys=labels
+    )  # concatenate instances on columns
+    comb_rand = pd.concat(rand_feat_dataframes, axis=1, keys=labels)
+    mask = list(
+        combined_df.nunique(axis=1) != 1
+    )  # Boolean for rows with more than one unique value
+    filtered_df = combined_df.iloc[
+        mask, :
+    ]  # Get only indices with more than one unique value
+    filtered_rand = comb_rand.iloc[mask, :]
+    if _vt == "old":
+        _vt = 0.04  # This preserves an old version of vt, and the next condition ought to still be "if" so that it still runs when this is true
+    elif _vt == None:
+        _vt = 1e-4
+    if (
+        type(_vt) == float
+    ):  # Found that vt HAS to come first, or else the wrong features are removed.
+        vt = VarianceThreshold(threshold=_vt)
+        sc = MinMaxScaler()
+        vt_real = vt.fit_transform(filtered_df.transpose().to_numpy())
+        vt_rand = vt.transform(filtered_rand.transpose().to_numpy())
+        sc_vt_real = sc.fit_transform(vt_real)
+        sc_vt_rand = sc.transform(vt_rand)
+        # sc_df_real = sc.transform(filtered_df.transpose().to_numpy())
+        # sc_df_rand = sc.transform(filtered_rand.transpose().to_numpy())
+        # vt.fit(sc_df_real)
+        vt_df_real = pd.DataFrame(sc_vt_real)
+        vt_df_rand = pd.DataFrame(sc_vt_rand)
+        ### Below, replace transposed data with noc_[type] dataframes if using correlation cutoff
+        processed_rand_feats = pd.DataFrame(
+            np.transpose(vt_df_rand.to_numpy()), columns=filtered_df.columns
+        )  # Ensures labels stripped; gives transposed arrays (row = feature, column= instance)
+        processed_real_feats = pd.DataFrame(
+            np.transpose(vt_df_real.to_numpy()), columns=filtered_df.columns
+        )
+        output_rand = tuple([processed_rand_feats[lbl] for lbl in labels])
+        output_real = tuple([processed_real_feats[lbl] for lbl in labels])
+        return output_rand, output_real

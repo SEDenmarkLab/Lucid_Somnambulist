@@ -8,6 +8,7 @@
 
 
 from .parsing import InputParser, DataHandler, cleanup_handles
-from .assemble import assemble_descriptors_from_handles, preprocess_feature_arrays
+
+# from .assemble import assemble_descriptors_from_handles
 
 # from somn.database import databasing, dtypes
