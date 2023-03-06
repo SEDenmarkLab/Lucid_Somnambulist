@@ -4,6 +4,60 @@ from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import MinMaxScaler
 import random
 import itertools
+from copy import deepcopy
+from somn.build.parsing import cleanup_handles
+
+from somn import data
+
+data.load_sub_mols()
+data.load_all_desc()
+
+from somn.data import (
+    ACOL,
+    BCOL,
+    DATA,
+    AMINES,
+    BROMIDES,
+    CATDESC,
+    SOLVDESC,
+    BASEDESC,
+)
+
+
+def load_data():
+    """
+    Return everything as a copied object from the global variables. Format:
+    (amines,bromides,dataset,handles,unique_couplings,a_prop,br_prop,base_desc,solv_desc,cat_desc)
+
+    """
+    # amine molecules are stored as ACOL global variable, bromide molecules are stored as BCOL global variable
+    ### Define a copy (to protect the global one) for each component needed
+    amines = deepcopy(ACOL)
+    bromides = deepcopy(BCOL)
+    data_raw = deepcopy(DATA)
+    a_prop = deepcopy(AMINES)
+    br_prop = deepcopy(BROMIDES)
+    base_desc = deepcopy(BASEDESC)
+    solv_desc = deepcopy(SOLVDESC)
+    cat_desc = deepcopy(CATDESC)
+    ### Some "safety" check on handles - this will remove duplicates and make sure leading spaces, etc won't cause problems.
+    dataset = cleanup_handles(data_raw)
+    handles = dataset.index
+    unique_couplings = sorted(
+        list(set([f.rsplit("_", 3)[0] for f in handles]))
+    )  # unique am_br pairs in dataset
+    return (
+        amines,
+        bromides,
+        dataset,
+        handles,
+        unique_couplings,
+        a_prop,
+        br_prop,
+        base_desc,
+        solv_desc,
+        cat_desc,
+    )
 
 
 def calcDrop(res):
@@ -105,71 +159,6 @@ def get_handles_by_reactants(str_, handles_):
         if k.rsplit("_", 3)[0] == str_:
             out.append(k)
     return out
-
-
-def randomize_features(feat=np.array):
-    """
-    Accepts feature array and randomizes values
-
-    NOTE: does not create consistent vector per component - for illustration purposes to compare to "real" random feature control.
-    FOR PROPER CONTROL use "make_randomized_features," which generates a library of randomized vectors which are then combinatorially
-    applied to assemble a feature array.
-
-    """
-    feat_ = feat
-    rng = np.random.default_rng()
-    feats = rng.random(out=feat)
-    return feats
-
-
-def make_randomized_features(
-    am_dict, br_dict, catfile=None, solvfile=None, basefile=None
-):
-    """
-    For running randomized feature control
-
-    Pass dict of dataframes to this to randomize substrate features
-
-    Handles are the dataset partitions (as a tuple...these will be returned with the desired order but randomized)
-
-    output is AMINE, BROMIDE, CATALYST, SOLVENT, BASE
-    """
-    directory = "descriptors/"
-
-    if basefile == None:
-        basefile = directory + "base_params.csv"
-    else:
-        basefile = basefile
-    basedf = pd.read_csv(basefile, header=None, index_col=0).transpose()
-    if solvfile == None:
-        solvfile = directory + "solvent_params.csv"
-    else:
-        solvfile == solvfile
-    solvdf = pd.read_csv(solvfile, header=None, index_col=0).transpose()
-    if catfile == None:
-        catfile = directory + "cat_aso_aeif_combined_11_2021.csv"
-    else:
-        catfile == catfile
-    catdf = pd.read_csv(catfile, header=None, index_col=0).transpose()
-    cat_rand = randomize_features(catdf.to_numpy())
-    catdfrand = pd.DataFrame(cat_rand, index=catdf.index, columns=catdf.columns)
-    solv_rand = randomize_features(solvdf.to_numpy())
-    solvdfrand = pd.DataFrame(solv_rand, index=solvdf.index, columns=solvdf.columns)
-    base_rand = randomize_features(basedf.to_numpy())
-    basedfrand = pd.DataFrame(base_rand, index=basedf.index, columns=basedf.columns)
-    br_dict_rand = {}
-    am_dict_rand = {}
-    for k, v in am_dict.items():
-        rand_f = randomize_features(np.array(v.iloc[:, :9].to_numpy()))
-        rand_int = np.random.randint(0, 3, v.iloc[:, 9:].to_numpy().shape)
-        concat = np.concatenate((rand_f, rand_int), axis=1)
-        am_dict_rand[k] = pd.DataFrame(concat, index=v.index, columns=v.columns)
-    for k, v in br_dict.items():
-        rand_f = randomize_features(np.array(v.iloc[:, :9].to_numpy()))
-        rand_int = np.random.randint(0, 3, v.iloc[:, 9:].to_numpy().shape)
-        concat = np.concatenate((rand_f, rand_int), axis=1)
-        br_dict_rand[k] = pd.DataFrame(concat, index=v.index, columns=v.columns)
-    return am_dict_rand, br_dict_rand, catdfrand, solvdfrand, basedfrand
 
 
 def preprocess_feature_arrays(
@@ -482,3 +471,75 @@ def prep_for_binary_classifier(df_in, yield_cutoff: int = 1):
         raise Exception(
             "Passed incorrect input to staticmethod of DataHandler to prep data for classification - check input."
         )
+
+
+def new_mask_random_feature_arrays(
+    real_feature_dataframes: (pd.DataFrame),
+    rand_feat_dataframes: (pd.DataFrame),
+    corr_cut=0.95,
+    _vt=None,
+):
+    """
+    Use preprocessing on real features to mask randomized feature arrays, creating an actual randomized feature test which
+    has proper component-wise randomization instead of instance-wise randomization, and preserves the actual input shapes
+    used for the real features.
+
+    rand out then real out as two tuples
+
+    """
+    labels = [str(f) for f in range(len(real_feature_dataframes))]
+    combined_df = pd.concat(
+        real_feature_dataframes, axis=1, keys=labels
+    )  # concatenate instances on columns
+    comb_rand = pd.concat(rand_feat_dataframes, axis=1, keys=labels)
+    mask = list(
+        combined_df.nunique(axis=1) != 1
+    )  # Boolean for rows with more than one unique value
+    filtered_df = combined_df.iloc[
+        mask, :
+    ]  # Get only indices with more than one unique value
+    filtered_rand = comb_rand.iloc[mask, :]
+    if _vt == "old":
+        _vt = 0.04  # This preserves an old version of vt, and the next condition ought to still be "if" so that it still runs when this is true
+    elif _vt == None:
+        _vt = 1e-4
+    if (
+        type(_vt) == float
+    ):  # Found that vt HAS to come first, or else the wrong features are removed.
+        vt = VarianceThreshold(threshold=_vt)
+        sc = MinMaxScaler()
+        vt_real = vt.fit_transform(filtered_df.transpose().to_numpy())
+        vt_rand = vt.transform(filtered_rand.transpose().to_numpy())
+        sc_vt_real = sc.fit_transform(vt_real)
+        sc_vt_rand = sc.transform(vt_rand)
+        # sc_df_real = sc.transform(filtered_df.transpose().to_numpy())
+        # sc_df_rand = sc.transform(filtered_rand.transpose().to_numpy())
+        # vt.fit(sc_df_real)
+        vt_df_real = pd.DataFrame(sc_vt_real)
+        vt_df_rand = pd.DataFrame(sc_vt_rand)
+        ### Below, replace transposed data with noc_[type] dataframes if using correlation cutoff
+        processed_rand_feats = pd.DataFrame(
+            np.transpose(vt_df_rand.to_numpy()), columns=filtered_df.columns
+        )  # Ensures labels stripped; gives transposed arrays (row = feature, column= instance)
+        processed_real_feats = pd.DataFrame(
+            np.transpose(vt_df_real.to_numpy()), columns=filtered_df.columns
+        )
+        output_rand = tuple([processed_rand_feats[lbl] for lbl in labels])
+        output_real = tuple([processed_real_feats[lbl] for lbl in labels])
+        return output_rand, output_real
+
+
+def get_all_combos(unique_couplings):
+    """
+    UTILITY
+
+    Returns all possible pairings of amine and bromide which are used in the dataset, regardless of whether those are coupled together.
+
+    Allows COMPLETE testing of every pair of amine and bromide as out of sample.
+    """
+    am_ = list(set([f.split("_")[0] for f in unique_couplings]))
+    br_ = list(set([f.split("_")[1] for f in unique_couplings]))
+
+    combos_ = itertools.product(am_, br_)
+    combos = [f[0] + "_" + f[1] for f in combos_]
+    return combos

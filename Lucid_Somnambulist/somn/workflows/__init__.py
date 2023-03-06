@@ -15,7 +15,8 @@ from pathlib import Path
 
 global UNIQUE_
 UNIQUE_ = "".join(
-    random.SystemRandom().choice(string.digits + string.ascii_letters) for _ in range(4)
+    random.SystemRandom().choice(string.digits + string.ascii_lowercase)
+    for _ in range(4)
 )
 
 
