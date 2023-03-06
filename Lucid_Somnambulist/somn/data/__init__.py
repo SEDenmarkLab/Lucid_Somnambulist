@@ -3,6 +3,7 @@ import pickle
 import pkg_resources
 import molli as ml
 
+
 # =============================
 # If optionally imported, then this loads things into memory for use in calculation/descriptor
 # assembly workflows
@@ -30,7 +31,8 @@ def load_all_desc():
         AMINES = pickle.load(g)
     with open(stream_bromide, "rb") as k:
         BROMIDES = pickle.load(k)
-    load_cat_desc()
+    stream_cat = pkg_resources.resource_filename(__name__, "cat_aso_aeif_combined.csv")
+    CATDESC = pd.read_csv(stream_cat, header=None, index_col=0)
 
 
 def load_sub_mols():
@@ -38,12 +40,8 @@ def load_sub_mols():
     Load substrate molecules from package - use this to calculate new substrate descriptors
     """
     global ACOL, BCOL
-    stream_amol = pkg_resources.resource_filename(
-        __name__, "rocheval_amine_conf_am_optgfn2.zip"
-    )
-    stream_bmol = pkg_resources.resource_filename(
-        __name__, "rocheval_amine_conf_br_optgfn2.zip"
-    )
+    stream_amol = pkg_resources.resource_filename(__name__, "amines_all_f.zip")
+    stream_bmol = pkg_resources.resource_filename(__name__, "bromides_all_f.zip")
     ACOL = ml.Collection.from_zip(stream_amol)
     BCOL = ml.Collection.from_zip(stream_bmol)
 
@@ -71,7 +69,7 @@ def load_cat_desc(test=False, embedding=False):
 
 ###
 ### Debugging - this is to test global variables (which aren't directly accessible by interpreter, but this function call is)
-### Should only work if all descriptors are loaded + substrate molecules.
+## Should only work if all descriptors are loaded + substrate molecules.
 def test():
     print(AMINES.keys(), BROMIDES.keys(), ACOL.name, len(BCOL.molecules), DATA.index)
 

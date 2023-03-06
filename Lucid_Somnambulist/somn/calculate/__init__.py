@@ -21,8 +21,6 @@ from .preprocess import (
     corrX_new,
     trim_out_of_sample,
     get_handles_by_reactants,
-    randomize_features,
-    make_randomized_features,
     preprocess_feature_arrays,
     outsamp_by_handle,
     outsamp_splits,

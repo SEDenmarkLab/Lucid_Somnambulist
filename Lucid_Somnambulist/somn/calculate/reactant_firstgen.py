@@ -1,4 +1,5 @@
 from rdkit import Chem
+from rdkit.Chem import rdqueries
 import molli as ml
 import pandas as pd
 import numpy as np
@@ -69,6 +70,7 @@ def retrieve_bromide_rdf_descriptors(
             # obabel_ = ml.OpenBabelDriver(name=mol.name,scratch_dir=os.getcwd(),nprocs=1)
             # out = obabel_.convert(mol_text=mol.to_mol2(),src="mol2",dest="smi")
             # print(out)
+            # print("THISMOLECULEFAILED ", mol.name, col.name)
             obconv = openbabel.OBConversion()
             obconv.SetInAndOutFormats("mol2", "smi")
             obmol = openbabel.OBMol()
@@ -81,7 +83,7 @@ def retrieve_bromide_rdf_descriptors(
                 smi = smi.replace("([N](=O)[O-])", "([N+](=O)[O-])")
             # print(smi)
             rdk_mol = Chem.MolFromSmiles(smi)
-            # print(rdk_mol)
+            # print("AFTER FAILURE, MADE THIS: ", rdk_mol)
             # break
         leftref = get_left_reference(rdk_mol, ipso_idx, br_idx)
         conf_rdfs = {}
@@ -581,7 +583,7 @@ def get_aromatic_atoms(mol: Chem.rdchem.Mol):
     Some heterocycles (particularly pi-rich) are not parsed properly - this is an RDKit problem. It will be solved eventually.
     """
 
-    q = Chem.rdqueries.IsAromaticQueryAtom()
+    q = rdqueries.IsAromaticQueryAtom()
     return [x.GetIdx() for x in mol.GetAtomsMatchingQuery(q)]
 
 
