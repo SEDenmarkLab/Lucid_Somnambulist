@@ -33,7 +33,7 @@ from somn.workflows import DESC_
 ############################ Calculate reactant descriptors #############################
 
 
-def main(inc=0.75):
+def main(inc=0.75, optional_load=None):
     """
     Run workflow to calculate real and random descriptors for substrates. Saves random features for ALL components,
     but only calculates substrate features. These are keyed feature sets, not assembled arrays.
@@ -51,7 +51,7 @@ def main(inc=0.75):
         base_desc,
         solv_desc,
         cat_desc,
-    ) = preprocess.load_data()
+    ) = preprocess.load_data(optional_load)
 
     ### Calculate descriptors for the reactants, and store their 1D vector arrays in a dictionary-like output.
     _inc = inc
