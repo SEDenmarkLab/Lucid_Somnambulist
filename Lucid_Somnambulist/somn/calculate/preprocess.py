@@ -24,7 +24,7 @@ from somn.data import (
 )
 
 
-def load_data():
+def load_data(optional_load=None):
     """
     Return everything as a copied object from the global variables. Format:
     (amines,bromides,dataset,handles,unique_couplings,a_prop,br_prop,base_desc,solv_desc,cat_desc)
@@ -46,18 +46,33 @@ def load_data():
     unique_couplings = sorted(
         list(set([f.rsplit("_", 3)[0] for f in handles]))
     )  # unique am_br pairs in dataset
-    return (
-        amines,
-        bromides,
-        dataset,
-        handles,
-        unique_couplings,
-        a_prop,
-        br_prop,
-        base_desc,
-        solv_desc,
-        cat_desc,
-    )
+    if optional_load == "experimental_catalyst":
+        cat_pre = preprocess_grid_maxdiff(cat_desc, threshold=(0.90, 0.89))
+        return (
+            amines,
+            bromides,
+            dataset,
+            handles,
+            unique_couplings,
+            a_prop,
+            br_prop,
+            base_desc,
+            solv_desc,
+            cat_pre,
+        )
+    else:
+        return (
+            amines,
+            bromides,
+            dataset,
+            handles,
+            unique_couplings,
+            a_prop,
+            br_prop,
+            base_desc,
+            solv_desc,
+            cat_desc,
+        )
 
 
 def calcDrop(res):
@@ -230,7 +245,7 @@ def preprocess_feature_arrays(
             return output
 
 
-def outsamp_splits(
+def platewise_splits(
     data_df: pd.DataFrame,
     num_coup=5,
     save_mask=True,
@@ -239,27 +254,25 @@ def outsamp_splits(
     test_list=None,
 ):
     """
-    Split dataset to withhold specific plates.
-
-    Get split handles in tuple.
-
-    Validation boolean decides if output is (train,validate,test)
-
+    Split dataset to withhold specific plates - NOTE: does not withhold based on reactant.
     The num_coup integer indicates the number of am_br reactant combinations to withhold into the
     validate or test split (each)
 
+    Get split handles in tuple for masking features and data later. Validation boolean decides if output is (train,validate,test) or (train,test)
+
     Val split ignored unless val_int is True
 
-    test_list overrides num_coup, and sets those couplings as the out of sample ones
-    note: only works with internal validation
+    test_list overrides num_coup, and sets those couplings as the out of sample ones. However, this only does internal validation.
 
     """
     if val_int == False:
         handles = data_df.index
         reacts = [f.rsplit("_", 3)[0] for f in handles]
-        set_ = sorted(list(set(reacts)))
+        set_ = sorted(list(set(reacts)))  # all amine_bromide combos
         if test_list == None:
-            test = random.sample(set_, num_coup)
+            test = random.sample(
+                set_, num_coup
+            )  # random sampling of PLATES - does not ensure out of sample reactants for reactants used in multiple plates
         elif type(test_list) == list:
             test = test_list
         temp = [f for f in set_ if f not in test]  # temp is train and val
@@ -543,3 +556,84 @@ def get_all_combos(unique_couplings):
     combos_ = itertools.product(am_, br_)
     combos = [f[0] + "_" + f[1] for f in combos_]
     return combos
+
+
+def preprocess_grid_maxdiff(input: pd.DataFrame, threshold=0.80):
+    """
+    Pipeline function for using gridpoint range to select gridpoints.
+    """
+
+    def max_diff(input):
+        """
+        Return column/row-wise range
+
+        USEWITH pd.Dataframe.apply()
+        """
+        delta = input.max() - input.min()
+        return delta
+
+    def max_diff_sel(df, threshold=0.80):
+        """
+        Threshold is percentile rank threshold for maximum differences calculated on each column.
+
+        Max-Min for column = max difference (absolute value)
+        All zeroes collapse to same percentile rank value, so threshold is NOT a percentage of the quantity of input features - this would
+        only be true for an even distribution.
+        """
+        diff = df.apply(max_diff)
+        diff.sort_values(inplace=True, ascending=False)
+        ### Get percentile rank - select pct-based slice of features instead of number - like a threshold cutoff
+        ranking = diff.rank(pct=True)
+        idx = ranking[ranking >= threshold].index.to_list()
+        return df[idx]
+
+    def _maxdiff_then_scale(df, threshold=0.80, keyed=False):
+        """
+        Pass a single threshold to apply this to both aso and aeif
+
+        Pass a length-2 tuple of thresholds to apply them to aso and aeif, respectively
+
+        NOTE: expects raw feature input with aso, then aeif. Exactly half of the columns should be ASO, and the other half AEIF.
+        This works on raw-calculated grid descriptors, which is what this is designed for.
+        """
+
+        def pull_type_(df):
+            labels = df.columns
+            aeif_mask = [True if "aeif" in f else False for f in labels]
+            aso_mask = [True if "aso" in f else False for f in labels]
+            return df[df.columns[aso_mask]], df[df.columns[aeif_mask]]
+
+        def diff_then_scale(df, threshold):
+            temp_m = max_diff_sel(df, threshold)
+            temp_sc = scale.fit_transform(temp_m)
+            cat_sel = pd.DataFrame(temp_sc, index=temp_m.index, columns=temp_m.columns)
+            return cat_sel
+
+        scale = MinMaxScaler()
+        sli = int(len(df.columns) / 2)
+        aso = df.iloc[:, :sli]
+        aeif = df.iloc[:, sli:]
+        aso = [f"aso_{f+1}" for f in range(sli)]
+        aeif = [f"aeif_{f+1}" for f in range(sli)]
+        category = aso + aeif
+        # print(category)
+        temp = deepcopy(df)
+        temp.columns = category
+        if type(threshold) == tuple:
+            assert len(threshold) == 2
+            asot, aeift = threshold
+            aso_d, aeif_d = pull_type_(temp)
+            aso_out = diff_then_scale(aso_d, asot)
+            aeif_out = diff_then_scale(aeif_d, aeift)
+            if keyed == True:
+                out = pd.concat((aso_out, aeif_out), axis=1, keys=["aso", "aeif"])
+            else:
+                out = pd.concat((aso_out, aeif_out), axis=1)
+            return out
+        else:
+            out = diff_then_scale(temp, threshold)
+            return out
+
+    cat_copy = deepcopy(input)
+    output = _maxdiff_then_scale(cat_copy, threshold=threshold)
+    return output

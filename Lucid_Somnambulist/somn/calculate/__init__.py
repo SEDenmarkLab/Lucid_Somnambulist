@@ -23,7 +23,6 @@ from .preprocess import (
     get_handles_by_reactants,
     preprocess_feature_arrays,
     outsamp_by_handle,
-    outsamp_splits,
     split_handles_reactants,
     split_outsamp_reacts,
     zero_nonzero_rand_splits,

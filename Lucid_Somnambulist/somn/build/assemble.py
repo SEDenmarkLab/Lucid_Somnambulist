@@ -4,9 +4,11 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.feature_selection import VarianceThreshold
 import numpy as np
 from itertools import product
+from somn.workflows import DESC_
+from somn.data import BASEDESC, SOLVDESC, CATDESC
 
 
-def assemble_descriptors_from_handles(handle_input, am_dict, br_dict):
+def assemble_descriptors_from_handles(handle_input, desc: tuple):
     """
     General utility for assembling ordered descriptors based on input reaction handles and
     calculated amine and bromide rdf descriptor dictionaries. This can be used to automate
@@ -43,19 +45,28 @@ def assemble_descriptors_from_handles(handle_input, am_dict, br_dict):
             "Must pass manual string input of handles OR list from dataset"
         )
 
+    am_dict_real, br_dict_real, cat_real, solv_real, base_real = desc
+    basedf = base_real.transpose()
+    solvdf = solv_real.transpose()
+    catdf = (
+        cat_real.transpose()
+    )  # Confusing - FIX THIS - trying to use it like a dictionary later, but it's clearly still a df. Need to have column-wise lookup
+    br_dict = br_dict_real
+    am_dict = am_dict_real
+
     # print(handle_input)
     # print(rxn_hndls)
     # outfile_name = date_+'_desc_input'
-    directory = "descriptors/"
-    basefile = directory + "base_params.csv"
-    basedf = pd.read_csv(basefile, header=None, index_col=0).transpose()
-    solvfile = directory + "solvent_params.csv"
-    solvdf = pd.read_csv(solvfile, header=None, index_col=0).transpose()
-    # catfile = directory+'cat_aso_aeif_combined_11_2021.csv' ##Normal ASO/AEIF cats CHANGED TEST
-    catfile = (
-        directory + "iso_catalyst_embedding.csv"
-    )  ##isomap embedded cats CHANGED FOR SIMPLIFICATION
-    catdf = pd.read_csv(catfile, header=None, index_col=0).transpose()
+    # directory = DESC_
+    # basefile = DESC_ + "base_params.csv"
+    # basedf = pd.read_csv(basefile, header=None, index_col=0).transpose()
+    # solvfile = directory + "solvent_params.csv"
+    # solvdf = pd.read_csv(solvfile, header=None, index_col=0).transpose()
+    # # catfile = directory+'cat_aso_aeif_combined_11_2021.csv' ##Normal ASO/AEIF cats CHANGED TEST
+    # catfile = (
+    #     directory + "iso_catalyst_embedding.csv"
+    # )  ##isomap embedded cats CHANGED FOR SIMPLIFICATION
+    # catdf = pd.read_csv(catfile, header=None, index_col=0).transpose()
 
     ### Trying to assemble descriptors for labelled examples with specific conditions ###
     if prophetic == False:
@@ -67,10 +78,10 @@ def assemble_descriptors_from_handles(handle_input, am_dict, br_dict):
             solvdesc = solvdf[int(solv)].tolist()
             basedesc = basedf[base].tolist()
             amdesc = []
-            for key, val in am_dict[am].iteritems():  # This is a pd df
+            for key, val in am_dict[am].items():  # This is a pd df
                 amdesc.extend(val.tolist())
             brdesc = []
-            for key, val in br_dict[br].iteritems():
+            for key, val in br_dict[br].items():
                 brdesc.extend(val.tolist())
             handlestring = handle_input[i]
             columns.append(amdesc + brdesc + catdesc + solvdesc + basedesc)
@@ -94,10 +105,10 @@ def assemble_descriptors_from_handles(handle_input, am_dict, br_dict):
             solvdesc = solvdf[int(solv)].tolist()
             basedesc = basedf[base].tolist()
             amdesc = []
-            for key, val in am_dict[am].iteritems():  # This is a pd df
+            for key, val in am_dict[am].items():  # This is a pd df
                 amdesc.extend(val.tolist())
             brdesc = []
-            for key, val in br_dict[br].iteritems():
+            for key, val in br_dict[br].items():
                 brdesc.extend(val.tolist())
             columns.append(amdesc + brdesc + catdesc + solvdesc + basedesc)
             labels.append(handle)
@@ -217,9 +228,11 @@ def assemble_random_descriptors_from_handles(handle_input, desc: tuple):
     # am_dict, br_dict, catdf, solvdf, basedf = desc
     # rand_out = make_randomized_features(am_dict, br_dict, catdf, solvdf, basedf)
     am_dict_rand, br_dict_rand, cat_rand, solv_rand, base_rand = desc
-    basedf = base_rand
-    solvdf = solv_rand
-    catdf = cat_rand
+    basedf = base_rand.transpose()
+    solvdf = solv_rand.transpose()
+    catdf = (
+        cat_rand.transpose()
+    )  # Confusing - FIX THIS - trying to use it like a dictionary later, but it's clearly still a df. Need to have column-wise lookup
     br_dict = br_dict_rand
     am_dict = am_dict_rand
 
@@ -233,10 +246,10 @@ def assemble_random_descriptors_from_handles(handle_input, desc: tuple):
             solvdesc = solvdf[int(solv)].tolist()
             basedesc = basedf[base].tolist()
             amdesc = []
-            for key, val in am_dict[am].iteritems():  # This is a pd df
+            for key, val in am_dict[am].items():  # This is a pd df
                 amdesc.extend(val.tolist())
             brdesc = []
-            for key, val in br_dict[br].iteritems():
+            for key, val in br_dict[br].items():
                 brdesc.extend(val.tolist())
             handlestring = handle_input[i]
             columns.append(amdesc + brdesc + catdesc + solvdesc + basedesc)
@@ -261,10 +274,10 @@ def assemble_random_descriptors_from_handles(handle_input, desc: tuple):
             solvdesc = solvdf[int(solv)].tolist()
             basedesc = basedf[base].tolist()
             amdesc = []
-            for key, val in am_dict[am].iteritems():  # This is a pd df
+            for key, val in am_dict[am].items():  # This is a pd df
                 amdesc.extend(val.tolist())
             brdesc = []
-            for key, val in br_dict[br].iteritems():
+            for key, val in br_dict[br].items():
                 brdesc.extend(val.tolist())
             columns.append(amdesc + brdesc + catdesc + solvdesc + basedesc)
             labels.append(handle)
