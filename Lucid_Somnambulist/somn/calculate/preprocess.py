@@ -47,7 +47,9 @@ def load_data(optional_load=None):
         list(set([f.rsplit("_", 3)[0] for f in handles]))
     )  # unique am_br pairs in dataset
     if optional_load == "experimental_catalyst":
-        cat_pre = preprocess_grid_maxdiff(cat_desc, threshold=(0.90, 0.89))
+        cat_pre = preprocess_maxdiff(
+            cat_desc, concat_grid_desc=True, threshold=(0.90, 0.89)
+        )
         return (
             amines,
             bromides,
@@ -462,6 +464,9 @@ def random_splits(df, validation=False, n_splits: int = 1, fold: int = 7):
 def prep_for_binary_classifier(df_in, yield_cutoff: int = 1):
     """
     Prepare data for classifier by getting class labels from continuous yields
+
+    NOT TESTED YET
+
     """
     if type(df_in) == tuple:
         out = []
@@ -489,13 +494,14 @@ def prep_for_binary_classifier(df_in, yield_cutoff: int = 1):
 def new_mask_random_feature_arrays(
     real_feature_dataframes: (pd.DataFrame),
     rand_feat_dataframes: (pd.DataFrame),
-    corr_cut=0.95,
+    corr_cut=None,
     _vt=None,
 ):
     """
     Use preprocessing on real features to mask randomized feature arrays, creating an actual randomized feature test which
-    has proper component-wise randomization instead of instance-wise randomization, and preserves the actual input shapes
-    used for the real features.
+    has proper component-wise randomization.
+
+    All steps are fit on real, and applied to both real and random feature arrays. This preserves the same inputs.
 
     rand out then real out as two tuples
 
@@ -515,31 +521,37 @@ def new_mask_random_feature_arrays(
     if _vt == "old":
         _vt = 0.04  # This preserves an old version of vt, and the next condition ought to still be "if" so that it still runs when this is true
     elif _vt == None:
-        _vt = 1e-4
-    if (
-        type(_vt) == float
-    ):  # Found that vt HAS to come first, or else the wrong features are removed.
-        vt = VarianceThreshold(threshold=_vt)
-        sc = MinMaxScaler()
-        vt_real = vt.fit_transform(filtered_df.transpose().to_numpy())
-        vt_rand = vt.transform(filtered_rand.transpose().to_numpy())
-        sc_vt_real = sc.fit_transform(vt_real)
-        sc_vt_rand = sc.transform(vt_rand)
-        # sc_df_real = sc.transform(filtered_df.transpose().to_numpy())
-        # sc_df_rand = sc.transform(filtered_rand.transpose().to_numpy())
-        # vt.fit(sc_df_real)
-        vt_df_real = pd.DataFrame(sc_vt_real)
-        vt_df_rand = pd.DataFrame(sc_vt_rand)
-        ### Below, replace transposed data with noc_[type] dataframes if using correlation cutoff
-        processed_rand_feats = pd.DataFrame(
-            np.transpose(vt_df_rand.to_numpy()), columns=filtered_df.columns
-        )  # Ensures labels stripped; gives transposed arrays (row = feature, column= instance)
-        processed_real_feats = pd.DataFrame(
-            np.transpose(vt_df_real.to_numpy()), columns=filtered_df.columns
+        _vt = 0
+    vt = VarianceThreshold(threshold=_vt)
+    sc = MinMaxScaler()
+    vt_real = vt.fit_transform(filtered_df.transpose().to_numpy())
+    vt_rand = vt.transform(filtered_rand.transpose().to_numpy())
+    sc_vt_real = sc.fit_transform(vt_real)
+    sc_vt_rand = sc.transform(vt_rand)
+    ### This part is clunky, but it makes sure that either logical condition works.
+    if corr_cut == None:
+        proc_df_real = pd.DataFrame(sc_vt_real)
+        proc_df_rand = pd.DataFrame(sc_vt_rand)
+    elif type(corr_cut) == float and corr_cut < 1.0:
+        proc_df_real = pd.DataFrame(sc_vt_real)
+        proc_df_rand = pd.DataFrame(sc_vt_rand)
+        ### Only need to fit on real - the random features are random, after all. This also takes a lot of time, and this ensure direct 1:1 comparison.
+        correlated_feats = corrX_new(proc_df_real, cut=corr_cut)
+        proc_df_real.drop(columns=correlated_feats, inplace=True)
+        proc_df_rand.drop(columns=correlated_feats, inplace=True)
+    else:
+        raise Exception(
+            "Invalid correlation cutoff passed to feature masking function!"
         )
-        output_rand = tuple([processed_rand_feats[lbl] for lbl in labels])
-        output_real = tuple([processed_real_feats[lbl] for lbl in labels])
-        return output_rand, output_real
+    processed_rand_feats = pd.DataFrame(
+        np.transpose(proc_df_rand.to_numpy()), columns=filtered_df.columns
+    )  # Ensures labels stripped; gives transposed arrays (row = feature, column= instance)
+    processed_real_feats = pd.DataFrame(
+        np.transpose(proc_df_real.to_numpy()), columns=filtered_df.columns
+    )
+    output_rand = tuple([processed_rand_feats[lbl] for lbl in labels])
+    output_real = tuple([processed_real_feats[lbl] for lbl in labels])
+    return output_rand, output_real
 
 
 def get_all_combos(unique_couplings):
@@ -548,7 +560,7 @@ def get_all_combos(unique_couplings):
 
     Returns all possible pairings of amine and bromide which are used in the dataset, regardless of whether those are coupled together.
 
-    Allows COMPLETE testing of every pair of amine and bromide as out of sample.
+    Allows COMPLETE testing with every amine and every bromide as out of sample.
     """
     am_ = list(set([f.split("_")[0] for f in unique_couplings]))
     br_ = list(set([f.split("_")[1] for f in unique_couplings]))
@@ -558,9 +570,12 @@ def get_all_combos(unique_couplings):
     return combos
 
 
-def preprocess_grid_maxdiff(input: pd.DataFrame, threshold=0.80):
+def preprocess_maxdiff(input: pd.DataFrame, concat_grid_desc=True, threshold=0.80):
     """
-    Pipeline function for using gridpoint range to select gridpoints.
+    Pipeline function for using feature range to select them. This is an alternative to using variance threshold.
+
+    concate_grid_desc is for specifying whether this is taking RAW ASO/AEIF concatenated features (which MUST be exactly half ASO and half AEIF)
+    to use on other reaction components, just set this to False. It will do a simple selection on an input datafram column-wise
     """
 
     def max_diff(input):
@@ -587,8 +602,26 @@ def preprocess_grid_maxdiff(input: pd.DataFrame, threshold=0.80):
         idx = ranking[ranking >= threshold].index.to_list()
         return df[idx]
 
+    def pull_type_(df):
+        labels = df.columns
+        aeif_mask = [True if "aeif" in f else False for f in labels]
+        aso_mask = [True if "aso" in f else False for f in labels]
+        return df[df.columns[aso_mask]], df[df.columns[aeif_mask]]
+
+    def diff_then_scale(df, threshold):
+        """
+        Selects columns, then applies scaling. Outputs frame with labels.
+        """
+        scale = MinMaxScaler()
+        temp_m = max_diff_sel(df, threshold)
+        temp_sc = scale.fit_transform(temp_m)
+        cat_sel = pd.DataFrame(temp_sc, index=temp_m.index, columns=temp_m.columns)
+        return cat_sel
+
     def _maxdiff_then_scale(df, threshold=0.80, keyed=False):
         """
+        To be used with ASO/AEIF descriptors of catalysts. Need to concatenate before.
+
         Pass a single threshold to apply this to both aso and aeif
 
         Pass a length-2 tuple of thresholds to apply them to aso and aeif, respectively
@@ -596,20 +629,6 @@ def preprocess_grid_maxdiff(input: pd.DataFrame, threshold=0.80):
         NOTE: expects raw feature input with aso, then aeif. Exactly half of the columns should be ASO, and the other half AEIF.
         This works on raw-calculated grid descriptors, which is what this is designed for.
         """
-
-        def pull_type_(df):
-            labels = df.columns
-            aeif_mask = [True if "aeif" in f else False for f in labels]
-            aso_mask = [True if "aso" in f else False for f in labels]
-            return df[df.columns[aso_mask]], df[df.columns[aeif_mask]]
-
-        def diff_then_scale(df, threshold):
-            temp_m = max_diff_sel(df, threshold)
-            temp_sc = scale.fit_transform(temp_m)
-            cat_sel = pd.DataFrame(temp_sc, index=temp_m.index, columns=temp_m.columns)
-            return cat_sel
-
-        scale = MinMaxScaler()
         sli = int(len(df.columns) / 2)
         aso = df.iloc[:, :sli]
         aeif = df.iloc[:, sli:]
@@ -634,6 +653,9 @@ def preprocess_grid_maxdiff(input: pd.DataFrame, threshold=0.80):
             out = diff_then_scale(temp, threshold)
             return out
 
-    cat_copy = deepcopy(input)
-    output = _maxdiff_then_scale(cat_copy, threshold=threshold)
+    feat_copy = deepcopy(input)
+    if concat_grid_desc == True:
+        output = _maxdiff_then_scale(feat_copy, threshold=threshold)
+    elif concat_grid_desc == False:
+        output = diff_then_scale(feat_copy, threshold=threshold)
     return output

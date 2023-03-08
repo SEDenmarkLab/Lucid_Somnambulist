@@ -23,11 +23,15 @@ def main(val_schema=""):
     val in, test out (or test out, val in) would be "vi_to" or "to_vi"
 
     """
-    assert bool(set([val_schema]) & set(["to_vi", "vi_to", "random", "vo_to", "to_vo"]))
+    assert bool(
+        set([val_schema])
+        & set(["to_vi", "vi_to", "random", "vo_to", "to_vo", "noval_to", "to_noval"])
+    )
     if val_schema == "vo_to" or val_schema == "to_vo":
         import random
+
         for i, val in enumerate(unique_couplings):
-            am, br = val.split("_") #The test reactants
+            am, br = val.split("_")  # The test reactants
             nn_val_sub = random.sample(
                 [f for f in combos if f != val and f[0] != am and f[1] != br], 3
             )  # sample three different validation pairs from random combinations that are NOT the test coupling OR either reactant for test
@@ -57,7 +61,19 @@ def main(val_schema=""):
             ]  # This explicitly removes ANY match with a test set reaction
             tr_int, te = preprocess.outsamp_by_handle(dataset, outsamp_test_handles)
             tr, va = preprocess.outsamp_by_handle(tr_int, outsamp_val_handles)
-            partition_pipeline(name_, tr, va, te)
+            partition_pipeline_val(name_, tr, va, te)
+    elif val_schema == "noval_to" or val_schema == "to_noval":
+        for i, val in enumerate(combos):
+            am, br = val.split("_")
+            name_ = str(i + 1) + "_" + val + "_"
+            outsamp_handles = preprocess.split_outsamp_reacts(
+                dataset, amines=[am], bromides=[br], separate=False
+            )
+            tr, te = preprocess.outsamp_by_handle(dataset, outsamp_handles)
+            tr, va = preprocess.random_splits(
+                tr, validation=False, n_splits=1, fold=7
+            )  # Comment out to only do train/test
+
     else:
         for i, val in enumerate(combos):
             am, br = val.split("_")
@@ -76,61 +92,38 @@ def main(val_schema=""):
                 tr, va = preprocess.random_splits(
                     temp, validation=False, n_splits=1, fold=7
                 )
-            partition_pipeline(name_, tr, va, te)
+            partition_pipeline_val(name_, tr, va, te)
             #### DEBUG
-            if i == 4:
-                break
-            # Random features made on a component-basis
-            # x_tr = assemble_random_descriptors_from_handles(tr.index.tolist(), rand)
-            # x_va = assemble_random_descriptors_from_handles(va.index.tolist(), rand)
-            # x_te = assemble_random_descriptors_from_handles(te.index.tolist(), rand)
-            # x_tr_real = assemble_descriptors_from_handles(
-            #     tr.index.tolist(), sub_am_dict, sub_br_dict
-            # )
-            # x_va_real = assemble_descriptors_from_handles(
-            #     va.index.tolist(), sub_am_dict, sub_br_dict
-            # )
-            # x_te_real = assemble_descriptors_from_handles(
-            #     te.index.tolist(), sub_am_dict, sub_br_dict
-            # )
-            # (x_tr_, x_va_, x_te_), (
-            #     x_tr_re,
-            #     x_va_re,
-            #     x_te_re,
-            # ) = preprocess.new_mask_random_feature_arrays(
-            #     (x_tr_real, x_va_real, x_te_real), (x_tr, x_va, x_te), _vt=0.04
-            # )
-            ##### Eventually, implement masking - want to save these for doing feature importances/visualization later
-            # x_tr_.to_feather(randout + name_ + "_xtr.feather")
-            # x_va_.to_feather(randout + name_ + "_xva.feather")
-            # x_te_.to_feather(randout + name_ + "_xte.feather")
-            # x_tr_re.to_feather(realout + name_ + "_xtr.feather")
-            # x_va_re.to_feather(realout + name_ + "_xva.feather")
-            # x_te_re.to_feather(realout + name_ + "_xte.feather")
-            # ############ NOTE: the y-values do not change with random features - so we're just serializing two copies for each set here for convenience. They are small. ####
-            # ### "Rand" copies of Y
-            # tr.transpose().reset_index(drop=True).to_feather(
-            #     randout + name_ + "_ytr.feather"
-            # )
-            # va.transpose().reset_index(drop=True).to_feather(
-            #     randout + name_ + "_yva.feather"
-            # )
-            # te.transpose().reset_index(drop=True).to_feather(
-            #     randout + name_ + "_yte.feather"
-            # )
-            # ### "Real" copies of Y
-            # tr.transpose().reset_index(drop=True).to_feather(
-            #     realout + name_ + "_ytr.feather"
-            # )
-            # va.transpose().reset_index(drop=True).to_feather(
-            #     realout + name_ + "_yva.feather"
-            # )
-            # te.transpose().reset_index(drop=True).to_feather(
-            #     realout + name_ + "_yte.feather"
-            # )
+            # if i == 4:
+            # break
 
 
-def partition_pipeline(name_, tr, va, te):
+def partition_pipeline_noval(name_, tr, te, vt=None, corr_cut=None):
+    """
+    Partition pipeline, but for models with no validation set
+    """
+    x_tr = assemble_random_descriptors_from_handles(tr.index.tolist(), rand)
+    x_te = assemble_random_descriptors_from_handles(te.index.tolist(), rand)
+    x_tr_real = assemble_descriptors_from_handles(
+        tr.index.tolist(), sub_am_dict, sub_br_dict
+    )
+    x_te_real = assemble_descriptors_from_handles(
+        te.index.tolist(), sub_am_dict, sub_br_dict
+    )
+    (x_tr_, x_te_), (x_tr_re, x_te_re,) = preprocess.new_mask_random_feature_arrays(
+        (x_tr_real, x_te_real), (x_tr, x_te), _vt=vt, corr_cut=corr_cut
+    )  # Use this for only train/test
+    x_tr_.to_feather(randout + name_ + "_xtr.feather")
+    x_te_.to_feather(randout + name_ + "_xte.feather")
+    x_tr_re.to_feather(realout + name_ + "_xtr.feather")
+    x_te_re.to_feather(realout + name_ + "_xte.feather")
+    tr.transpose().reset_index(drop=True).to_feather(randout + name_ + "_ytr.feather")
+    te.transpose().reset_index(drop=True).to_feather(randout + name_ + "_yte.feather")
+    tr.transpose().reset_index(drop=True).to_feather(realout + name_ + "_ytr.feather")
+    te.transpose().reset_index(drop=True).to_feather(realout + name_ + "_yte.feather")
+
+
+def partition_pipeline_val(name_, tr, va, te, vt=None, corr_cut=None):
     x_tr = assemble_random_descriptors_from_handles(tr.index.tolist(), rand)
     x_va = assemble_random_descriptors_from_handles(va.index.tolist(), rand)
     x_te = assemble_random_descriptors_from_handles(te.index.tolist(), rand)
@@ -143,7 +136,7 @@ def partition_pipeline(name_, tr, va, te):
         x_va_re,
         x_te_re,
     ) = preprocess.new_mask_random_feature_arrays(
-        (x_tr_real, x_va_real, x_te_real), (x_tr, x_va, x_te), _vt=0.03
+        (x_tr_real, x_va_real, x_te_real), (x_tr, x_va, x_te), _vt=vt, corr_cut=corr_cut
     )
     x_tr_.to_feather(randout + name_ + "_rand-feat_xtr.feather")
     x_va_.to_feather(randout + name_ + "_rand-feat_xva.feather")
