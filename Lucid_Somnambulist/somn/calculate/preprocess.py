@@ -30,6 +30,10 @@ def load_data(optional_load=None):
     (amines,bromides,dataset,handles,unique_couplings,a_prop,br_prop,base_desc,solv_desc,cat_desc)
 
     """
+    if optional_load == None:  # So this doesn't fail when no options are called.
+        requests = []
+    elif optional_load != None:
+        requests = optional_load.split(",")
     # amine molecules are stored as ACOL global variable, bromide molecules are stored as BCOL global variable
     ### Define a copy (to protect the global one) for each component needed
     amines = deepcopy(ACOL)
@@ -39,42 +43,31 @@ def load_data(optional_load=None):
     br_prop = deepcopy(BROMIDES)
     base_desc = deepcopy(BASEDESC)
     solv_desc = deepcopy(SOLVDESC)
-    cat_desc = deepcopy(CATDESC)
     ### Some "safety" check on handles - this will remove duplicates and make sure leading spaces, etc won't cause problems.
     dataset = cleanup_handles(data_raw)
     handles = dataset.index
     unique_couplings = sorted(
         list(set([f.rsplit("_", 3)[0] for f in handles]))
     )  # unique am_br pairs in dataset
-    if optional_load == "experimental_catalyst":
-        cat_pre = preprocess_maxdiff(
-            cat_desc, concat_grid_desc=True, threshold=(0.90, 0.89)
-        )
-        return (
-            amines,
-            bromides,
-            dataset,
-            handles,
-            unique_couplings,
-            a_prop,
-            br_prop,
-            base_desc,
-            solv_desc,
-            cat_pre,
+    if "experimental_catalysts" in requests:
+        temp = deepcopy(CATDESC)
+        cat_desc = preprocess_maxdiff(
+            temp, concat_grid_desc=True, threshold=(0.90, 0.89)
         )
     else:
-        return (
-            amines,
-            bromides,
-            dataset,
-            handles,
-            unique_couplings,
-            a_prop,
-            br_prop,
-            base_desc,
-            solv_desc,
-            cat_desc,
-        )
+        cat_desc = deepcopy(CATDESC)
+    return (
+        amines,
+        bromides,
+        dataset,
+        handles,
+        unique_couplings,
+        a_prop,
+        br_prop,
+        base_desc,
+        solv_desc,
+        cat_desc,
+    )
 
 
 def calcDrop(res):
@@ -506,6 +499,7 @@ def new_mask_random_feature_arrays(
     rand out then real out as two tuples
 
     """
+    ### Input frames are columns-instances, rows-features. For unsupervised feature selection, tr/va/te can be treated together
     labels = [str(f) for f in range(len(real_feature_dataframes))]
     combined_df = pd.concat(
         real_feature_dataframes, axis=1, keys=labels
@@ -532,17 +526,17 @@ def new_mask_random_feature_arrays(
     if corr_cut == None:
         proc_df_real = pd.DataFrame(sc_vt_real)
         proc_df_rand = pd.DataFrame(sc_vt_rand)
-    elif type(corr_cut) == float and corr_cut < 1.0:
-        proc_df_real = pd.DataFrame(sc_vt_real)
-        proc_df_rand = pd.DataFrame(sc_vt_rand)
-        ### Only need to fit on real - the random features are random, after all. This also takes a lot of time, and this ensure direct 1:1 comparison.
-        correlated_feats = corrX_new(proc_df_real, cut=corr_cut)
-        proc_df_real.drop(columns=correlated_feats, inplace=True)
-        proc_df_rand.drop(columns=correlated_feats, inplace=True)
+        # elif type(corr_cut) == float and corr_cut < 1.0:
+        #     proc_df_real = pd.DataFrame(sc_vt_real)
+        #     proc_df_rand = pd.DataFrame(sc_vt_rand)
+        #     print(proc_df_real.columns)
+        #     ### Only need to fit on real - the random features are random, after all. This also takes a lot of time, and this ensure direct 1:1 comparison.
+        #     correlated_feats = corrX_new(proc_df_real, cut=corr_cut)
+        #     proc_df_real.drop(columns=correlated_feats, inplace=True)
+        #     proc_df_rand.drop(columns=correlated_feats, inplace=True)
+        # print(proc_df_real.columns)
     else:
-        raise Exception(
-            "Invalid correlation cutoff passed to feature masking function!"
-        )
+        raise Exception("Correlation cutoff under development")
     processed_rand_feats = pd.DataFrame(
         np.transpose(proc_df_rand.to_numpy()), columns=filtered_df.columns
     )  # Ensures labels stripped; gives transposed arrays (row = feature, column= instance)
@@ -658,4 +652,5 @@ def preprocess_maxdiff(input: pd.DataFrame, concat_grid_desc=True, threshold=0.8
         output = _maxdiff_then_scale(feat_copy, threshold=threshold)
     elif concat_grid_desc == False:
         output = diff_then_scale(feat_copy, threshold=threshold)
+    print("Maxdiff output: ", output.shape)
     return output

@@ -8,7 +8,139 @@ from somn.workflows import DESC_
 from somn.data import BASEDESC, SOLVDESC, CATDESC
 
 
-def assemble_descriptors_from_handles(handle_input, desc: tuple):
+def vectorize_substrate_desc(sub_df_dict, sub, feat_mask=None):
+    """
+    Function to extract 2D RDF features, vectorize them, then apply optional feature selection mask
+    (which must be calculated beforehand using optional unsupervised substrate preprocessing or designed)
+
+    """
+    ### Substrate name calls up a DF with column - channel, row - slice RDF
+    ### Then, each column is stacked in the same order into a list.
+    ### If an optional preprocessing was run (or is being tested to assess feature importance),
+    ### then the feat_mask is used to mask this 1D vector before returning it.
+    subdesc = []
+    # df_from_pickledict = {}
+    # for key, val in sub_df_dict.items():
+    #     temp = []
+    #     for v in val:
+    #         temp.append(pd.DataFrame.from_dict(v, orient="index"))
+    #     df_from_pickledict[key] = temp
+    for series in sub_df_dict[sub].itertuples(index=False):
+        subdesc.extend(list(series))
+    if feat_mask == None:
+        return subdesc
+    elif isinstance(feat_mask, list):
+        try:
+            assert all([isinstance(f, bool) for f in feat_mask])
+        except:
+            raise Exception(
+                "Feature mask passed for substrate preprocessing does not ONLY contain boolean values"
+            )
+        if len(feat_mask) == len(subdesc):
+            out = [b for a, b in zip(feat_mask, subdesc) if a]
+            return out
+        else:
+            raise Exception(
+                "A mask for substrate descriptors was passed, but it does not match the length of the raw features."
+            )
+    else:
+        raise Exception(
+            "If a substrate feature mask is passed, it must be a list of boolean values"
+        )
+
+
+def assemble_random_descriptors_from_handles(
+    handle_input, desc: tuple, substrate_mask=None
+):
+    """
+    Input descriptors (real) as: (am_dict, br_dict, catdf, solvdf, basedf)
+    Output is: df with component-wise random features
+
+    To do this for all dataset compounds, pass every am_br joined with a comma
+
+    """
+    if type(handle_input) == str:
+        rxn_hndls = [f for f in handle_input.split(",") if f != ""]
+        prophetic = True
+    elif type(handle_input) == list:
+        rxn_hndls = [tuple(f.rsplit("_")) for f in handle_input]
+        prophetic = False
+    else:
+        raise ValueError(
+            "Must pass manual string input of handles OR list from dataset"
+        )
+    if substrate_mask == None:
+        subm = None
+    elif type(substrate_mask) == tuple:
+        assert len(substrate_mask) == 2
+        subm = substrate_mask
+    # Faster to make random features ONCE, and then keep using it
+    # am_dict, br_dict, catdf, solvdf, basedf = desc
+    # rand_out = make_randomized_features(am_dict, br_dict, catdf, solvdf, basedf)
+    am_dict_rand, br_dict_rand, cat_rand, solv_rand, base_rand = desc
+    basedf = base_rand.transpose()
+    solvdf = solv_rand.transpose()
+    catdf = (
+        cat_rand.transpose()
+    )  # Confusing - FIX THIS - trying to use it like a dictionary later, but it's clearly still a df. Need to have column-wise lookup
+    br_dict = br_dict_rand
+    am_dict = am_dict_rand
+
+    ### Trying to assemble descriptors for labelled examples with specific conditions ###
+    if prophetic == False:
+        columns = []
+        labels = []
+        for i, handle in enumerate(rxn_hndls):
+            am, br, cat, solv, base = handle
+            catdesc = catdf[cat].tolist()
+            solvdesc = solvdf[int(solv)].tolist()
+            basedesc = basedf[base].tolist()
+            ### CHANGES HERE SUBSTRATE MASKING
+            amdesc = vectorize_substrate_desc(am_dict, am, feat_mask=subm[0])
+            brdesc = vectorize_substrate_desc(br_dict, br, feat_mask=subm[1])
+            # amdesc = []
+            # for key, val in am_dict[am].items():  # This is a pd df
+            #     amdesc.extend(val.tolist())
+            # brdesc = []
+            # for key, val in br_dict[br].items():
+            #     brdesc.extend(val.tolist())
+            handlestring = handle_input[i]
+            columns.append(amdesc + brdesc + catdesc + solvdesc + basedesc)
+            labels.append(handlestring)
+        outdf = pd.DataFrame(columns, index=labels).transpose()
+        # print(outdf)
+        return outdf
+
+    ### Trying to assemble descriptors for ALL conditions for specific amine/bromide couplings ###
+    elif prophetic == True:
+        solv_base_cond = ["1_a", "1_b", "1_c", "2_a", "2_b", "2_c", "3_a", "3_b", "3_c"]
+        allcats = [str(f + 1) for f in range(21) if f != 14]
+        s = "{}_{}_{}"
+        exp_handles = []
+        for combination in product(rxn_hndls, allcats, solv_base_cond):
+            exp_handles.append(s.format(*combination))
+        columns = []
+        labels = []
+        for handle in exp_handles:
+            am, br, cat, solv, base = tuple(handle.split("_"))
+            catdesc = catdf[cat].tolist()
+            solvdesc = solvdf[int(solv)].tolist()
+            basedesc = basedf[base].tolist()
+            amdesc = []
+            for key, val in am_dict[am].items():  # This is a pd df
+                amdesc.extend(val.tolist())
+            brdesc = []
+            for key, val in br_dict[br].items():
+                brdesc.extend(val.tolist())
+            columns.append(amdesc + brdesc + catdesc + solvdesc + basedesc)
+            labels.append(handle)
+            # outdf[handle] = amdesc+brdesc+catdesc+solvdesc+basedesc
+        outdf = pd.DataFrame(columns, index=labels).transpose()
+        # print(outdf)
+        return outdf
+
+
+def assemble_descriptors_from_handles(handle_input, desc: tuple, substrate_mask=None):
     """
     General utility for assembling ordered descriptors based on input reaction handles and
     calculated amine and bromide rdf descriptor dictionaries. This can be used to automate
@@ -44,7 +176,11 @@ def assemble_descriptors_from_handles(handle_input, desc: tuple):
         raise ValueError(
             "Must pass manual string input of handles OR list from dataset"
         )
-
+    if substrate_mask == None:
+        subm = None
+    elif type(substrate_mask) == tuple:
+        assert len(substrate_mask) == 2
+        subm = substrate_mask
     am_dict_real, br_dict_real, cat_real, solv_real, base_real = desc
     basedf = base_real.transpose()
     solvdf = solv_real.transpose()
@@ -77,12 +213,17 @@ def assemble_descriptors_from_handles(handle_input, desc: tuple):
             catdesc = catdf[cat].tolist()
             solvdesc = solvdf[int(solv)].tolist()
             basedesc = basedf[base].tolist()
-            amdesc = []
-            for key, val in am_dict[am].items():  # This is a pd df
-                amdesc.extend(val.tolist())
-            brdesc = []
-            for key, val in br_dict[br].items():
-                brdesc.extend(val.tolist())
+            ### CHANGES HERE SUBSTRATE MASKING
+            amdesc = vectorize_substrate_desc(am_dict, am, feat_mask=subm[0])
+            brdesc = vectorize_substrate_desc(br_dict, br, feat_mask=subm[1])
+            # amdesc = []
+            # for key, val in am_dict[
+            #     am
+            # ].items():  # This is a pd df; items() calls up columns
+            #     amdesc.extend(val.tolist())
+            # brdesc = []
+            # for key, val in br_dict[br].items():
+            #     brdesc.extend(val.tolist())
             handlestring = handle_input[i]
             columns.append(amdesc + brdesc + catdesc + solvdesc + basedesc)
             labels.append(handlestring)
@@ -204,87 +345,6 @@ def make_randomized_features(am_dict, br_dict, catdf, solvdf, basedf):
 #         concat = np.concatenate((rand_f,rand_int),axis=1)
 #         br_dict_rand[k] = pd.DataFrame(concat,index=v.index,columns=v.columns)
 #     return am_dict_rand,br_dict_rand,catdfrand,solvdfrand,basedfrand
-
-
-def assemble_random_descriptors_from_handles(handle_input, desc: tuple):
-    """
-    Input descriptors (real) as: (am_dict, br_dict, catdf, solvdf, basedf)
-    Output is: df with component-wise random features
-
-    To do this for all dataset compounds, pass every am_br joined with a comma
-
-    """
-    if type(handle_input) == str:
-        rxn_hndls = [f for f in handle_input.split(",") if f != ""]
-        prophetic = True
-    elif type(handle_input) == list:
-        rxn_hndls = [tuple(f.rsplit("_")) for f in handle_input]
-        prophetic = False
-    else:
-        raise ValueError(
-            "Must pass manual string input of handles OR list from dataset"
-        )
-    # Faster to make random features ONCE, and then keep using it
-    # am_dict, br_dict, catdf, solvdf, basedf = desc
-    # rand_out = make_randomized_features(am_dict, br_dict, catdf, solvdf, basedf)
-    am_dict_rand, br_dict_rand, cat_rand, solv_rand, base_rand = desc
-    basedf = base_rand.transpose()
-    solvdf = solv_rand.transpose()
-    catdf = (
-        cat_rand.transpose()
-    )  # Confusing - FIX THIS - trying to use it like a dictionary later, but it's clearly still a df. Need to have column-wise lookup
-    br_dict = br_dict_rand
-    am_dict = am_dict_rand
-
-    ### Trying to assemble descriptors for labelled examples with specific conditions ###
-    if prophetic == False:
-        columns = []
-        labels = []
-        for i, handle in enumerate(rxn_hndls):
-            am, br, cat, solv, base = handle
-            catdesc = catdf[cat].tolist()
-            solvdesc = solvdf[int(solv)].tolist()
-            basedesc = basedf[base].tolist()
-            amdesc = []
-            for key, val in am_dict[am].items():  # This is a pd df
-                amdesc.extend(val.tolist())
-            brdesc = []
-            for key, val in br_dict[br].items():
-                brdesc.extend(val.tolist())
-            handlestring = handle_input[i]
-            columns.append(amdesc + brdesc + catdesc + solvdesc + basedesc)
-            labels.append(handlestring)
-        outdf = pd.DataFrame(columns, index=labels).transpose()
-        # print(outdf)
-        return outdf
-
-    ### Trying to assemble descriptors for ALL conditions for specific amine/bromide couplings ###
-    elif prophetic == True:
-        solv_base_cond = ["1_a", "1_b", "1_c", "2_a", "2_b", "2_c", "3_a", "3_b", "3_c"]
-        allcats = [str(f + 1) for f in range(21) if f != 14]
-        s = "{}_{}_{}"
-        exp_handles = []
-        for combination in product(rxn_hndls, allcats, solv_base_cond):
-            exp_handles.append(s.format(*combination))
-        columns = []
-        labels = []
-        for handle in exp_handles:
-            am, br, cat, solv, base = tuple(handle.split("_"))
-            catdesc = catdf[cat].tolist()
-            solvdesc = solvdf[int(solv)].tolist()
-            basedesc = basedf[base].tolist()
-            amdesc = []
-            for key, val in am_dict[am].items():  # This is a pd df
-                amdesc.extend(val.tolist())
-            brdesc = []
-            for key, val in br_dict[br].items():
-                brdesc.extend(val.tolist())
-            columns.append(amdesc + brdesc + catdesc + solvdesc + basedesc)
-            labels.append(handle)
-            # outdf[handle] = amdesc+brdesc+catdesc+solvdesc+basedesc
-        outdf = pd.DataFrame(columns, index=labels).transpose()
-        # print(outdf)
-        return outdf
 
 
 def load_calculated_substrate_descriptors():

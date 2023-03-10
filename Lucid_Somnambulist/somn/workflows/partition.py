@@ -13,7 +13,7 @@ from copy import deepcopy
 # Load in raw calculated descriptors + random descriptors
 
 
-def main(val_schema=""):
+def main(val_schema="", vt=None, corr_cut=None):
     """
     Validation Schema Argument (val_schema):
 
@@ -61,7 +61,10 @@ def main(val_schema=""):
             ]  # This explicitly removes ANY match with a test set reaction
             tr_int, te = preprocess.outsamp_by_handle(dataset, outsamp_test_handles)
             tr, va = preprocess.outsamp_by_handle(tr_int, outsamp_val_handles)
-            partition_pipeline_val(name_, tr, va, te)
+            partition_pipeline_val(name_, tr, va, te, vt=vt, corr_cut=corr_cut)
+            ### DEBUG
+            if i == 4:
+                break
     elif val_schema == "noval_to" or val_schema == "to_noval":
         for i, val in enumerate(combos):
             am, br = val.split("_")
@@ -92,7 +95,7 @@ def main(val_schema=""):
                 tr, va = preprocess.random_splits(
                     temp, validation=False, n_splits=1, fold=7
                 )
-            partition_pipeline_val(name_, tr, va, te)
+            partition_pipeline_val(name_, tr, va, te, vt=vt, corr_cut=corr_cut)
             #### DEBUG
             # if i == 4:
             # break
@@ -195,4 +198,4 @@ os.makedirs(outdir + "rand/", exist_ok=True)
 realout = outdir + "real/"
 randout = outdir + "rand/"
 
-main(val_schema="vo_to")
+main(val_schema="vo_to", corr_cut=0.90, vt=0)
