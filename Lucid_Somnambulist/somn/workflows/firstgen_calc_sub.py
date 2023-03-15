@@ -10,6 +10,7 @@ from somn.build.assemble import (
     assemble_descriptors_from_handles,
     assemble_random_descriptors_from_handles,
     make_randomized_features,
+    get_labels,
 )
 
 # ====================================================================
@@ -57,7 +58,6 @@ def main(inc=0.75, substrate_pre=None, optional_load=None):
     _inc = inc
     sub_am_dict = retrieve_amine_rdf_descriptors(amines, a_prop, increment=_inc)
     sub_br_dict = retrieve_bromide_rdf_descriptors(bromides, br_prop, increment=_inc)
-
     ### Preprocess reactant descriptors now, since they are just calculated
     if substrate_pre == None:
         pass
@@ -65,15 +65,26 @@ def main(inc=0.75, substrate_pre=None, optional_load=None):
         from somn.build.assemble import vectorize_substrate_desc
         import pandas as pd
 
+        ### Assemble a feature array with row:instance,column:feature to perform preprocessing
         if len(substrate_pre) == 2:
             type_, value_ = substrate_pre
             if type_ == "corr":
                 am_desc = {}
-                for key, val in sub_am_dict.items():
+                for key in sub_am_dict.keys():
                     am_desc[key] = vectorize_substrate_desc(
                         sub_am_dict, key, feat_mask=None
                     )
-                full_am_df = pd.DataFrame.from_dict(am_desc, orient="index")
+                label = get_labels(sub_am_dict, "1")
+                full_am_df = pd.DataFrame.from_dict(
+                    am_desc, orient="index", columns=label
+                )
+                ### DEV ###
+                # print(full_am_df)
+                # print(full_am_df.corr())
+                # raise Exception("DEBUG")
+                # full_am_df.to_csv("testing.csv", header=True)
+                # full_am_df.corr().abs().to_csv("correlation.csv", header=True)
+                ###
 
         else:
             raise Exception("Tuple passed to sub preprocessing, but not length 2")
@@ -82,25 +93,11 @@ def main(inc=0.75, substrate_pre=None, optional_load=None):
             "Need to pass both arguments for substrate preprocessing in a length 2 tuple"
         )
     if type_ and value_:
-        pass
-        ### UNDER DEVELOPMENT ###
-        # print(sub_am_dict["1001"])
-        # amdesc = []
-        # key_items = []
-        # for key, val in sub_am_dict["1001"].items():
-        #     amdesc.extend(val.tolist())
-        #     key_items.append(key)
-        # amdesc_other = []
-        # # key_tuple = []
-        # for col in sub_am_dict["1001"].transpose().itertuples(index=False):
-        #     amdesc_other.extend(list(col))
-        #     # key_tuple.append(col[0])
-        # print(amdesc == amdesc_other)
-        # # print(key_tuple == key_items)
-        # # import pandas as pd
-        # # am_df = pd.DataFrame.from_dict(sub_am_dict, orient="index")
-        # # br_df = pd.DataFrame.from_dict(sub_br_dict, orient="index")
-        # # print(am_df, br_df)
+        if type_ == "corr":
+            mask = preprocess.corrX_new(
+                full_am_df, cut=value_, get_const=True, bool_out=True
+            )
+            print("Boolean mask:\n", mask)
     else:
         pass
     rand = make_randomized_features(
@@ -119,5 +116,4 @@ if __name__ == "__main__":
     (
         (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc),
         rand,
-    ) = main(substrate_pre=("corr", 0.90))
-    # print(sub_am_dict)
+    ) = main(substrate_pre=("corr", 0.97))

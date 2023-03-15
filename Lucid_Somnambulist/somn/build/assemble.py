@@ -8,12 +8,25 @@ from somn.workflows import DESC_
 from somn.data import BASEDESC, SOLVDESC, CATDESC
 
 
-def vectorize_substrate_desc(sub_df_dict, sub, feat_mask=None):
+def get_labels(sub_df_dict, sub):
+    """
+    Get labels for feature array from dict of 2D RDF
+    """
+    desclabel = []
+    for series in (
+        sub_df_dict[sub].transpose().itertuples(index=True)
+    ):  # Tuples does rows, so need to transpose to go through each rdf sequentially
+        desclabel.extend([f"{series.Index}_{i+1}" for i in range(len(series[1:]))])
+    return desclabel
+
+
+def vectorize_substrate_desc(sub_df_dict, sub, feat_mask=None, get_label=False):
     """
     Function to extract 2D RDF features, vectorize them, then apply optional feature selection mask
     (which must be calculated beforehand using optional unsupervised substrate preprocessing or designed)
 
     """
+
     ### Substrate name calls up a DF with column - channel, row - slice RDF
     ### Then, each column is stacked in the same order into a list.
     ### If an optional preprocessing was run (or is being tested to assess feature importance),
@@ -25,11 +38,11 @@ def vectorize_substrate_desc(sub_df_dict, sub, feat_mask=None):
     #     for v in val:
     #         temp.append(pd.DataFrame.from_dict(v, orient="index"))
     #     df_from_pickledict[key] = temp
-    for series in sub_df_dict[sub].itertuples(index=False):
+    for series in sub_df_dict[sub].transpose().itertuples(index=False):
         subdesc.extend(list(series))
     if feat_mask == None:
         return subdesc
-    elif isinstance(feat_mask, list):
+    elif isinstance(feat_mask, list):  ##NEEDS TESTING
         try:
             assert all([isinstance(f, bool) for f in feat_mask])
         except:

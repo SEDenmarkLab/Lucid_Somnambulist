@@ -99,8 +99,7 @@ def calcDrop(res):
     return drop
 
 
-def corrX_new(df, cut=0.9):
-
+def corrX_new(df, cut=0.9, bool_out=True, get_const=False):
     # Get correlation matrix and upper triagle
     corr_mtx = df.corr().abs()
     avg_corr = corr_mtx.mean(axis=1)
@@ -136,7 +135,32 @@ def corrX_new(df, cut=0.9):
                 res = res.append(s, ignore_index=True)
 
     dropcols_names = calcDrop(res)
-    return dropcols_names
+    if bool_out == False:  # Don't want boolean, instead want column names
+        if get_const == True:  # Find constant columns and add names to drop list
+            const_cols = [
+                f for f in corr_mtx.columns if corr_mtx[f].isnull().values.all()
+            ]  # True if it should be kept
+            return dropcols_names.extend(const_cols)
+        elif get_const == False:
+            return dropcols_names
+
+    elif bool_out == True:  # Want boolean and column names
+        maskout = [
+            ~np.array(f in dropcols_names) for f in df.columns.to_list()
+        ]  # True if it should be kept
+        if get_const == True:
+            const_col_mask = ~np.array(
+                [
+                    corr_mtx[f].isnull().values.all() for f in corr_mtx.columns
+                ]  # True if it should be kept
+            )
+            mask_final = np.logical_and(
+                maskout, const_col_mask
+            )  # True = keep, BOTH must be True
+            colnames = df.columns[mask_final]
+            return mask_final, colnames
+        else:
+            return maskout, dropcols_names
 
 
 def trim_out_of_sample(partition: tuple, reacts: str):
