@@ -2,6 +2,7 @@ import pandas as pd
 import pickle
 import pkg_resources
 import molli as ml
+import json
 
 
 # =============================
@@ -23,14 +24,26 @@ def load_all_desc():
     global BASEDESC, SOLVDESC, CATDESC, AMINES, BROMIDES
     stream_base = pkg_resources.resource_filename(__name__, "base_params.csv")
     stream_solv = pkg_resources.resource_filename(__name__, "solvent_params.csv")
-    stream_amine = pkg_resources.resource_filename(__name__, "amine_pickle_dict.p")
-    stream_bromide = pkg_resources.resource_filename(__name__, "bromide_pickle_dict.p")
+    ### DEV - PICKLE VS JSON START
+    # stream_amine = pkg_resources.resource_filename(__name__, "amine_pickle_dict.p")
+    # stream_bromide = pkg_resources.resource_filename(__name__, "bromide_pickle_dict.p")
+    stream_amine = pkg_resources.resource_filename(__name__, "amine_atomprops.json")
+    stream_bromide = pkg_resources.resource_filename(__name__, "bromide_atomprops.json")
+    ### DEV - PICKLE VS JSON END
     BASEDESC = pd.read_csv(stream_base, header=None, index_col=0)
     SOLVDESC = pd.read_csv(stream_solv, header=None, index_col=0)
-    with open(stream_amine, "rb") as g:
-        AMINES = pickle.load(g)
-    with open(stream_bromide, "rb") as k:
-        BROMIDES = pickle.load(k)
+    ### DEVELOPMENT: PICKLE VS JSON START
+    # with open(stream_amine, "rb") as g:
+    #     AMINES = pickle.load(g)
+    # with open(stream_bromide, "rb") as k:
+    #     BROMIDES = pickle.load(k)
+    ###
+    ### Hashable only substrate encoding - JSON is favorable to binary object-oriented encoding.
+    with open(stream_amine, "r") as g:
+        AMINES = json.load(g)
+    with open(stream_bromide, "r") as k:
+        BROMIDES = json.load(k)
+    ### DEV PICKLE/JSON END
     stream_cat = pkg_resources.resource_filename(__name__, "cat_aso_aeif_combined.csv")
     CATDESC = pd.read_csv(stream_cat, header=None, index_col=0)
 

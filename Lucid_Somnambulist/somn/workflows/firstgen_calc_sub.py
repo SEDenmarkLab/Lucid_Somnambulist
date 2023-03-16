@@ -74,10 +74,21 @@ def main(inc=0.75, substrate_pre=None, optional_load=None):
                     am_desc[key] = vectorize_substrate_desc(
                         sub_am_dict, key, feat_mask=None
                     )
-                label = get_labels(sub_am_dict, "1")
+                am_label = get_labels(sub_am_dict, "1")
                 full_am_df = pd.DataFrame.from_dict(
-                    am_desc, orient="index", columns=label
+                    am_desc, orient="index", columns=am_label
                 )
+                br_desc = {}
+                for key in sub_br_dict.keys():
+                    br_desc[key] = vectorize_substrate_desc(
+                        sub_br_dict, key, feat_mask=None
+                    )
+                br_label = get_labels(sub_br_dict, "1")
+                full_br_df = pd.DataFrame.from_dict(
+                    br_desc, orient="index", columns=br_label
+                )
+                full_br_df.to_csv(DESC_ + "bromide_only_features.csv", header=True)
+                full_am_df.to_csv(DESC_ + "amine_only_features.csv", header=True)
                 ### DEV ###
                 # print(full_am_df)
                 # print(full_am_df.corr())
@@ -92,14 +103,29 @@ def main(inc=0.75, substrate_pre=None, optional_load=None):
         raise Exception(
             "Need to pass both arguments for substrate preprocessing in a length 2 tuple"
         )
-    if type_ and value_:
+    if type_ and value_:  # Need to process then make matching random features.
         if type_ == "corr":
-            mask = preprocess.corrX_new(
+            am_mask = preprocess.corrX_new(
                 full_am_df, cut=value_, get_const=True, bool_out=True
             )
-            print("Boolean mask:\n", mask)
-    else:
-        pass
+            ### DEBUG
+            # print("Boolean mask:\n", am_mask)
+            # print(am_label)
+            br_mask = preprocess.corrX_new(
+                full_br_df, cut=value_, get_const=True, bool_out=True
+            )
+            ### DEBUG
+            # print("Boolean mask:\n", br_mask)
+            # print(br_label)
+            # Saving selected features for inspection later
+            pd.Series(br_mask[0], index=br_label).to_csv(DESC_ + "bromide_mask.csv")
+            pd.Series(am_mask[0], index=am_label).to_csv(DESC_ + "amine_mask.csv")
+            sub_am_proc = full_am_df.loc[:, am_mask[0]]
+            assert (sub_am_proc.columns == am_mask[1]).all()
+            sub_br_proc = full_br_df.loc[:, br_mask[0]]
+            assert (sub_br_proc.columns == br_mask[1]).all()
+            sub_am_proc.to_csv(DESC_ + "amine_selected_feat.csv", header=True)
+            sub_br_proc.to_csv(DESC_ + "bromide_selected_feat.csv", header=True)
     rand = make_randomized_features(
         sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc
     )
