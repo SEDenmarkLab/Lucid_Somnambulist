@@ -20,24 +20,19 @@ def get_labels(sub_df_dict, sub):
     return desclabel
 
 
-def vectorize_substrate_desc(sub_df_dict, sub, feat_mask=None, get_label=False):
+def vectorize_substrate_desc(sub_df_dict, sub, feat_mask=None):
     """
     Function to extract 2D RDF features, vectorize them, then apply optional feature selection mask
     (which must be calculated beforehand using optional unsupervised substrate preprocessing or designed)
 
-    """
+    Boolean mask sorts out features using list comprehension on zip() tuples of the two.
 
+    """
     ### Substrate name calls up a DF with column - channel, row - slice RDF
     ### Then, each column is stacked in the same order into a list.
     ### If an optional preprocessing was run (or is being tested to assess feature importance),
     ### then the feat_mask is used to mask this 1D vector before returning it.
     subdesc = []
-    # df_from_pickledict = {}
-    # for key, val in sub_df_dict.items():
-    #     temp = []
-    #     for v in val:
-    #         temp.append(pd.DataFrame.from_dict(v, orient="index"))
-    #     df_from_pickledict[key] = temp
     for series in sub_df_dict[sub].transpose().itertuples(index=False):
         subdesc.extend(list(series))
     if feat_mask == None:
@@ -66,10 +61,10 @@ def assemble_random_descriptors_from_handles(
     handle_input, desc: tuple, substrate_mask=None
 ):
     """
-    Input descriptors (real) as: (am_dict, br_dict, catdf, solvdf, basedf)
+    Input descriptors as: (am_dict, br_dict, catdf, solvdf, basedf)
     Output is: df with component-wise random features
 
-    To do this for all dataset compounds, pass every am_br joined with a comma
+    To do this for many compounds, pass every am_br joined with a comma
 
     """
     if type(handle_input) == str:
@@ -87,9 +82,6 @@ def assemble_random_descriptors_from_handles(
     elif type(substrate_mask) == tuple:
         assert len(substrate_mask) == 2
         subm = substrate_mask
-    # Faster to make random features ONCE, and then keep using it
-    # am_dict, br_dict, catdf, solvdf, basedf = desc
-    # rand_out = make_randomized_features(am_dict, br_dict, catdf, solvdf, basedf)
     am_dict_rand, br_dict_rand, cat_rand, solv_rand, base_rand = desc
     basedf = base_rand.transpose()
     solvdf = solv_rand.transpose()
@@ -98,7 +90,6 @@ def assemble_random_descriptors_from_handles(
     )  # Confusing - FIX THIS - trying to use it like a dictionary later, but it's clearly still a df. Need to have column-wise lookup
     br_dict = br_dict_rand
     am_dict = am_dict_rand
-
     ### Trying to assemble descriptors for labelled examples with specific conditions ###
     if prophetic == False:
         columns = []
@@ -109,21 +100,22 @@ def assemble_random_descriptors_from_handles(
             solvdesc = solvdf[int(solv)].tolist()
             basedesc = basedf[base].tolist()
             ### CHANGES HERE SUBSTRATE MASKING
-            amdesc = vectorize_substrate_desc(am_dict, am, feat_mask=subm[0])
-            brdesc = vectorize_substrate_desc(br_dict, br, feat_mask=subm[1])
-            # amdesc = []
-            # for key, val in am_dict[am].items():  # This is a pd df
-            #     amdesc.extend(val.tolist())
-            # brdesc = []
-            # for key, val in br_dict[br].items():
-            #     brdesc.extend(val.tolist())
+            if subm != None:
+                assert isinstance(subm, list)
+                amdesc = vectorize_substrate_desc(am_dict, am, feat_mask=subm[0])
+                brdesc = vectorize_substrate_desc(br_dict, br, feat_mask=subm[1])
+            elif subm == None:
+                amdesc = vectorize_substrate_desc(am_dict, am, feat_mask=None)
+                brdesc = vectorize_substrate_desc(br_dict, br, feat_mask=None)
+            else:
+                raise Exception(
+                    "Substrate mask was not None or a list - check arguments for assembling descriptors."
+                )
             handlestring = handle_input[i]
             columns.append(amdesc + brdesc + catdesc + solvdesc + basedesc)
             labels.append(handlestring)
         outdf = pd.DataFrame(columns, index=labels).transpose()
-        # print(outdf)
         return outdf
-
     ### Trying to assemble descriptors for ALL conditions for specific amine/bromide couplings ###
     elif prophetic == True:
         solv_base_cond = ["1_a", "1_b", "1_c", "2_a", "2_b", "2_c", "3_a", "3_b", "3_c"]
@@ -147,9 +139,7 @@ def assemble_random_descriptors_from_handles(
                 brdesc.extend(val.tolist())
             columns.append(amdesc + brdesc + catdesc + solvdesc + basedesc)
             labels.append(handle)
-            # outdf[handle] = amdesc+brdesc+catdesc+solvdesc+basedesc
         outdf = pd.DataFrame(columns, index=labels).transpose()
-        # print(outdf)
         return outdf
 
 
@@ -203,20 +193,6 @@ def assemble_descriptors_from_handles(handle_input, desc: tuple, substrate_mask=
     br_dict = br_dict_real
     am_dict = am_dict_real
 
-    # print(handle_input)
-    # print(rxn_hndls)
-    # outfile_name = date_+'_desc_input'
-    # directory = DESC_
-    # basefile = DESC_ + "base_params.csv"
-    # basedf = pd.read_csv(basefile, header=None, index_col=0).transpose()
-    # solvfile = directory + "solvent_params.csv"
-    # solvdf = pd.read_csv(solvfile, header=None, index_col=0).transpose()
-    # # catfile = directory+'cat_aso_aeif_combined_11_2021.csv' ##Normal ASO/AEIF cats CHANGED TEST
-    # catfile = (
-    #     directory + "iso_catalyst_embedding.csv"
-    # )  ##isomap embedded cats CHANGED FOR SIMPLIFICATION
-    # catdf = pd.read_csv(catfile, header=None, index_col=0).transpose()
-
     ### Trying to assemble descriptors for labelled examples with specific conditions ###
     if prophetic == False:
         columns = []
@@ -227,22 +203,22 @@ def assemble_descriptors_from_handles(handle_input, desc: tuple, substrate_mask=
             solvdesc = solvdf[int(solv)].tolist()
             basedesc = basedf[base].tolist()
             ### CHANGES HERE SUBSTRATE MASKING
-            amdesc = vectorize_substrate_desc(am_dict, am, feat_mask=subm[0])
-            brdesc = vectorize_substrate_desc(br_dict, br, feat_mask=subm[1])
-            # amdesc = []
-            # for key, val in am_dict[
-            #     am
-            # ].items():  # This is a pd df; items() calls up columns
-            #     amdesc.extend(val.tolist())
-            # brdesc = []
-            # for key, val in br_dict[br].items():
-            #     brdesc.extend(val.tolist())
+            if subm != None:
+                assert isinstance(subm, list)
+                amdesc = vectorize_substrate_desc(am_dict, am, feat_mask=subm[0])
+                brdesc = vectorize_substrate_desc(br_dict, br, feat_mask=subm[1])
+            elif subm == None:
+                amdesc = vectorize_substrate_desc(am_dict, am, feat_mask=None)
+                brdesc = vectorize_substrate_desc(br_dict, br, feat_mask=None)
+            else:
+                raise Exception(
+                    "Substrate mask was not None or a list - check arguments for assembling descriptors."
+                )
             handlestring = handle_input[i]
             columns.append(amdesc + brdesc + catdesc + solvdesc + basedesc)
             labels.append(handlestring)
         outdf = pd.DataFrame(columns, index=labels).transpose()
         return outdf
-
     ### Trying to assemble descriptors for ALL conditions for specific amine/bromide couplings ###
     elif prophetic == True:
         solv_base_cond = ["1_a", "1_b", "1_c", "2_a", "2_b", "2_c", "3_a", "3_b", "3_c"]
@@ -266,9 +242,7 @@ def assemble_descriptors_from_handles(handle_input, desc: tuple, substrate_mask=
                 brdesc.extend(val.tolist())
             columns.append(amdesc + brdesc + catdesc + solvdesc + basedesc)
             labels.append(handle)
-            # outdf[handle] = amdesc+brdesc+catdesc+solvdesc+basedesc
         outdf = pd.DataFrame(columns, index=labels).transpose()
-        # print(outdf)
         return outdf
 
 
@@ -316,48 +290,6 @@ def make_randomized_features(am_dict, br_dict, catdf, solvdf, basedf):
         concat = np.concatenate((rand_f, rand_int), axis=1)
         br_dict_rand[k] = pd.DataFrame(concat, index=v.index, columns=v.columns)
     return am_dict_rand, br_dict_rand, catdfrand, solvdfrand, basedfrand
-
-
-# def make_randomized_features(am_dict,br_dict,catfile=None,solvfile=None,basefile=None):
-#     """
-#     For running randomized feature control
-
-#     Pass dict of dataframes to this to randomize substrate features
-
-#     Handles are the dataset partitions (as a tuple...these will be returned with the desired order but randomized)
-
-#     output is AMINE, BROMIDE, CATALYST, SOLVENT, BASE
-#     """
-#     directory = 'descriptors/'
-
-#     if basefile==None: basefile = directory+'base_params.csv'
-#     else: basefile = basefile
-#     basedf = pd.read_csv(basefile,header=None,index_col=0).transpose()
-#     if solvfile==None: solvfile = directory+'solvent_params.csv'
-#     else: solvfile==solvfile
-#     solvdf = pd.read_csv(solvfile,header=None,index_col=0).transpose()
-#     if catfile==None: catfile = directory+'cat_aso_aeif_combined_11_2021.csv'
-#     else: catfile==catfile
-#     catdf = pd.read_csv(catfile,header=None,index_col=0).transpose()
-#     cat_rand = randomize_features(catdf.to_numpy())
-#     catdfrand = pd.DataFrame(cat_rand,index=catdf.index,columns=catdf.columns)
-#     solv_rand = randomize_features(solvdf.to_numpy())
-#     solvdfrand = pd.DataFrame(solv_rand,index=solvdf.index,columns=solvdf.columns)
-#     base_rand = randomize_features(basedf.to_numpy())
-#     basedfrand = pd.DataFrame(base_rand,index=basedf.index,columns=basedf.columns)
-#     br_dict_rand = {}
-#     am_dict_rand = {}
-#     for k,v in am_dict.items():
-#         rand_f = randomize_features(np.array(v.iloc[:,:9].to_numpy()))
-#         rand_int = np.random.randint(0,3,v.iloc[:,9:].to_numpy().shape)
-#         concat = np.concatenate((rand_f,rand_int),axis=1)
-#         am_dict_rand[k] = pd.DataFrame(concat,index=v.index,columns=v.columns)
-#     for k,v in br_dict.items():
-#         rand_f = randomize_features(np.array(v.iloc[:,:9].to_numpy()))
-#         rand_int = np.random.randint(0,3,v.iloc[:,9:].to_numpy().shape)
-#         concat = np.concatenate((rand_f,rand_int),axis=1)
-#         br_dict_rand[k] = pd.DataFrame(concat,index=v.index,columns=v.columns)
-#     return am_dict_rand,br_dict_rand,catdfrand,solvdfrand,basedfrand
 
 
 def load_calculated_substrate_descriptors():
