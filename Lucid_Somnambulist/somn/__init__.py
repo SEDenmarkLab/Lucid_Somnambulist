@@ -5,6 +5,7 @@
 from . import build
 from . import calculate
 from . import database
+from . import depict
 
 # from . import workflows
 

@@ -63,8 +63,8 @@ def main(val_schema="", vt=None, corr_cut=None):
             tr, va = preprocess.outsamp_by_handle(tr_int, outsamp_val_handles)
             partition_pipeline_val(name_, tr, va, te, vt=vt, corr_cut=corr_cut)
             ### DEBUG
-            # if i == 4:
-            #     break
+            if i == 4:
+                break
     elif val_schema == "noval_to" or val_schema == "to_noval":
         for i, val in enumerate(combos):
             am, br = val.split("_")
