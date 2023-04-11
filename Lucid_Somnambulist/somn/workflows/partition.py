@@ -170,32 +170,36 @@ def partition_pipeline_val(name_, tr, va, te, vt=None, corr_cut=None):
     )
 
 
-(
-    amines,
-    bromides,
-    dataset,
-    handles,
-    unique_couplings,
-    a_prop,
-    br_prop,
-    base_desc,
-    solv_desc,
-    cat_desc,
-) = preprocess.load_data(optional_load="experimental_catalyst")
-real, rand = calc_sub(optional_load="experimental_catalyst")
-# (sub_am_dict, sub_br_dict), rand = load_calculated_substrate_descriptors()
-# TESTING - both work.
-# print(real[0].keys())
-# print(sub_am_dict.keys())
+if __name__ == "__main__":
 
-sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
+    (
+        amines,
+        bromides,
+        dataset,
+        handles,
+        unique_couplings,
+        a_prop,
+        br_prop,
+        base_desc,
+        solv_desc,
+        cat_desc,
+    ) = preprocess.load_data(optional_load="experimental_catalyst")
+    real, rand = calc_sub(optional_load="experimental_catalyst")
+    # (sub_am_dict, sub_br_dict), rand = load_calculated_substrate_descriptors()
+    # TESTING - both work.
+    # print(real[0].keys())
+    # print(sub_am_dict.keys())
 
-# Val have out of sample reactants
-combos = preprocess.get_all_combos(unique_couplings)
-outdir = deepcopy(PART_)
-os.makedirs(outdir + "real/", exist_ok=True)
-os.makedirs(outdir + "rand/", exist_ok=True)
-realout = outdir + "real/"
-randout = outdir + "rand/"
+    sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
 
-main(val_schema="vo_to", corr_cut=0.90, vt=0)
+    # Val have out of sample reactants
+    combos = preprocess.get_all_combos(unique_couplings)
+    outdir = deepcopy(PART_)
+    os.makedirs(outdir + "real/", exist_ok=True)
+    os.makedirs(outdir + "rand/", exist_ok=True)
+    realout = outdir + "real/"
+    randout = outdir + "rand/"
+
+    main(
+        val_schema="vi_to", corr_cut=None, vt=0
+    )  ## Correlation cutoff is under development: should not be implemented here.
