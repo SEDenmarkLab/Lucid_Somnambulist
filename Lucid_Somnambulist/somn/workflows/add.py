@@ -7,6 +7,7 @@ import molli as ml
 import argparse
 from pathlib import Path
 from somn.build import parsing
+from somn.workflows import STRUC_
 
 # temp_work = r"C:\Users\rineharn\workspace/"
 # temp_work = r"/mnt/c/Users/rineharn/workspace/linux/"
@@ -76,3 +77,5 @@ if __name__ == "__main__":
     # =====================
     # Need to build up database class FIRST, then end workflow with plugging into database
     # =====================
+
+    ### Need to save collection to a buffer, then calculate atom props to add to the JSON. Buffer for new compounds until new models are trained.

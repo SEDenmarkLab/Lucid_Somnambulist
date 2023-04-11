@@ -1,5 +1,6 @@
 import molli as ml
-from somn.database import dtypes
+
+# from somn.database import dtypes
 import json
 import pickle
 from pathlib import Path, PurePath

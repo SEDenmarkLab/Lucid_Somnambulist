@@ -8,6 +8,11 @@ from glob import glob
 import os
 from scipy.spatial.transform import Rotation as R
 
+"""
+This should be updated with the most recently tested version [4.11.2023]. The ligand library from RB
+was a pretty robust test. 
+
+"""
 
 ##hydrogen
 H = "H"

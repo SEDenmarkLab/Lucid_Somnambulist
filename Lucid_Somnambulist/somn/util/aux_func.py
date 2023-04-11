@@ -28,6 +28,8 @@ def check_reactant_role(mols: list):
     """
     Try to intuit role of reactants based on their structures.
 
+    This is under development, and is only to try and make structure input robust to user errors.
+
     """
     # ======================================================================
     # Check if N-H present in structure. If not, must be electrophile.
