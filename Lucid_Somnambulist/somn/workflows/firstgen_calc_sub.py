@@ -60,7 +60,7 @@ def main(inc=0.75, substrate_pre=None, optional_load=None):
     sub_br_dict = retrieve_bromide_rdf_descriptors(bromides, br_prop, increment=_inc)
     ### Preprocess reactant descriptors now, since they are just calculated
     if substrate_pre == None:
-        pass
+        type_, value_ = None, None
     elif isinstance(substrate_pre, tuple):
         from somn.build.assemble import vectorize_substrate_desc
         import pandas as pd
@@ -103,7 +103,9 @@ def main(inc=0.75, substrate_pre=None, optional_load=None):
         raise Exception(
             "Need to pass both arguments for substrate preprocessing in a length 2 tuple"
         )
-    if type_ and value_:  # Need to process then make matching random features.
+    if (
+        type_ != None and value_ != None
+    ):  # Need to process then make matching random features.
         if type_ == "corr":
             am_mask = preprocess.corrX_new(
                 full_am_df, cut=value_, get_const=True, bool_out=True
