@@ -1,12 +1,12 @@
 #Various reference docs for development and temporary files for testing. 
 somn.egg-info/
-database_remove/
-inference/infer_ref.txt
+Lucid_Somnambulist/somn/database_remove/
+Lucid_Somnambulist/somn/inference/infer_ref.txt
 */*.ipynb
-workflows/_dev_scratch_code.txt
-workflows/buffer.mol2
-workflows/correlation.csv
-workflows/testing.csv
+Lucid_Somnambulist/somn/workflows/_dev_scratch_code.txt
+Lucid_Somnambulist/somn/workflows/buffer.mol2
+Lucid_Somnambulist/somn/workflows/correlation.csv
+Lucid_Somnambulist/somn/workflows/testing.csv
 **__pycache__s
-data/depreciation/*
-data/dev/*
+Lucid_Somnambulist/somn/data/depreciation/*
+Lucid_Somnambulist/somn/data/dev/*
