@@ -3,6 +3,13 @@
 
 # This module is used by the search workflow.
 
+
+def prep_for_inference():
+    """
+    Helper function to organize prophetic feature arrays and find up-to-date models.
+    """
+
+
 #### This is reference for the script used to search for hypermodels.
 
 # from multiprocessing.sharedctypes import Value
