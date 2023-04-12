@@ -1,0 +1,12 @@
+#Various reference docs for development and temporary files for testing. 
+somn.egg-info/
+database_remove/
+inference/infer_ref.txt
+*/*.ipynb
+workflows/_dev_scratch_code.txt
+workflows/buffer.mol2
+workflows/correlation.csv
+workflows/testing.csv
+**__pycache__s
+data/depreciation/*
+data/dev/*
