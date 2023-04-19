@@ -13,7 +13,7 @@ from copy import deepcopy
 # Load in raw calculated descriptors + random descriptors
 
 
-def main(val_schema="", vt=None, corr_cut=None):
+def main(val_schema="", vt=None, corr_cut=None, rand=True):
     """
     Validation Schema Argument (val_schema):
 
@@ -61,7 +61,9 @@ def main(val_schema="", vt=None, corr_cut=None):
             ]  # This explicitly removes ANY match with a test set reaction
             tr_int, te = preprocess.outsamp_by_handle(dataset, outsamp_test_handles)
             tr, va = preprocess.outsamp_by_handle(tr_int, outsamp_val_handles)
-            partition_pipeline_val(name_, tr, va, te, vt=vt, corr_cut=corr_cut)
+            partition_pipeline_val(
+                name_, tr, va, te, vt=vt, corr_cut=corr_cut, rand=rand
+            )
             ### DEBUG
             if i == 4:
                 break
@@ -76,7 +78,8 @@ def main(val_schema="", vt=None, corr_cut=None):
             tr, va = preprocess.random_splits(
                 tr, validation=False, n_splits=1, fold=7
             )  # Comment out to only do train/test
-
+            ### DEV ###
+            raise Exception("Under development")
     else:
         for i, val in enumerate(combos):
             am, br = val.split("_")
@@ -95,13 +98,19 @@ def main(val_schema="", vt=None, corr_cut=None):
                 tr, va = preprocess.random_splits(
                     temp, validation=False, n_splits=1, fold=7
                 )
-            partition_pipeline_val(name_, tr, va, te, vt=vt, corr_cut=corr_cut)
+            if 80 < i < 106:
+                pass
+            else:
+                continue
+            partition_pipeline_val(
+                name_, tr, va, te, vt=vt, corr_cut=corr_cut, rand=rand
+            )
             #### DEBUG
             # if i == 4:
             # break
 
 
-def partition_pipeline_noval(name_, tr, te, vt=None, corr_cut=None):
+def partition_pipeline_noval(name_, tr, te, vt=None, corr_cut=None, rand=True):
     """
     Partition pipeline, but for models with no validation set
     """
@@ -113,20 +122,28 @@ def partition_pipeline_noval(name_, tr, te, vt=None, corr_cut=None):
     x_te_real = assemble_descriptors_from_handles(
         te.index.tolist(), sub_am_dict, sub_br_dict
     )
-    (x_tr_, x_te_), (x_tr_re, x_te_re,) = preprocess.new_mask_random_feature_arrays(
+    (x_tr_, x_te_), (
+        x_tr_re,
+        x_te_re,
+    ) = preprocess.new_mask_random_feature_arrays(
         (x_tr_real, x_te_real), (x_tr, x_te), _vt=vt, corr_cut=corr_cut
     )  # Use this for only train/test
-    x_tr_.to_feather(randout + name_ + "_xtr.feather")
-    x_te_.to_feather(randout + name_ + "_xte.feather")
+    if rand == True:
+        x_tr_.to_feather(randout + name_ + "_xtr.feather")
+        x_te_.to_feather(randout + name_ + "_xte.feather")
+        tr.transpose().reset_index(drop=True).to_feather(
+            randout + name_ + "_ytr.feather"
+        )
+        te.transpose().reset_index(drop=True).to_feather(
+            randout + name_ + "_yte.feather"
+        )
     x_tr_re.to_feather(realout + name_ + "_xtr.feather")
     x_te_re.to_feather(realout + name_ + "_xte.feather")
-    tr.transpose().reset_index(drop=True).to_feather(randout + name_ + "_ytr.feather")
-    te.transpose().reset_index(drop=True).to_feather(randout + name_ + "_yte.feather")
     tr.transpose().reset_index(drop=True).to_feather(realout + name_ + "_ytr.feather")
     te.transpose().reset_index(drop=True).to_feather(realout + name_ + "_yte.feather")
 
 
-def partition_pipeline_val(name_, tr, va, te, vt=None, corr_cut=None):
+def partition_pipeline_val(name_, tr, va, te, vt=None, corr_cut=None, rand=True):
     x_tr = assemble_random_descriptors_from_handles(tr.index.tolist(), rand)
     x_va = assemble_random_descriptors_from_handles(va.index.tolist(), rand)
     x_te = assemble_random_descriptors_from_handles(te.index.tolist(), rand)
@@ -141,24 +158,25 @@ def partition_pipeline_val(name_, tr, va, te, vt=None, corr_cut=None):
     ) = preprocess.new_mask_random_feature_arrays(
         (x_tr_real, x_va_real, x_te_real), (x_tr, x_va, x_te), _vt=vt, corr_cut=corr_cut
     )
-    x_tr_.to_feather(randout + name_ + "_rand-feat_xtr.feather")
-    x_va_.to_feather(randout + name_ + "_rand-feat_xva.feather")
-    x_te_.to_feather(randout + name_ + "_rand-feat_xte.feather")
+    if rand == True:
+        ### Rand copies of X
+        x_tr_.to_feather(randout + name_ + "_rand-feat_xtr.feather")
+        x_va_.to_feather(randout + name_ + "_rand-feat_xva.feather")
+        x_te_.to_feather(randout + name_ + "_rand-feat_xte.feather")
+        ### "Rand" copies of Y
+        ############ NOTE: the y-values do not change with random features - so we're just serializing two copies for each set here for convenience. They are small. ####
+        tr.transpose().reset_index(drop=True).to_feather(
+            randout + name_ + "_rand-feat_ytr.feather"
+        )
+        va.transpose().reset_index(drop=True).to_feather(
+            randout + name_ + "_rand-feat_yva.feather"
+        )
+        te.transpose().reset_index(drop=True).to_feather(
+            randout + name_ + "_rand-feat_yte.feather"
+        )
     x_tr_re.to_feather(realout + name_ + "_real-feat_xtr.feather")
     x_va_re.to_feather(realout + name_ + "_real-feat_xva.feather")
     x_te_re.to_feather(realout + name_ + "_real-feat_xte.feather")
-    ############ NOTE: the y-values do not change with random features - so we're just serializing two copies for each set here for convenience. They are small. ####
-    ### "Rand" copies of Y
-    tr.transpose().reset_index(drop=True).to_feather(
-        randout + name_ + "_rand-feat_ytr.feather"
-    )
-    va.transpose().reset_index(drop=True).to_feather(
-        randout + name_ + "_rand-feat_yva.feather"
-    )
-    te.transpose().reset_index(drop=True).to_feather(
-        randout + name_ + "_rand-feat_yte.feather"
-    )
-    ### "Real" copies of Y
     tr.transpose().reset_index(drop=True).to_feather(
         realout + name_ + "_real-feat_ytr.feather"
     )
@@ -171,7 +189,6 @@ def partition_pipeline_val(name_, tr, va, te, vt=None, corr_cut=None):
 
 
 if __name__ == "__main__":
-
     (
         amines,
         bromides,
@@ -201,5 +218,5 @@ if __name__ == "__main__":
     randout = outdir + "rand/"
 
     main(
-        val_schema="vi_to", corr_cut=None, vt=0
+        val_schema="vi_to", corr_cut=None, vt=0, rand=False
     )  ## Correlation cutoff is under development: should not be implemented here.
