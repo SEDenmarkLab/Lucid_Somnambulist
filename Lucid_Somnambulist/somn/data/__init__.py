@@ -25,7 +25,7 @@ def load_all_desc():
 
     Use this for feature assembly.
     """
-    global BASEDESC, SOLVDESC, CATDESC, AMINES, BROMIDES
+    global BASEDESC, SOLVDESC, CATDESC, AMINES, BROMIDES, ASMI, BSMI
     ### DEV - hdf reagents instead of individual csvs
     # stream_base = pkg_resources.resource_filename(__name__, "base_params.csv")
     # stream_solv = pkg_resources.resource_filename(__name__, "solvent_params.csv")
@@ -58,6 +58,12 @@ def load_all_desc():
         AMINES = json.load(g)
     with open(stream_bromide, "r") as k:
         BROMIDES = json.load(k)
+    smi_am = pkg_resources.resource_filename(__name__, "amine_smiles.json")
+    smi_br = pkg_resources.resource_filename(__name__, "bromide_smiles.json")
+    with open(smi_am, "r") as j:
+        ASMI = json.load(j)
+    with open(smi_br, "r") as l:
+        BSMI = json.load(l)
     ### DEV PICKLE/JSON END
 
 

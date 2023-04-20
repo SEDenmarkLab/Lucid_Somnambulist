@@ -7,7 +7,8 @@ import molli as ml
 import argparse
 from pathlib import Path
 from somn.build import parsing
-from somn.workflows import STRUC_
+from somn.workflows import STRUC_, SCRATCH_
+from somn.calculate.new_reactant import PropheticStructure
 
 # temp_work = r"C:\Users\rineharn\workspace/"
 # temp_work = r"/mnt/c/Users/rineharn/workspace/linux/"
@@ -35,8 +36,8 @@ if __name__ == "__main__":
     if (
         args.ser
     ):  # Serialization during parsing to check for errors - this is important for users to troubleshoot
-        assert Path(args.ser[1]).exists()
-        parse = parsing.InputParser(serialize=True, path_to_write=args.ser[1])
+        # assert Path(args.ser[1]).exists()
+        parse = parsing.InputParser(serialize=True, path_to_write=STRUC_)
     else:
         parse = parsing.InputParser(serialize=False)
     if args.fmt[0] == "smi":
@@ -48,7 +49,7 @@ if __name__ == "__main__":
                 "Looks like a file path was passed as a SMILES - check inputs. If multiple smiles are being input, use 'multsmi' for format"
             )
         try:
-            collection = parse.get_mol_from_smiles(args.fmt[1])
+            collection, smiles_d = parse.get_mol_from_smiles(args.fmt[1])
         except:
             raise Warning(
                 "Something went wrong with openbabel smiles parsing - check input/output"
@@ -56,7 +57,7 @@ if __name__ == "__main__":
         prep, err = parse.preopt_geom(collection)
     elif args.fmt[0] == "multsmi":
         print("got to multsmi")
-        collection = parse.scrape_smiles_csv(args.fmt[1])
+        collection, smiles_d = parse.scrape_smiles_csv(args.fmt[1])
         prep, err = parse.prep_collection(collection, update=20)
     elif args.fmt[0] == "cdxml":
         try:
@@ -67,6 +68,7 @@ if __name__ == "__main__":
                 "Please pass a valid path for a cdxml file - parsing failed"
             )
         collection = parse.get_mol_from_graph(args.fmt[1])
+        smiles_d = parse.get_smi_from_mols(collection)
         prep, err = parse.prep_collection(collection)
     else:
         raise Exception(
@@ -74,6 +76,14 @@ if __name__ == "__main__":
         )
 
     collection.to_zip(parse.path_to_write + "input_struc_preopt_col.zip")
+    import json
+
+    assert not Path(
+        SCRATCH_ + "newmol_smi_buffer.json"
+    ).exists()  # Make sure we won't overwrite something
+    with open(SCRATCH_ + "newmol_smi_buffer.json", "w") as k:
+        json.dump(smiles_d)
+
     # =====================
     # Need to build up database class FIRST, then end workflow with plugging into database
     # =====================

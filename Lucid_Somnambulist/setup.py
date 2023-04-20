@@ -10,9 +10,11 @@ import os
 
 ### Add dependencies later; this is not done as of 9-9-2022
 
+### Need to make a conda install so that crest/xtb is installable ... or else give great instructions.
+
 setup(
     name="somn",
-    packages=find_packages(exclude=("__pycache__", )),
+    packages=find_packages(exclude=("__pycache__",)),
     data_files=[],
     version="0.1",
     author="N. Ian Rinehart",
@@ -27,6 +29,7 @@ setup(
         "scikit-learn>=0.22.1",
         "scipy>=1.4.1",
         "colorama>=0.4.4",
+        "crest=2.12",
     ],
     python_requires=">=3.9",
 )

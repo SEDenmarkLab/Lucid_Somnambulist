@@ -3,11 +3,19 @@ from os import makedirs
 from datetime import date
 import somn
 import warnings
-from pathlib import Path
-from os.path import splitext
+
+# from pathlib import Path
+# from os.path import splitext
 import pandas as pd
-import numpy as np
-from collections import namedtuple
+
+# import numpy as np
+# from collections import namedtuple
+import random
+import string
+from somn.data import ACOL, BCOL
+
+names_known = [f.name for f in ACOL.molecules]
+names_known_tot = names_known.extend([k.name for k in BCOL.molecules])
 
 
 class InputParser:
@@ -44,6 +52,32 @@ class InputParser:
         assert isinstance(col, ml.Collection)
         return col
 
+    def get_smi_from_mols(self, col: ml.Collection):
+        """
+        Get smiles when inputting structures using cdxml
+        """
+        from openbabel import openbabel as ob
+
+        output = {}
+        for mol in col.molecules:
+            obmol = ob.OBMol()
+            obconv = ob.OBConversion()
+            obconv.SetInAndOutFormats("mol2", "smi")
+            # obconv.AddOption("h", ob.OBConversion.GENOPTIONS)
+            try:
+                obconv.ReadString(obmol, mol.to_mol2())
+            except:
+                raise Exception("Failed to parse mol2 string, cannot fetch smiles")
+            # gen3d = ob.OBOp.FindType("gen3D")
+            # gen3d.Do(
+            # obmol, "--fastest"
+            # )  # Documentation is lacking for pybel/python, found github issue from 2020 with this
+            smi = obconv.WriteString(obmol).split("\t")[
+                0
+            ]  # Output uses a tab between name and smiles ... why, obabel?
+            output[mol.name] = smi
+        return output
+
     def get_mol_from_smiles(self, user_input, recursive_mode=False, names=None):
         """
         Take user input of smiles string and convert it to a molli molecule object
@@ -51,13 +85,20 @@ class InputParser:
         """
         from openbabel import openbabel as ob
 
+        flag_ = "".join(
+            random.SystemRandom().choice(string.digits + string.ascii_lowercase)
+            for _ in range(3)
+        )
         if recursive_mode == False:
             obmol = ob.OBMol()
             obconv = ob.OBConversion()
             obconv.SetInAndOutFormats("smi", "mol2")
             obconv.AddOption("h", ob.OBConversion.GENOPTIONS)
+
             try:
-                obconv.ReadString(obmol, user_input + "    pr" + str(date.today()))
+                obconv.ReadString(
+                    obmol, f"{user_input}    pr{str(date.today())}_{flag_}"
+                )
             except:
                 raise Exception(
                     "Failed to parse smiles string; check format for errors"
@@ -67,12 +108,13 @@ class InputParser:
                 obmol, "--fastest"
             )  # Documentation is lacking for pybel/python, found github issue from 2020 with this
             newmol = ml.Molecule.from_mol2(
-                obconv.WriteString(obmol), name="pr" + str(date.today())
+                obconv.WriteString(obmol), name=f"pr{str(date.today())}_{flag_}"
             )
             if self.ser == True:
                 self.serialize([newmol], specific_msg="smiles_preopt")
             col = ml.Collection(name="from_smi_hadd", molecules=[newmol])
-            return col
+            smi_d = {newmol.name: user_input}
+            return col, smi_d
         elif recursive_mode == True:
             assert type(user_input) == list
             if type(names) == list and len(names) != len(user_input):
@@ -80,7 +122,13 @@ class InputParser:
                     "Warning: list of names passed were not the same length as input SMILES; failed to infer naming scheme, so enumerating structures."
                 )
                 names = None
+            elif any(item in names for item in names_known_tot):
+                warnings.warn(
+                    "Warning: could overwrite structure names; an already-used name was included. Switching to default naming."
+                )
+                names = None
             mols_out = []
+            smi_d = {}  # keep track of smiles for saving later
             gen3d = ob.OBOp.FindType("gen3D")
             obconv = ob.OBConversion()
             obconv.SetInAndOutFormats("smi", "mol2")
@@ -101,7 +149,8 @@ class InputParser:
                 )  # Documentation is lacking for pybel/python, found github issue from 2020 with this
                 if names == None:
                     newmol = ml.Molecule.from_mol2(
-                        obconv.WriteString(obmol), name=f"pr{str(date.today())}_{i+1}"
+                        obconv.WriteString(obmol),
+                        name=f"pr{str(date.today())}_{flag_}_{i+1}",
                     )
                 elif type(names) == list:
                     newmol = ml.Molecule.from_mol2(
@@ -109,11 +158,14 @@ class InputParser:
                     )
                 mols_out.append(newmol)
                 del obmol
+                smi_d[
+                    newmol.name
+                ] = smiles_  # Save smiles in dict keyed by molecule name
 
             if self.ser == True:
                 self.serialize(mols_out, specific_msg="smiles_preopt")
             col = ml.Collection(name="from_smi_hadd", molecules=mols_out)
-            return col
+            return col, smi_d
 
     def add_hydrogens(self, col: ml.Collection, specific_msg=""):
         """
@@ -133,7 +185,7 @@ class InputParser:
             obmol.AddHydrogens()
             newmol = ml.Molecule.from_mol2(obconv.WriteString(obmol), mol_.name)
             output.append(newmol)
-        mols, errs = somn.core.check_parsed_mols(output, col)
+        mols, errs = somn.util.aux_func.check_parsed_mols(output, col)
         if len(errs) > 0:
             warnings.warn(
                 message="It looks like adding hydrogens to at least one input structure failed...try removing ALL explicit hydrogens from input."
@@ -159,7 +211,7 @@ class InputParser:
             raise Exception(
                 "Optional update argument passed for input structure preoptimization, but the value passed was not an integer. Either do not use this optional feature and accept 2 second update cycles, or input a valid integer value of seconds."
             )
-        mols, errs = somn.core.check_parsed_mols(opt, col)
+        mols, errs = somn.util.aux_func.check_parsed_mols(opt, col)
         if self.ser == True:
             self.serialize(errs, specific_msg="preopt_err")
             self.serialize(mols, specific_msg="preopt_suc")
@@ -186,109 +238,110 @@ class InputParser:
         """
         df = pd.read_csv(fpath, header=0, index_col=0)
         if len(df.columns) == 1:
-            collection = self.get_mol_from_smiles(
+            collection, smiles_d = self.get_mol_from_smiles(
                 df.iloc[:, 0].to_list(), recursive_mode=True
             )
             return collection
         elif len(df.columns) > 1:
-            collection = self.get_mol_from_smiles(
+            collection, smiles_d = self.get_mol_from_smiles(
                 df.iloc[:, 0].to_list(),
                 recursive_mode=True,
                 names=df.iloc[:, 1].to_list(),
             )
-            return collection
+            return collection, smiles_d
 
 
-class DataHandler:
-    """
-    Parsing data including I/O functions for regression tasks, as well as labelling for (multi)class modeling
+### Depreciated/just not used
+# class DataHandler:
+#     """
+#     Parsing data including I/O functions for regression tasks, as well as labelling for (multi)class modeling
 
-    Designed to be robust and detect duplicate entries, absurd values (e.g. wrong scale), etc.
+#     Designed to be robust and detect duplicate entries, absurd values (e.g. wrong scale), etc.
 
-    When serialized, the outputs should be ready for subsequent steps
-    """
+#     When serialized, the outputs should be ready for subsequent steps
+#     """
 
-    def __init__(self, fpath_or_df, **kwargs):
-        """
-        CSV/XLSV should have a header AND index column. XLSV will assume first sheet unless kwarg "sheet_name" is passed.
-        """
-        if isinstance(fpath_or_df, pd.DataFrame):
-            self.data = fpath_or_df
-        elif isinstance(fpath_or_df, str):
-            if Path(fpath_or_df).exists():
-                if splitext(fpath_or_df)[1] == ".csv":
-                    df = pd.read_csv(fpath_or_df, header=0, index_col=0)
-                    self.data = df
-                elif splitext(fpath_or_df)[1] == ".xlsx":
-                    if "sheet_name" in kwargs:
-                        self.sheet_name = kwargs["sheet_name"]
-                    else:
-                        self.sheet_name = 0
-                    df = pd.read_excel(
-                        fpath_or_df, header=0, index_col=0, sheet_name=self.sheet_name
-                    )
-                    self.data = df
-                elif splitext(fpath_or_df[1]) == ".feather":
-                    df = pd.read_feather(
-                        fpath_or_df
-                    ).transpose()  # Assumes serialized columns for feather = row indices
-                    self.data = df
-            else:
-                raise Exception(
-                    "Cannot parse filepath or buffer passed to DataHandler - check path"
-                )
-        else:
-            raise Exception("Cannot parse input type for DataHandler class.")
-        self.handles = self.df.index.to_list()
-        if "name" in kwargs.keys():
-            self.name = kwargs["name"]
-        else:
-            self.name = None
-        self.cleanup_handles()
+#     def __init__(self, fpath_or_df, **kwargs):
+#         """
+#         CSV/XLSV should have a header AND index column. XLSV will assume first sheet unless kwarg "sheet_name" is passed.
+#         """
+#         if isinstance(fpath_or_df, pd.DataFrame):
+#             self.data = fpath_or_df
+#         elif isinstance(fpath_or_df, str):
+#             if Path(fpath_or_df).exists():
+#                 if splitext(fpath_or_df)[1] == ".csv":
+#                     df = pd.read_csv(fpath_or_df, header=0, index_col=0)
+#                     self.data = df
+#                 elif splitext(fpath_or_df)[1] == ".xlsx":
+#                     if "sheet_name" in kwargs:
+#                         self.sheet_name = kwargs["sheet_name"]
+#                     else:
+#                         self.sheet_name = 0
+#                     df = pd.read_excel(
+#                         fpath_or_df, header=0, index_col=0, sheet_name=self.sheet_name
+#                     )
+#                     self.data = df
+#                 elif splitext(fpath_or_df[1]) == ".feather":
+#                     df = pd.read_feather(
+#                         fpath_or_df
+#                     ).transpose()  # Assumes serialized columns for feather = row indices
+#                     self.data = df
+#             else:
+#                 raise Exception(
+#                     "Cannot parse filepath or buffer passed to DataHandler - check path"
+#                 )
+#         else:
+#             raise Exception("Cannot parse input type for DataHandler class.")
+#         self.handles = self.df.index.to_list()
+#         if "name" in kwargs.keys():
+#             self.name = kwargs["name"]
+#         else:
+#             self.name = None
+#         self.cleanup_handles()
 
-    ### These are methods for this class
+#     ### These are methods for this class
 
-    def cleanup_handles(self):
-        """
-        Catch-all for fixing weird typos in data entry for data files.
-        """
-        indices = self.data.index
-        strip_indices = pd.Series([f.strip() for f in indices])
-        self.data.index = strip_indices
-        # self.data.drop_duplicates(inplace=True) ## This does not work; removes more than it should
-        self.data = self.data[~self.data.index.duplicated(keep="first")]
+#     def cleanup_handles(self):
+#         """
+#         Catch-all for fixing weird typos in data entry for data files.
+#         """
+#         indices = self.data.index
+#         strip_indices = pd.Series([f.strip() for f in indices])
+#         self.data.index = strip_indices
+#         # self.data.drop_duplicates(inplace=True) ## This does not work; removes more than it should
+#         self.data = self.data[~self.data.index.duplicated(keep="first")]
 
-    ### This is for handling IO operations with dataset, partitioning, handle/label
+#     ### This is for handling IO operations with dataset, partitioning, handle/label
 
-    @classmethod
-    def to_df(self):
-        return self.data
+#     @classmethod
+#     def to_df(self):
+#         return self.data
 
-    @classmethod
-    def to_feather(self, fpath, orient=None):
-        """
-        Write the data from DataHandler (after processing, etc) to a feather file.
-        """
-        if orient == None:
-            self.data.to_feather(fpath)
-        elif orient == "index":
-            self.data.transpose().to_feather(fpath)
-        elif orient == "column":
-            self.data.to_feather(fpath)
-        elif orient == "both":
-            i, j = self.data.shape
-            if i > j:
-                self.data.transpose().to_feather(fpath)
-                temp_buf = self.data.columns
-                path_, ext_ = splitext(fpath)
-                temp_buf.to_feather(f"{path_}_cols{ext_}")
-            if i < j:
-                self.data.transpose().to_feather(fpath)
-                temp_buf = self.data.columns  # index of original rotated into cols
-                path_, ext_ = splitext(fpath)
-                temp_buf.to_feather(
-                    f"{path_}_cols{ext_}"
-                )  # write original cols separately
+#     @classmethod
+#     def to_feather(self, fpath, orient=None):
+#         """
+#         Write the data from DataHandler (after processing, etc) to a feather file.
+#         """
+#         if orient == None:
+#             self.data.to_feather(fpath)
+#         elif orient == "index":
+#             self.data.transpose().to_feather(fpath)
+#         elif orient == "column":
+#             self.data.to_feather(fpath)
+#         elif orient == "both":
+#             i, j = self.data.shape
+#             if i > j:
+#                 self.data.transpose().to_feather(fpath)
+#                 temp_buf = self.data.columns
+#                 path_, ext_ = splitext(fpath)
+#                 temp_buf.to_feather(f"{path_}_cols{ext_}")
+#             if i < j:
+#                 self.data.transpose().to_feather(fpath)
+#                 temp_buf = self.data.columns  # index of original rotated into cols
+#                 path_, ext_ = splitext(fpath)
+#                 temp_buf.to_feather(
+#                     f"{path_}_cols{ext_}"
+#                 )  # write original cols separately
 
 
 def cleanup_handles(data_df: pd.DataFrame):

@@ -29,3 +29,5 @@ from .preprocess import (
     random_splits,
     prep_for_binary_classifier,
 )
+
+from .new_reactant import PropheticStructure

@@ -231,7 +231,6 @@ def get_rdf(
     first_int: float = 1.80,
     radial_scaling: int or None = 0,
 ):
-
     """
     Takes coordinates for molecule, reference atom index, list of atom indices to compute for, and property list ordered by atom idx
 

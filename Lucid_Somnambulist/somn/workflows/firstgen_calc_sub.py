@@ -140,10 +140,6 @@ def main(inc=0.75, substrate_pre=None, optional_load=None):
     return ((sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc), rand)
 
 
-def get_new_atomprops(col):
-    ...
-
-
 if __name__ == "__main__":
     (
         (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc),
