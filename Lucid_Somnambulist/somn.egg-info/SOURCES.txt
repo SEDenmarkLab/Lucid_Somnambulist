@@ -1,6 +1,0 @@
-setup.py
-somn.egg-info/PKG-INFO
-somn.egg-info/SOURCES.txt
-somn.egg-info/dependency_links.txt
-somn.egg-info/requires.txt
-somn.egg-info/top_level.txt

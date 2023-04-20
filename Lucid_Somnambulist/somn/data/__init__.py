@@ -11,8 +11,12 @@ import json
 # =============================
 
 global DATA
-stream_data = pkg_resources.resource_filename(__name__, "dataset.csv")
-DATA = pd.read_csv(stream_data, header=None, index_col=0)
+### hdf work
+# stream_data = pkg_resources.resource_filename(__name__, "dataset.csv")
+# DATA = pd.read_csv(stream_data, header=None, index_col=0)
+stream_data = pkg_resources.resource_filename(__name__, "dataset_yields.hdf5")
+DATA = pd.read_hdf(stream_data)
+###
 
 
 def load_all_desc():
@@ -22,30 +26,39 @@ def load_all_desc():
     Use this for feature assembly.
     """
     global BASEDESC, SOLVDESC, CATDESC, AMINES, BROMIDES
-    stream_base = pkg_resources.resource_filename(__name__, "base_params.csv")
-    stream_solv = pkg_resources.resource_filename(__name__, "solvent_params.csv")
-    ### DEV - PICKLE VS JSON START
-    # stream_amine = pkg_resources.resource_filename(__name__, "amine_pickle_dict.p")
-    # stream_bromide = pkg_resources.resource_filename(__name__, "bromide_pickle_dict.p")
+    ### DEV - hdf reagents instead of individual csvs
+    # stream_base = pkg_resources.resource_filename(__name__, "base_params.csv")
+    # stream_solv = pkg_resources.resource_filename(__name__, "solvent_params.csv")
+    # BASEDESC = pd.read_csv(stream_base, header=None, index_col=0)
+    # SOLVDESC = pd.read_csv(stream_solv, header=None, index_col=0)
+    stream_reagents = pkg_resources.resource_filename(__name__, "reagents.hdf5")
+    BASEDESC = pd.read_hdf(stream_reagents, key="base")
+    SOLVDESC = pd.read_hdf(stream_reagents, key="solv")
+    # stream_cat = pkg_resources.resource_filename(__name__, "cat_aso_aeif_combined.csv")
+    # CATDESC = pd.read_csv(stream_cat, header=None, index_col=0)
+    stream_cat = pkg_resources.resource_filename(
+        __name__, "catalyst_descriptors.feather"
+    )
+    CATDESC = pd.read_feather(
+        stream_cat
+    ).transpose()  # Feathered dfs save space, but ONLY have column labels, so need to be awkwardly transposed before and after serialization.
+    ### DEV - hdf instead of csvs for reagents END
+    ###################################################
+    ### DEV - PICKLE VS JSON for reactants START
+    # stream_amine = pkg_resources.resource_filename(__name__, "depreciation/amine_pickle_dict.p")
+    # stream_bromide = pkg_resources.resource_filename(__name__, "depreciation/bromide_pickle_dict.p")
     stream_amine = pkg_resources.resource_filename(__name__, "amine_atomprops.json")
     stream_bromide = pkg_resources.resource_filename(__name__, "bromide_atomprops.json")
-    ### DEV - PICKLE VS JSON END
-    BASEDESC = pd.read_csv(stream_base, header=None, index_col=0)
-    SOLVDESC = pd.read_csv(stream_solv, header=None, index_col=0)
-    ### DEVELOPMENT: PICKLE VS JSON START
     # with open(stream_amine, "rb") as g:
     #     AMINES = pickle.load(g)
     # with open(stream_bromide, "rb") as k:
     #     BROMIDES = pickle.load(k)
-    ###
     ### Hashable only substrate encoding - JSON is favorable to binary object-oriented encoding.
     with open(stream_amine, "r") as g:
         AMINES = json.load(g)
     with open(stream_bromide, "r") as k:
         BROMIDES = json.load(k)
     ### DEV PICKLE/JSON END
-    stream_cat = pkg_resources.resource_filename(__name__, "cat_aso_aeif_combined.csv")
-    CATDESC = pd.read_csv(stream_cat, header=None, index_col=0)
 
 
 def load_sub_mols():
