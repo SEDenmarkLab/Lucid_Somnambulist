@@ -1,9 +1,9 @@
 ![midjourney_1](https://user-images.githubusercontent.com/46203561/189413673-c6e184e9-218c-417e-9402-461f284eabc2.png)
 Image credit: Image was created using the official Midjourney server and is being used here under a creative commons license. [see https://www.midjourney.com/]
 # Lucid_Somnambulist
-Welcome to the public repository for code developed in collaboration between F. Hoffmann-La Roche AG (Process Chemistry & Catalysis in Basel, Switzerland) and the Scott E. Denmark Laboratory (University of Illinois at Urbana Champaign) to provide experimentalists rapid access to hits for Buchwald-Hartwig couplings. 
+Welcome to the public repository for code developed in collaboration between F. Hoffmann-La Roche AG Pharmaceutical Division, Synthetic Molecules Technical Development, Process Chemistry & Catalysis in Basel, Switzerland and the Scott E. Denmark Laboratory at the University of Illinois Urbana-Champaign to provide experimentalists with a tool for rapidly predicting hits for new Buchwald-Hartwig couplings. 
 
-This work has a dependency on code developed within the Denmark Laboratories independent of this collaboration, and an alpha-test version of that code is contained herein. A new and improved version of that work can be found here: [molli 1.0]. 
+This page is still under development. There is a dependency on code developed within the Denmark Laboratories, but independent of this collaboration, so an alpha-test version of that code is contained herein (first generation of the package molli). 
 
 # Philosophy
 This package is designed with the following ecosystem in mind: 
