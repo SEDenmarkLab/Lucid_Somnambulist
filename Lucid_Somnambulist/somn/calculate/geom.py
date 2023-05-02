@@ -3,18 +3,31 @@ import json
 from attrs import define, field
 from somn.workflows import SCRATCH_, STRUC_, DESC_
 from somn.data import ACOL, BCOL, ASMI, BSMI, AMINES, BROMIDES
+import pandas as pd
 
 
 @define
-class PropheticStructure:
+class PropheticInput:
     """
     Object for handling new structure(s). Will take valid input structure from InputParser and add to reactant database(s) and atomproperties files.
     """
 
-    name: str | list
-    role: str | list
-    smi: str | list
-    struc: ml.Molecule | ml.Collection
+    name: str | list = field()
+    role: str | list = field()
+    smi: str | list = field()
+    struc: ml.Molecule | ml.Collection = field()
+    state = field(default="")
+    known = field(default="")
+    conformers = field(default="")
+    failures = field(default="")
+    roles_d = field(default={})
+
+    # def __attrs_post_init__(self):
+    #     self.__setattr__("state", None)
+    #     self.__setattr__("known", None)
+    #     self.__setattr__("conformers", None)
+    #     self.__setattr__("failures", None)
+    #     self.__setattr__("roles_d", {})
 
     def check_input(self):
         """
@@ -32,12 +45,9 @@ class PropheticStructure:
             assert isinstance(self.role, list)
             assert isinstance(self.smi, list)
             self.state = "multi"
-            self.roles = (
-                {}
-            )  # Used later for sorting and saving structures into correct collections.
             for k, j in zip(self.name, self.role):
                 assert j in ["nuc", "el"]
-                self.roles[k] = j
+                self.roles_d[k] = j
         else:
             raise Exception(
                 f"Prophetic structure input must be single structure or multiple - check input types"
@@ -90,8 +100,10 @@ class PropheticStructure:
             raise Exception(
                 "Have not defined conformer pipeline mode, check input (or use code as intended)"
             )
-        if self.state == "single" and self.known == False:
-            col = ml.Collection(self.struc)
+        if (
+            self.state == "single" and self.known == False
+        ):  # Single molecule; must be list to make col
+            col = ml.Collection(name="molecule", molecules=[self.struc])
         elif self.state == "multi":
             if self.known == False:
                 col = self.struc
@@ -106,22 +118,23 @@ class PropheticStructure:
             raise Exception(
                 "Defined self.state as something weird for conformer pipeline... try agian."
             )
-        # xtb = ml.XTBDriver(name="confs",scratch_dir=SCRATCH_,nprocs=1) #Should already be done during input stage
         # Perform sequential search and screen of conformers.
         crest = ml.CRESTDriver(
-            name="confs", scratch_dir=SCRATCH_ + "crest_scratch/", nprocs=1
+            name="confs", scratch_dir=SCRATCH_ + "crest_scratch_1/", nprocs=2
         )
-        concur = ml.Concurrent(
+        concur_1 = ml.Concurrent(
             col,
             backup_dir=SCRATCH_ + "crest_search/",
             logfile=SCRATCH_ + "out1.log",
             update=60,
             timeout=10000,
-            concurrent=2,
+            concurrent=1,
         )
-        output = concur(crest.conformer_search)(
-            ewin=18, mdlen=50, vbdump=10, constr_val_angles=[]
+        # print("conformer search beginning")
+        output = concur_1(crest.conformer_search)(
+            ewin=20, mdlen=5, constr_val_angles=[]
         )
+        # print("searched conf\n", output)
         buffer = []
         tracking = {}  # Used to track progress
         for i, k in enumerate(output):
@@ -130,19 +143,29 @@ class PropheticStructure:
                 buffer.append(k)
             else:
                 tracking[col.molecules[i].name] = False
-        col2 = ml.Collection(buffer)  # These have undergone a conformer search.
-        concur = ml.Concurrent(
+        # print(buffer)
+        col2 = ml.Collection(
+            name="searched", molecules=buffer
+        )  # These have undergone a conformer search.
+        # print(col2.molecules)
+        concur_2 = ml.Concurrent(
             col2,
             backup_dir=SCRATCH_ + "crest_screen/",
             logfile=SCRATCH_ + "out2.log",
-            update=60,
+            update=30,
             timeout=10000,
-            concurrent=2,
+            concurrent=1,
         )
-        output2 = concur(crest.confomer_screen)(
+        crest = ml.CRESTDriver(
+            name="confs", scratch_dir=SCRATCH_ + "crest_scratch_2/", nprocs=2
+        )
+        # print("conformer screen beginning")
+        output2 = concur_2(crest.confomer_screen)(
             method="gfn2", ewin=12
         )  # These get screened to prune out unreasonable structures and reopt.
         buffer2 = []
+        # print("screened conf\n", output2)
+        assert len(output2) > 0
         for j, k in enumerate(output2):
             if isinstance(k, ml.Molecule):  # By definition, must have succeeded before
                 buffer2.append(k)
@@ -153,7 +176,8 @@ class PropheticStructure:
                     tracking[col2.molecules[j].name] = False
                 else:
                     pass  # Already set to False, can skip.
-        col3 = ml.Collection(buffer2)
+        col3 = ml.Collection(name="screened", molecules=buffer2)
+        assert len(buffer2) > 0
         self.conformers = col3
         failures = []
         for key, val in tracking.items():
@@ -168,41 +192,72 @@ class PropheticStructure:
                 f"Molecules failed conformer search: {[f.name for f in failures]}"
             )
         self.failures = failures
-        towrite = ml.Collection(self.failures)
-        towrite.to_zip(STRUC_ + "input_mols_failed_conf_step.zip")
+        if len(self.failures) > 0:
+            towrite = ml.Collection(name="failed", molecules=self.failures)
+            towrite.to_zip(STRUC_ + "input_mols_failed_conf_step.zip")
         assert len(self.conformers.molecules) > 0
         # These are the core dataset structures; should it be an external volume? DEV
         if self.state == "single":  # Single molecules going in
             assert len(self.conformers.molecules) == 1
             if self.role == "el":
                 BCOL.add(self.conformers[0])
+                BCOL.to_zip(STRUC_ + "newtotal_bromide.zip")
             elif self.role == "nuc":
                 ACOL.add(self.conformers[0])
+                ACOL.to_zip(STRUC_ + "newtotal_amine.zip")
         elif (
             self.state == "multi"
         ):  # Many molecules going in; should work for el or nuc
+            na = False
+            nb = False
             for mol in self.conformers:
-                molrole = self.roles[mol.name]
+                molrole = self.roles_d[mol.name]
                 if molrole == "nuc":
                     ACOL.add(mol)
+                    if na == False:
+                        na = True
                 elif molrole == "el":
                     BCOL.add(mol)
+                    if nb == False:
+                        nb = True
+            if na == True:
+                ACOL.to_zip(STRUC_ + "newtotal_amine.zip")
+            if nb == True:
+                BCOL.to_zip(STRUC_ + "newtotal_bromide.zip")
         ## Save things - these are backups
-        ACOL.to_zip(STRUC_ + "newtotal_amine.zip")
-        BCOL.to_zip(STRUC_ + "newtotal_bromide.zip")
         self.conformers.to_zip(STRUC_ + "newstruc_geoms.zip")
         with open(STRUC_ + "newstruc_roles.json", "w") as k:
-            json.dump(self.roles, k)
+            json.dump(self.roles_d, k)
 
     def atomprop_pipeline(self):
         """
         Calculate atom properties for descriptor calculation, and add to JSON files.
         """
+        concur = ml.Concurrent(
+            self.conformers,
+            backup_dir=SCRATCH_ + "atomprops/",
+            logfile=SCRATCH_ + "atomprops.log",
+        )
+        xtb = ml.XTBDriver(
+            name="atomprops", scratch_dir=SCRATCH_ + "xtb_scratch/", nprocs=2
+        )
+        atomprops = concur(xtb.conformer_atom_props)()
+        print(atomprops)
+        atomprop_out = {}
+        failures = []
+        for confap, name in zip(atomprops, self.conformers.mol_index):
+            if isinstance(confap[0], dict):
+                atomprop_out[name] = confap
+            else:
+                failures.append(name)
+        return atomprop_out, failures
 
     @classmethod
     def from_mol(cls, mol, smi, role):
         """
         Initiate pipeline for new molecule
+
+        molecule, smiles, role
         """
         k = cls(mol.name, role, smi, mol)
         k.check_input()
@@ -212,6 +267,8 @@ class PropheticStructure:
     def from_col(cls, col, smi_list, role_list):
         """
         Initiate pipelien for new molecules
+
+        collection, smiles list, role list
         """
         k = cls([f.name for f in col.molecules], role_list, smi_list, col)
         k.check_input()

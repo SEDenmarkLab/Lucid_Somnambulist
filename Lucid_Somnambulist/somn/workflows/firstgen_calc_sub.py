@@ -1,7 +1,7 @@
 # import somn
 # from copy import deepcopy
 import pickle
-from somn.calculate.reactant_firstgen import (
+from somn.calculate.RDF import (
     retrieve_amine_rdf_descriptors,
     retrieve_bromide_rdf_descriptors,
 )

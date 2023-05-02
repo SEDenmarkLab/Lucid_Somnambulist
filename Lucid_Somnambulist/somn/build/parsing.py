@@ -12,10 +12,6 @@ import pandas as pd
 # from collections import namedtuple
 import random
 import string
-from somn.data import ACOL, BCOL
-
-names_known = [f.name for f in ACOL.molecules]
-names_known_tot = names_known.extend([k.name for k in BCOL.molecules])
 
 
 class InputParser:
@@ -27,6 +23,15 @@ class InputParser:
     def __init__(self, serialize=False, path_to_write="somn_failed_to_parse/"):
         self.ser = serialize
         self.path_to_write = path_to_write
+        import somn.data
+
+        somn.data.load_all_desc()
+        from somn.data import ACOL, BCOL
+
+        # print(ACOL.mol_index)
+        names_known = [f.name for f in ACOL.molecules]
+        names_known.extend([k.name for k in BCOL.molecules])
+        self.names_known_tot = names_known
 
     def serialize(self, mols_to_write: list, specific_msg=""):
         makedirs(self.path_to_write, exist_ok=True)
@@ -82,6 +87,8 @@ class InputParser:
         """
         Take user input of smiles string and convert it to a molli molecule object
 
+        Recursive mode (default off) will take a list input and return a collection.
+        Default mode will accept a string input and return a collection with one molecule in it.
         """
         from openbabel import openbabel as ob
 
@@ -122,7 +129,7 @@ class InputParser:
                     "Warning: list of names passed were not the same length as input SMILES; failed to infer naming scheme, so enumerating structures."
                 )
                 names = None
-            elif any(item in names for item in names_known_tot):
+            elif any(item in names for item in self.names_known_tot):
                 warnings.warn(
                     "Warning: could overwrite structure names; an already-used name was included. Switching to default naming."
                 )
@@ -134,7 +141,7 @@ class InputParser:
             obconv.SetInAndOutFormats("smi", "mol2")
             obconv.AddOption("h", ob.OBConversion.GENOPTIONS)
             for i, smiles_ in enumerate(user_input):
-                print(i, smiles_)
+                # print(i, smiles_)
                 obmol = ob.OBMol()
                 try:
                     obconv.ReadString(
@@ -234,21 +241,32 @@ class InputParser:
         """
         Scrapes smiles strings out of a csv file
 
-        SMILES strings should be column index 0, and optional name should be column index 1
+        SMILES strings should be column index 0, required role should be index 1, and optional name should be column index 2
         """
         df = pd.read_csv(fpath, header=0, index_col=0)
-        if len(df.columns) == 1:
+        if len(df.columns) == 2:
             collection, smiles_d = self.get_mol_from_smiles(
                 df.iloc[:, 0].to_list(), recursive_mode=True
             )
-            return collection
-        elif len(df.columns) > 1:
+            roles = df.iloc[:, 1].to_list()
+            return collection, smiles_d, roles
+        elif len(df.columns) > 2:
             collection, smiles_d = self.get_mol_from_smiles(
                 df.iloc[:, 0].to_list(),
                 recursive_mode=True,
-                names=df.iloc[:, 1].to_list(),
+                names=df.iloc[:, 2].to_list(),
             )
-            return collection, smiles_d
+            roles = df.iloc[:, 1].to_list()
+            return collection, smiles_d, roles
+
+    def scrape_biovia_smi_file(self, fpath):
+        """
+        Scrapes a file with multiple smiles inputs. Cannot accept names or reactant roles for individual structures.
+        """
+        with open(fpath, "r") as k:
+            ftext = k.read()
+        smi = ftext.strip().split(".")
+        return smi
 
 
 ### Depreciated/just not used
