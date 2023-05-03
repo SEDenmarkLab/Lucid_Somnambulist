@@ -1,7 +1,7 @@
 # This module is for the calculation of chemical descriptors, model performance metrics, and other
 # routine calculations hard-coded into the somn package.
 
-from .reactant_firstgen import (
+from .RDF import (
     retrieve_bromide_rdf_descriptors,
     get_amine_ref_n,
     retrieve_amine_rdf_descriptors,
@@ -29,3 +29,5 @@ from .preprocess import (
     random_splits,
     prep_for_binary_classifier,
 )
+
+from .geom import PropheticInput

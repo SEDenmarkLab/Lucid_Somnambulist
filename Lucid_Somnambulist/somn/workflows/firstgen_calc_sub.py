@@ -1,7 +1,7 @@
 # import somn
 # from copy import deepcopy
 import pickle
-from somn.calculate.reactant_firstgen import (
+from somn.calculate.RDF import (
     retrieve_amine_rdf_descriptors,
     retrieve_bromide_rdf_descriptors,
 )
@@ -138,10 +138,6 @@ def main(inc=0.75, substrate_pre=None, optional_load=None):
     with open(DESC_ + f"real_bromide_desc_{_inc}.p", "wb") as q:
         pickle.dump(sub_br_dict, q)
     return ((sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc), rand)
-
-
-def get_new_atomprops(col):
-    ...
 
 
 if __name__ == "__main__":

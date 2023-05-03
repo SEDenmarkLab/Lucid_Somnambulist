@@ -608,7 +608,7 @@ def main(experiment, min_epoch_cutoff=50):
             # validation_split=0.10,
             validation_data=(xval, yval),
             callbacks=[stop_early, stop_nan],
-            batch_size=16,
+            batch_size=64,
         )
         tuner.results_summary()
         tuner.search_space_summary(extended=True)

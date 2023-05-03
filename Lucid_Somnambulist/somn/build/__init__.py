@@ -7,7 +7,10 @@
 # from parsing import InputParser
 
 
-from .parsing import InputParser, DataHandler, cleanup_handles
+from .parsing import InputParser, cleanup_handles
+
+# DataHandler,
+
 
 # from .assemble import assemble_descriptors_from_handles
 

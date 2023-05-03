@@ -9,5 +9,7 @@ Lucid_Somnambulist/somn/workflows/testing.csv
 **/__pycache__
 **/*.pyc
 **/*.ipynb
-Lucid_Somnambulist/somn/data/depreciation/*
-Lucid_Somnambulist/somn/data/dev/*
+Lucid_Somnambulist/somn/data/depreciation/
+Lucid_Somnambulist/somn/data/dev/
+Lucid_Somnambulist/somn/workflows/firstgen_calc_cat.py
+Lucid_Somnambulist/somn/workflows/somn_failed_to_parse/
