@@ -172,7 +172,6 @@ class tfDriver:
             curr_idx = 0
         elif self.organizer.log[-1] == self.organizer.partIDs[-1]:
             ## Condition is done; no more partitions, but this will prevent failure
-            # print("DEBUG")
             return None
         else:
             current = self.organizer.log[
@@ -219,14 +218,14 @@ class tfDriver:
 
         """
 
-        input_dimension = self.input_dim
+        # input_dimension=self.input_dim
         model = Sequential()
-        model.add(Input(shape=input_dimension))
+        # model.add(Input(shape=input_dimension))
         hp_n_1 = hp.Int(
-            "nodes_1", min_value=256, max_value=3000, step=64
+            "nodes_1", min_value=256, max_value=2496, step=64
         )  # 48 states possible
         hp_n_2 = hp.Int(
-            "nodes_2", min_value=128, max_value=1280, step=24
+            "nodes_2", min_value=128, max_value=968, step=24
         )  # 48 states possible
         hp_n_3 = hp.Int("nodes_3", min_value=8, max_value=256, step=8)
         hp_noise = hp.Float("gaus_noise", min_value=0.005, max_value=0.08, step=0.005)
@@ -235,11 +234,11 @@ class tfDriver:
         # hp_a_1 = hp.Choice('act1',values=['relu','selu','softmax','tanh','gelu'])
         # hp_a_2 = hp.Choice('act2',values=['relu','selu','softmax','tanh','gelu'])
         # hp_a_3 = hp.Choice('act3',values=['relu','selu','softmax','tanh','gelu'])
-        hp_a_1 = hp.Choice("act1", values=["relu"])
-        hp_a_2 = hp.Choice("act2", values=["relu"])
-        hp_a_3 = hp.Choice("act3", values=["relu"])
+        # hp_a_1 = hp.Choice("act1", values=["relu"])
+        # hp_a_2 = hp.Choice("act2", values=["relu"])
+        # hp_a_3 = hp.Choice("act3", values=["relu"])
         model.add(
-            GaussianNoise(
+            tf.keras.layers.GaussianNoise(
                 # stddev=0.05,
                 stddev=hp_noise,
                 # seed=1234,
@@ -250,8 +249,8 @@ class tfDriver:
         model.add(
             Dense(
                 hp_n_1,
-                activation=hp_a_1,
-                # activation = 'relu',
+                # activation=hp_a_1,
+                activation = 'relu',
                 # activity_regularizer=tf.keras.regularizers.l1_l2(l1=1e-5,l2=1e-4),
                 # kernel_regularizer=tf.keras.regularizers.l1_l2(l1=1e-5,l2=1e-4)
                 # input_shape=(self.input_dim,)
@@ -261,8 +260,8 @@ class tfDriver:
         model.add(
             Dense(
                 hp_n_2,
-                activation=hp_a_2,
-                # activation='relu',
+                # activation=hp_a_2,
+                activation='relu',
                 # activity_regularizer=tf.keras.regularizers.l1_l2(l1=1e-5,l2=1e-4),
                 # kernel_regularizer=tf.keras.regularizers.l1_l2(l1=1e-5,l2=1e-4)
             )
@@ -271,17 +270,22 @@ class tfDriver:
         model.add(
             Dense(
                 hp_n_3,
-                activation=hp_a_3,
-                # activation = 'relu',
+                # activation=hp_a_3,
+                activation = 'relu',
             )
         )
         model.add(Dense(1, activation="linear"))
-        hp_lr = hp.Choice("learning_rate", values=[1e-2, 1e-3, 1e-4, 1e-5, 1e-6])
+        # hp_lr = hp.Choice("learning_rate", values=[1e-2, 1e-3, 1e-4, 1e-5, 1e-6])
         # opt = tf.keras.optimizers.Adam(learning_rate=1e-4)
-        opt = Adam(learning_rate=hp_lr)
+
         # opt = tf.keras.optimizers.SGD(learning_rate=1e-4)
-        # opt = tf.keras.optimizers.Adadelta(learning_rate=1e-4)
+        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+            initial_learning_rate=1e-2,
+            decay_steps=100,
+            decay_rate=0.95)
+        # opt = tf.keras.optimizers.Adadelta(learning_rate=lr_schedule)
         # opt = tf.keras.optimizers.Adagrad(learning_rate=1e-4)
+        opt = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
         model.compile(
             optimizer=opt,
             loss="mse",
@@ -516,15 +520,16 @@ def save_model(model: Sequential):
 def get_hps(hps: kt.HyperParameters()):
     nodes_list = [hps.get("nodes_1"), hps.get("nodes_2"), hps.get("nodes_3")]
     dropout_list = [hps.get("dropout1"), hps.get("dropout2")]
-    act_list = [hps.get("act1"), hps.get("act2"), hps.get("act3")]
+    # act_list = [hps.get("act1"), hps.get("act2"), hps.get("act3")]
     node_str = "_".join([f + "n" for f in map(str, nodes_list)])
     dropout_str = "_".join([f + "d" for f in map(str, dropout_list)])
-    act_str = "_".join([f + "a" for f in map(str, act_list)])
-    out = "_".join([node_str, dropout_str, act_str])
+    # act_str = "_".join([f + "a" for f in map(str, act_list)]) #shrinking search space
+    # out = "_".join([node_str, dropout_str, act_str])
+    out = "_".join([node_str, dropout_str])
     return out
 
 
-def main(experiment, min_epoch_cutoff=50):
+def main(experiment, max_val_cutoff=20):
     """
     Driver for hypermodel searching.
 
@@ -533,6 +538,9 @@ def main(experiment, min_epoch_cutoff=50):
 
 
     """
+    config = tf.compat.v1.ConfigProto()
+    config.gpu_options.allow_growth = True
+    session = tf.compat.v1.Session(config=config)
     # import sys
     # exp = sys.argv[1]
     assert isinstance(experiment, str)
@@ -544,63 +552,59 @@ def main(experiment, min_epoch_cutoff=50):
         partition_dir=PART_,
         validation=True,
     )
+    
     drive = tfDriver(tforg)
-    json_buffer_path = OUTPUT_ + date__  # Slash after output
-    out_dir_path = OUTPUT_ + date__ + "/out/"  # Both slashes for out made here
+    json_buffer_path = OUTPUT_ + date__  # There is already a slash after output
+    out_dir_path = OUTPUT_ + date__ + "/out/"  # Both slashes for out needed here
     os.makedirs(json_buffer_path, exist_ok=True)
     os.makedirs(out_dir_path, exist_ok=True)
     logfile = open(
         json_buffer_path + "/logfile.txt", "w"
     )  # Directorys should be covered in above os.makedirs() call
-    splits = {}
-    csvs = glob(tforg.part_dir.rsplit("/", 1)[0] + "/*csv")
-    for f in csvs:
-        key = f.rsplit("_", 1)[1].split(".")[0]
-        val = pd.read_csv(f, header=0, index_col=0)
-        splits[key] = val.to_dict(orient="list")
-    # print(len(drive.organizer.partitions))
-    # tf.debugging.set_log_device_placement(True)
-    # gpus = tf.config.list_logical_devices('GPU')
-    ### Restart; skipping already done partitions ####
-    # for i in range(6):
-    #     drive.get_next_part()
+    # splits = {}
+    # csvs = glob(tforg.part_dir.rsplit("/", 1)[0] + "/*csv")
+    # for f in csvs:
+    #     key = f.rsplit("_", 1)[1].split(".")[0]
+    #     val = pd.read_csv(f, header=0, index_col=0)
+    #     splits[key] = val.to_dict(orient="list")
+    # # print(len(drive.organizer.partitions))
+    # # tf.debugging.set_log_device_placement(True)
+    # # gpus = tf.config.list_logical_devices('GPU')
+    # ### Restart; skipping already done partitions ####
+    # # for i in range(6):
+    # #     drive.get_next_part()
 
     for __k in range(len(drive.organizer.partitions)):
         xtr, xval, xte, ytr, yval, yte = [f[0] for f in drive.x_y]
         name_ = str(drive.current_part_id)
-        # tuner = kt.tuners.Hyperband(drive.full_search_model,
-        #             objective=kt.Objective('val_mean_squared_error','min'),
-        #             max_epochs=120,
-        #             factor=3,
-        #             # distribution_strategy=tf.distribute.MirroredStrategy(),
-        #             # distribution_strategy=tf.distribute.MirroredStrategy(gpus),
-        #             project_name='test_'+name_,
-        #             directory=out_dir_path+name_,
-        #             # directory=r'/home/nir2/tfwork/ROCHE_ws/Feb-26-2022-00-00/out/1000/',
-        #             overwrite=False
-        #             )
-        tuner = kt.tuners.BayesianOptimization(
-            drive.legacy_search_model,
-            objective=kt.Objective("val_mean_squared_error", "min"),
-            max_trials=120,
-            num_initial_points=5,
-            alpha=1e-3,
-            beta=2.8,
-            # distribution_strategy=tf.distribute.MirroredStrategy(),
-            # distribution_strategy=tf.distribute.MirroredStrategy(gpus),
-            project_name="test_" + name_,
-            directory=out_dir_path + name_,
-            # directory=r'/home/nir2/tfwork/ROCHE_ws/Feb-26-2022-00-00/out/1000/',
-            overwrite=True,
-        )
-        stop_early = EarlyStopping(monitor="val_mean_squared_error", patience=10)
+        tuner = kt.tuners.Hyperband(drive.full_search_model,
+                    objective=kt.Objective('val_mean_absolute_error','min'),
+                    max_epochs=120,
+                    factor=3,
+                    # distribution_strategy=tf.distribute.MirroredStrategy(),
+                    # distribution_strategy=tf.distribute.MirroredStrategy(gpus),
+                    project_name='test_'+name_,
+                    directory=out_dir_path+name_,
+                    # directory=r'/home/nir2/tfwork/ROCHE_ws/Feb-26-2022-00-00/out/1000/',
+                    overwrite=False
+                    )
+        # tuner = kt.tuners.BayesianOptimization(
+        #     drive.legacy_search_model,
+        #     objective=kt.Objective("val_mean_squared_error", "min"),
+        #     max_trials=120,
+        #     num_initial_points=5,
+        #     alpha=1e-3,
+        #     beta=2.8,
+        #     # distribution_strategy=tf.distribute.MirroredStrategy(),
+        #     # distribution_strategy=tf.distribute.MirroredStrategy(gpus),
+        #     project_name="test_" + name_,
+        #     directory=out_dir_path + name_,
+        #     # directory=r'/home/nir2/tfwork/ROCHE_ws/Feb-26-2022-00-00/out/1000/',
+        #     overwrite=True,
+        # )
+        stop_early = EarlyStopping(monitor="val_mean_absolute_error", patience=10)
         stop_nan = TerminateOnNaN()
-        lr_sched = ReduceLROnPlateau(
-            monitor="val_loss",
-            factor=0.2,
-            patience=4,
-        )
-        tensorboard = TensorBoard(log_dir=out_dir_path + name_, histogram_freq=1)
+        tensorboard = TensorBoard(log_dir=out_dir_path + name_, histogram_freq=2)
         tuner.search(
             xtr,
             ytr,
@@ -609,10 +613,11 @@ def main(experiment, min_epoch_cutoff=50):
             validation_data=(xval, yval),
             callbacks=[stop_early, stop_nan],
             batch_size=64,
+            verbose=0
         )
         tuner.results_summary()
         tuner.search_space_summary(extended=True)
-        best_hp_list = tuner.get_best_hyperparameters(num_trials=8)  # Get top hypers
+        best_hp_list = tuner.get_best_hyperparameters(num_trials=5)  # Get top hypers
         best_hps = best_hp_list[0]
         model = tuner.hypermodel.build(best_hps)
         history = model.fit(
@@ -623,10 +628,10 @@ def main(experiment, min_epoch_cutoff=50):
             use_multiprocessing=True,
             # validation_split=0.15,
             validation_data=(xval, yval),
-            callbacks=[tensorboard, lr_sched, stop_nan],
+            callbacks=[tensorboard, stop_nan],
             epochs=200,
         )  ## CHANGE increased this to 200 with change in optimizer to Adam, variable learning rate, and now using data augmentation during train
-        val_hist = history.history["val_mean_squared_error"]
+        val_hist = history.history["val_mean_absolute_error"]
         # print(history.history.keys())
         # print(val_hist)
         # for i,j in list(enumerate(val_hist[75:]))[::-1]:
@@ -634,11 +639,12 @@ def main(experiment, min_epoch_cutoff=50):
         #     if j == min(val_hist[75:]):
         #         best_epoch=i+76
         #         break
-        best_epoch = val_hist.index(min(val_hist))
-        # print(best_epoch)
-        if best_epoch < min_epoch_cutoff:
-            logfile.write(name_ + " failed by not reaching minimum number of epochs\n")
+        if min(val_hist) > max_val_cutoff:
+            print(f"validation error {min(val_hist)} was too large for part {name_}")
+            drive.get_next_part()
             continue
+        best_epoch = val_hist.index(min(val_hist))
+        #     continue
         for i, hps in enumerate(best_hp_list):
             hypermodel = tuner.hypermodel.build(hps)
             history = hypermodel.fit(
@@ -655,28 +661,29 @@ def main(experiment, min_epoch_cutoff=50):
             tes_result = hypermodel.evaluate(xte, yte)
             mse_result = get_mse_metrics(hypermodel, xtr, (xval, xte), ytr, (yval, yte))
             mae_result = get_mae_metrics(hypermodel, xtr, (xval, xte), ytr, (yval, yte))
-            if (
-                mae_result[1] < 20.0
-            ):  # Validation must pass 20% MAE. Arbitrary cutoff for whether to save a model or not.
-                ### Need to test to_json() and tf.keras.models.model_from_json() for just saving config.
-                # tf.keras.saving.save_model(hypermodel,out_dir_path + name_ + "hpset" + str(i) + "_" + get_hps(hps) + ".h5",overwrite=False,save_format='h5',save_traces=False)
-                hypermodel.save(
-                    out_dir_path
-                    + name_
-                    + "hpset"
-                    + str(i)
-                    + "_"
-                    + get_hps(hps)
-                    + ".h5",
-                    overwrite=False,
-                    save_format="h5",
-                )
-                ### Below is a prototype for json serialization of JUST the model configuration. This removes the needless
-                ### save/load of weights that will just be retrained anyway.
-                # json_model = hypermodel.to_json()
-                # with open(f"{out_dir_path}{name_}_hpset{str(i)}_{get_hps(hps)}.json",'w') as g:
-                #     json.dump(json_model,g)
-
+            hypermodel.save(
+                out_dir_path
+                + name_
+                + "hpset"
+                + str(i)
+                + "_"
+                + get_hps(hps)
+                + ".h5",
+                overwrite=False,
+                save_format="h5",
+            )
+            #### Not tested yet - for later development ####
+            # if (
+            #     mae_result[1] < 20.0
+            # ):  # Validation must pass 20% MAE. Arbitrary cutoff for whether to save a model or not.
+            #     ### Need to test to_json() and tf.keras.models.model_from_json() for just saving config.
+            #     # tf.keras.saving.save_model(hypermodel,out_dir_path + name_ + "hpset" + str(i) + "_" + get_hps(hps) + ".h5",overwrite=False,save_format='h5',save_traces=False)
+            #     ### Below is a prototype for json serialization of JUST the model configuration. This removes the needless
+            #     ### save/load of weights that will just be retrained anyway.
+            #     # json_model = hypermodel.to_json()
+            #     # with open(f"{out_dir_path}{name_}_hpset{str(i)}_{get_hps(hps)}.json",'w') as g:
+            #     #     json.dump(json_model,g)
+            #### Untested development json serialization of models
             yval_p = hypermodel.predict(xval).ravel()
             yte_p = hypermodel.predict(xte).ravel()
             ytr_p = hypermodel.predict(xtr).ravel()
@@ -687,16 +694,18 @@ def main(experiment, min_epoch_cutoff=50):
                     "best_epoch": best_epoch,
                     "top_"
                     + str(len(best_hp_list))
-                    + "_hyper_strings": [get_hps(f) for f in best_hp_list[1:]],
-                    "val_history": val_hist,
-                    "val_result": {i + 1: val_result},
-                    "test_result": {i + 1: tes_result},
-                    "mse_result": {i + 1: mse_result},
-                    "mae_result": {i + 1: mae_result},
-                    "train_loss": {i + 1: train_h},
-                    "val_loss": {i + 1: val_h},
+                    + "_hyper_strings": [get_hps(f) for f in best_hp_list],
+                    "val_history_deep": val_hist,
+                    "val_result": {str(i + 1) + "hp_" + name_: val_result},
+                    "test_result": {str(i + 1) + "hp_" + name_: tes_result},
+                    "mse_result": {str(i + 1) + "hp_" + name_: mse_result},
+                    "mae_result": {str(i + 1) + "hp_" + name_: mae_result},
+                    "train_loss": {str(i + 1) + "hp_" + name_: train_h},
+                    "val_loss": {str(i + 1) + "hp_" + name_: val_h},
+                    "test_correlation" : {},
+                    "val_correlation" : {}
                 }
-                tforg.results[name_]["split"] = splits["spl" + name_]
+                # tforg.results[name_]["split"] = splits["spl" + name_]
             else:  ## Other iterations, append results to dictionary entry
                 keys = [
                     "val_result",
@@ -719,96 +728,27 @@ def main(experiment, min_epoch_cutoff=50):
                 ):  # requires above lists to be ordered correctly, but is fairly efficient
                     tforg.results[name_][k][str(i + 1) + "hp_" + name_] = v
             # plot_results(outdir=out_dir_path,expkey=name_+'_'+str(i)+'hps_valtest',train=(yval.ravel(),yval_p),test=(yte.ravel(),yte_p))
-            plot_results(
+            test_lin_met = plot_results(
                 outdir=out_dir_path,
                 expkey=name_ + "test" + "_hp" + str(i),
                 train=(ytr.ravel(), ytr_p),
                 test=(yte.ravel(), yte_p),
             )
-            plot_results(
+            val_lin_met = plot_results(
                 outdir=out_dir_path,
                 expkey=name_ + "val" + "_hp" + str(i),
                 train=(ytr.ravel(), ytr_p),
                 test=(yval.ravel(), yval_p),
             )
+            #### Linear regression metrics - slope, intercept, then R2 ####
+            tforg.results[name_]['test_correlation'][i+1] = test_lin_met
+            tforg.results[name_]['val_correlation'][i+1] = val_lin_met
         buffer_log = json.dumps(tforg.results[name_])
-        logfile.write(buffer_log + "\n")
+        logfile.write(name_ + "," + str(__k) +  buffer_log + "\n")
         logfile.flush()
-        print("Completed partition " + str(__k))
+        print("Completed partition " + str(__k) + "\n\n")
         drive.get_next_part()
 
     with open(json_buffer_path + "final_complete_log" + date__ + ".json", "w") as g:
         g.write(json.dumps(tforg.results))
 
-
-#### For reference - old model constructors
-
-# def full_search_model(hp):
-#     """
-#     This will look for one hidden layer NNs, with dropouts, and an output layer with no activation function
-#     It will allow changing activation functions between layers.
-
-#     NOTE: if interested in multiclass classification, use softmax with # nodes = # classes,
-#     multilabel classification use sigmoid with # nodes = number labels, and
-#     use linear with regression and one node
-
-#     """
-
-#     # input_dimension=self.input_dim
-#     model = Sequential()
-#     # model.add(Input(shape=input_dimension))
-#     hp_n_1 = hp.Int(
-#         "nodes_1", min_value=256, max_value=6400, step=64
-#     )  # 48 states possible
-#     hp_n_2 = hp.Int(
-#         "nodes_2", min_value=128, max_value=1280, step=24
-#     )  # 48 states possible
-#     hp_n_3 = hp.Int("nodes_3", min_value=8, max_value=256, step=8)
-#     hp_d_1 = hp.Float("dropout1", min_value=0.0, max_value=0.95)
-#     hp_d_2 = hp.Float("dropout2", min_value=0.0, max_value=0.95)
-#     hp_a_1 = hp.Choice("act1", values=["relu", "softmax", "tanh", "exp"])
-#     hp_a_2 = hp.Choice("act2", values=["relu", "softmax", "tanh"])
-#     hp_a_3 = hp.Choice("act3", values=["relu", "softmax", "tanh"])
-#     model.add(Dense(hp_n_1, activation=hp_a_1))
-#     model.add(Dropout(hp_d_1))
-#     model.add(Dense(hp_n_2, activation=hp_a_2))
-#     model.add(Dropout(hp_d_2))
-#     model.add(Dense(hp_n_3, activation=hp_a_3))
-#     model.add(Dense(1), activation="linear")
-#     hp_lr = hp.Choice("learning_rate", values=[1e-1, 1e-2, 1e-3, 1e-4, 1e-5])
-#     model.compile(optimizer=Adam(learning_rate=hp_lr), loss="mse", metrics=["accuracy"])
-#     return model
-
-
-# def basic_2hl_model(X: np.array):
-#     """
-#     Early model framework that seemed to work reasonably well
-
-#     Check input dimensionality to ensure that it is right
-
-#     """
-#     nodes_1 = 128
-#     nodes_2 = 64
-#     d1 = 0.23
-#     d2 = 0.23
-#     input_dimension = X.shape[1]
-#     model = Sequential()
-#     model.add(
-#         GaussianNoise(
-#             # stddev=0.05,
-#             stddev=0.005,
-#             # seed=1234,
-#             input_shape=(input_dimension,),
-#         )
-#     )
-#     model.add(Dense(nodes_1, activation="relu"))
-#     model.add(Dropout(d1))
-#     model.add(Dense(nodes_2, activation="relu"))
-#     model.add(Dropout(d2))
-#     model.add(Dense(1, activation="linear"))
-#     model.compile(
-#         optimizer=Adam(learning_rate=5e-3),
-#         loss="mse",
-#         metrics=["accuracy", "mse", "mae"],
-#     )
-#     return model

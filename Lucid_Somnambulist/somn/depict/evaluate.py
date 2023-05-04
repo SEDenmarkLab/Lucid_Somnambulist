@@ -44,3 +44,4 @@ def plot_results(outdir: str, expkey: str, train: (np.array), test: (np.array)):
         75.0, 7.0, f"$ R^2 = {r**2:0.4f} $ \n $ k = {k:0.3f} $ \n $ p = {p:1.3e} $"
     )
     plt.savefig(outdir + expkey + ".png")
+    return k,b,r**2

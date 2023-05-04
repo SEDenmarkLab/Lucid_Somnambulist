@@ -242,7 +242,7 @@ class PropheticInput:
             name="atomprops", scratch_dir=SCRATCH_ + "xtb_scratch/", nprocs=2
         )
         atomprops = concur(xtb.conformer_atom_props)()
-        print(atomprops)
+        # print(atomprops[0][0])
         atomprop_out = {}
         failures = []
         for confap, name in zip(atomprops, self.conformers.mol_index):

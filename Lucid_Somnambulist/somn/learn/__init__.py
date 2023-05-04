@@ -1087,3 +1087,79 @@ def prep_for_inference():
 
 # outdf = pd.concat(test_dfs, axis=1)
 # outdf.to_csv(out_dir_path + "all_combined_test_preds.csv")
+
+
+
+
+
+#### For reference - old model constructors
+
+# def full_search_model(hp):
+#     """
+#     This will look for one hidden layer NNs, with dropouts, and an output layer with no activation function
+#     It will allow changing activation functions between layers.
+
+#     NOTE: if interested in multiclass classification, use softmax with # nodes = # classes,
+#     multilabel classification use sigmoid with # nodes = number labels, and
+#     use linear with regression and one node
+
+#     """
+
+#     # input_dimension=self.input_dim
+#     model = Sequential()
+#     # model.add(Input(shape=input_dimension))
+#     hp_n_1 = hp.Int(
+#         "nodes_1", min_value=256, max_value=6400, step=64
+#     )  # 48 states possible
+#     hp_n_2 = hp.Int(
+#         "nodes_2", min_value=128, max_value=1280, step=24
+#     )  # 48 states possible
+#     hp_n_3 = hp.Int("nodes_3", min_value=8, max_value=256, step=8)
+#     hp_d_1 = hp.Float("dropout1", min_value=0.0, max_value=0.95)
+#     hp_d_2 = hp.Float("dropout2", min_value=0.0, max_value=0.95)
+#     hp_a_1 = hp.Choice("act1", values=["relu", "softmax", "tanh", "exp"])
+#     hp_a_2 = hp.Choice("act2", values=["relu", "softmax", "tanh"])
+#     hp_a_3 = hp.Choice("act3", values=["relu", "softmax", "tanh"])
+#     model.add(Dense(hp_n_1, activation=hp_a_1))
+#     model.add(Dropout(hp_d_1))
+#     model.add(Dense(hp_n_2, activation=hp_a_2))
+#     model.add(Dropout(hp_d_2))
+#     model.add(Dense(hp_n_3, activation=hp_a_3))
+#     model.add(Dense(1), activation="linear")
+#     hp_lr = hp.Choice("learning_rate", values=[1e-1, 1e-2, 1e-3, 1e-4, 1e-5])
+#     model.compile(optimizer=Adam(learning_rate=hp_lr), loss="mse", metrics=["accuracy"])
+#     return model
+
+
+# def basic_2hl_model(X: np.array):
+#     """
+#     Early model framework that seemed to work reasonably well
+
+#     Check input dimensionality to ensure that it is right
+
+#     """
+#     nodes_1 = 128
+#     nodes_2 = 64
+#     d1 = 0.23
+#     d2 = 0.23
+#     input_dimension = X.shape[1]
+#     model = Sequential()
+#     model.add(
+#         GaussianNoise(
+#             # stddev=0.05,
+#             stddev=0.005,
+#             # seed=1234,
+#             input_shape=(input_dimension,),
+#         )
+#     )
+#     model.add(Dense(nodes_1, activation="relu"))
+#     model.add(Dropout(d1))
+#     model.add(Dense(nodes_2, activation="relu"))
+#     model.add(Dropout(d2))
+#     model.add(Dense(1, activation="linear"))
+#     model.compile(
+#         optimizer=Adam(learning_rate=5e-3),
+#         loss="mse",
+#         metrics=["accuracy", "mse", "mae"],
+#     )
+#     return model
