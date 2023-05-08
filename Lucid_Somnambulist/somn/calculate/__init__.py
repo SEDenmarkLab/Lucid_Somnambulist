@@ -27,7 +27,9 @@ from .preprocess import (
     split_outsamp_reacts,
     zero_nonzero_rand_splits,
     random_splits,
-    prep_for_binary_classifier,
+    # prep_for_binary_classifier,
+    prep_mc_labels,
+    preprocess_maxdiff,
 )
 
 from .geom import PropheticInput

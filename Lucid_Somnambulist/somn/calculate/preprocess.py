@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.feature_selection import VarianceThreshold
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, MultiLabelBinarizer
 import random
 import itertools
 from copy import deepcopy
@@ -478,34 +478,54 @@ def random_splits(df, validation=False, n_splits: int = 1, fold: int = 7):
     return out
 
 
-def prep_for_binary_classifier(df_in, yield_cutoff: int = 1):
+def prep_mc_labels(df, zero_buffer: int = 3):
     """
-    Prepare data for classifier by getting class labels from continuous yields
+    Prepare y data for multiclass labels.
 
-    NOT TESTED YET
+    Takes dataframe (expects index) and converst to integer labels, then converts those to a binary label of length 5.
+
+    0 is <= zero_buffer, 1 is > zero_buffer, < 25, etc for the remaining 3 quartiles of yield.
+
+    For example, output will be [0,0,1,0,0] for a yield of > 25% and <= 50%.
 
     """
-    if type(df_in) == tuple:
-        out = []
-        for df in df_in:
-            df = df.where(
-                df > yield_cutoff, other=0, inplace=True
-            )  # collapse yields at or below yield cutoff to class zero
-            df = df.where(
-                df == 0, other=1, inplace=True
-            )  # collapse yields to class one
-            out.append(df)
-        return tuple(out)
-    elif isinstance(df_in, pd.DataFrame):
-        df = df.where(
-            df > yield_cutoff, other=0, inplace=True
-        )  # collapse yields at or below yield cutoff to class zero
-        df = df.where(df == 0, other=1, inplace=True)  # collapse yields to class one
-        return df
-    else:
-        raise Exception(
-            "Passed incorrect input to staticmethod of DataHandler to prep data for classification - check input."
-        )
+    input_y = df.values.to_numpy()
+    bins = [zero_buffer, 25, 50, 75, 100]
+    binned_y = (
+        np.digitize(input_y, bins, right=True) + 1
+    )  # Generates integer based on a value being <= the values in bins (i.e. <= zero_buffer is zero, > zb and <= 25 is one, etc ...)
+    new_y = MultiLabelBinarizer().fit_transform([tuple([k]) for k in binned_y])
+    return pd.DataFrame(new_y, index=df.index)
+
+
+# def prep_for_binary_classifier(df_in, yield_cutoff: int = 1):
+#     """
+#     Prepare data for classifier by getting class labels from continuous yields
+
+#     DEPRECIATED
+
+#     """
+#     if type(df_in) == tuple:
+#         out = []
+#         for df in df_in:
+#             df = df.where(
+#                 df > yield_cutoff, other=0, inplace=True
+#             )  # collapse yields at or below yield cutoff to class zero
+#             df = df.where(
+#                 df == 0, other=1, inplace=True
+#             )  # collapse yields to class one
+#             out.append(df)
+#         return tuple(out)
+#     elif isinstance(df_in, pd.DataFrame):
+#         df = df.where(
+#             df > yield_cutoff, other=0, inplace=True
+#         )  # collapse yields at or below yield cutoff to class zero
+#         df = df.where(df == 0, other=1, inplace=True)  # collapse yields to class one
+#         return df
+#     else:
+#         raise Exception(
+#             "Passed incorrect input to staticmethod of DataHandler to prep data for classification - check input."
+#         )
 
 
 def new_mask_random_feature_arrays(
@@ -618,7 +638,7 @@ def preprocess_maxdiff(input: pd.DataFrame, concat_grid_desc=True, threshold=0.8
         ### Get percentile rank - select pct-based slice of features instead of number - like a threshold cutoff
         ranking = diff.rank(pct=True)
         idx = ranking[ranking >= threshold].index.to_list()
-        return df[idx]
+        return df[idx]  # Going to reorder the features
 
     def pull_type_(df):
         labels = df.columns
