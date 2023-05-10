@@ -19,17 +19,25 @@ This work has a dependency on code developed within the Denmark Laboratories ind
   If using CPUs, keep in mind that this tool has not been optimized for distributed CPU support during neural network training, so that may require some development. This is only recommended for users with some expertise and familiarity with tensorflow documentation. However, to run this program for just making predictions as a non-expert, this can be done without changes because that process uses pre-trained models. 
   
 # Installation
-  This code was developed with miniconda as a package manager, and it is strongly recommended to use that. An export of the environment is provided, and this can be installed with the following command:
+This code was developed with miniconda as a package manager, and it is strongly recommended to use that. An export of the environment is provided, and this can be installed with the following command:
   
  ```bash
- conda env create -f /path/to/package/Lucid_Somnambulist/somn_dev.yml
+ conda env create -f /path/to/package/Lucid_Somnambulist/somn_environment.yml
  ```
 
-  After creating this environment, install the package:
+Then, activate the environment:
+
+```bash
+conda activate somn
+```
+
+ After creating this environment, install this cloned repository locally:
  
  ```bash
  pip install /path/to/package/Lucid_Somnambulist/Lucid_Somnambulist
  ```
+ 
+ Finally, there is a dependency on SEDenmarkLab/molli-firstgen (as of 5.10.2023, branch 0.2.3). Install that package following its instructions into the environment.
  
  # Getting Started
  (Under development)
