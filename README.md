@@ -20,13 +20,13 @@ This work has a dependency on code developed within the Denmark Laboratories ind
   This code was developed with miniconda as a package manager, and it is strongly recommended to use that. An export of the environment is provided, and this can be installed with the following command:
   
  ```bash
-  $conda env create -f /path/to/package/Lucid_Somnambulist/somn_dev.yml
+  conda env create -f /path/to/package/Lucid_Somnambulist/somn_dev.yml
  ```
 
   After creating this environment, install the package:
  
  ```bash
-  $ pip install /path/to/package/Lucid_Somnambulist/Lucid_Somnambulist
+  pip install /path/to/package/Lucid_Somnambulist/Lucid_Somnambulist
  ```
  
  # Getting Started
