@@ -3,7 +3,7 @@ Welcome to the public repository for code developed in collaboration between Hof
 
 This repository is under development.
 
-This work has a dependency on code developed within the Denmark Laboratories independent of this collaboration, and an alpha-test version of that code is available as the branch molli-firstgen-0.2.3. 
+This work has a dependency on code developed within the Denmark Laboratories, which can be found here: https://github.com/SEDenmarkLab/molli_firstgen.git. 
 
 # Description
  This repository contains a working project for a command-line tool that is meant for a non-expert. That tool still requires a basic understanding of how to install and run a command-line program on a Linux machine. The input of structures will be restricted to smiles strings (which can be obtained from most molecular drawing programs), cdxml (Chemdraw XML), or mol2 files. From those inputs, the workflows module has scripts which can be used from command-line to generate 3D geometries, perform a conformer search, calculate atomic properties necessary for RDF descriptors, and then calculate those RDF descriptors. Following that, a workflow to generate predictions for said new reactants can be used, and will take a set of pre-trained neural network models to make predictions. 
