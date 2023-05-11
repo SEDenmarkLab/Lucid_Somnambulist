@@ -1,32 +1,44 @@
-![midjourney_1](https://user-images.githubusercontent.com/46203561/189413673-c6e184e9-218c-417e-9402-461f284eabc2.png)
-Image credit: Image was created using the official Midjourney server and is being used here under a creative commons license. [see https://www.midjourney.com/]
+Under Development
+
 # Lucid_Somnambulist
 Welcome to the public repository for code developed in collaboration between Hoffmann-La Roche (Process Chemistry & Catalysis in Basel, Switzerland) and the Scott E. Denmark Laboratory (University of Illinois at Urbana Champaign) to provide experimentalists rapid access to predicted reaction yields for Buchwald-Hartwig couplings. 
 
-This work has a dependency on code developed within the Denmark Laboratories independent of this collaboration, and an alpha-test version of that code is contained herein. A new and improved version of that work can be found here: [molli 1.0]
+This work has a dependency on code developed within the Denmark Laboratories independent of this collaboration, and an alpha-test version of that code is available as the branch molli-firstgen-0.2.3. 
 
-# Philosophy
-This package is designed with the following ecosystem in mind: 
-1. Reactant in silico libraries
-Large, dynamic libraries of reactant structures are intended to be stored as serialized collection objects (see molli package). When a user seeks predictions for new compounds, these can be input via a chemdraw structure (.cdxml), and appended to the existing database of reactants. Nucleophiles and electrophiles are treated separately. Code designed to calculate descriptors used in this work should be applicable to any nucleophile which has an N-H bond (which will react in a Buchwald-Hartwig coupling) and an electrophile with a single (hetero)aryl-C-Br bond. 
+# Description
+ This repository contains a working project for a command-line tool that is meant for a non-expert. That tool still requires a basic understanding of how to install and run a command-line program on a Linux machine. The input of structures will be restricted to smiles strings (which can be obtained from most molecular drawing programs), cdxml (Chemdraw XML), or mol2 files. From those inputs, the workflows module has scripts which can be used from command-line to generate 3D geometries, perform a conformer search, calculate atomic properties necessary for RDF descriptors, and then calculate those RDF descriptors. Following that, a workflow to generate predictions for said new reactants can be used, and will take a set of pre-trained neural network models to make predictions. 
+ The output, for now, will be a .csv file (which can be opened in text editors or Microsoft Excel) with predicted yields and their associated reaction handles. Visualizations have been developed which are more user-friendly, and they will be released when they are ready [5.10.2023]. Note that expectations of performance should be based on the discussion in the manuscript (10.26434/chemrxiv-2022-hspwv-v2). Specifically, requesting predictions for couplings far outside of the scope of the dataset will produce suboptimal performance. The best way to understand this is by looking at the supporting information, where a list of dataset couplings is provided along with a one-page summary for each coupling of the models’ prediction performance on each coupling.
+ 
+ This repository contains the code necessary to "restart" the active learning workflow described in the associated preprint article with this work: 10.26434/chemrxiv-2022-hspwv-v2. Doing so can improve predictive power for new types of couplings, as described in the manuscript. To do this, clone this repository and read the documentation on how to use the "workflows" section. Please note that this portion is still under development as of 5.10.2023, but supports the calculation of new reactant descriptors from smiles/cdxml/mol2 input structures, a workflow to update models when new data is added, and a workflow for making predictions on new reactants. There are further "utility" components which are still under development, in particular the prediction processing and visualization workflows. As of 5.10.2023, raw predictions are available as a .csv file. 
+ 
+  To apply this project framework to another chemical system, the somn.data module, which contains descriptors for catalyst, solvent, and base, as well as reactants, can be changed. Doing this requires an understanding of programming. The radial distance function (RDF) descriptor developed in this work can be modified to apply to other types of reactants. For now, it is implemented for nitrogen nucleophiles, (hetero)aryl bromides, and (hetero)aryl chlorides. The necessary change (outside of the scope of this repository) would involve identifying the reactive atom, which serves as an origin for defining the RDF descriptor spherical slices (see manuscript), which is a relatively simple problem to solve. The calculation of molecular geometries and atomic properties necessary for RDF descriptor calculation will still work. 
+  
+# Requirements
+  This code was developed on Ubuntu OS (used with 20.04 and 22.04), and has been tested some on wsl2. Further testing is planned, with the ultimate goal of releasing a container image with the necessary programs, but we recommend using Ubuntu 20.04 if possible. 
+  NVidia GPUs with a compute capability above 8.6 are recommended, and will require installation of the appropriate drivers. We strongly encourage a user to see tensorflow documentation to look for latest tested linux GPU builds to ensure that the CUDA and cuDNN versions match a tested build configuration. [https://www.tensorflow.org/install/source#tested_build_configurations]
+  If using CPUs, keep in mind that this tool has not been optimized for distributed CPU support during neural network training, so that may require some development. This is only recommended for users with some expertise and familiarity with tensorflow documentation. However, to run this program for just making predictions as a non-expert, this can be done without changes because that process uses pre-trained models. 
+  
+# Installation
+This code was developed with miniconda as a package manager, and it is strongly recommended to use that. An export of the environment is provided, and this can be installed with the following command:
+  
+ ```bash
+ conda env create -f /path/to/package/Lucid_Somnambulist/somn_environment.yml
+ ```
 
-2. [Backend] Catalyst/Condition libraries
-This space is designed to not be dynamic, but instead fixed as a dictionary of allowable conditions. These are intended to represent the relevant dimensions broadly, and thus should provide reasonable coverage of known reactivity trends. The chemical descriptors calculated here are essentially static, until one desires to add new data to an existing dataset. 
+Then, activate the environment:
 
-3. Reaction Space
-Using unsupervised learning, each reactant type (nucleophile and electrophile) is clustered into groups of "like" reactants. These clusters of reactants then define a "reaction space" - an array of every possible combination of each cluster of each reactant. This space broadly represents the feature space of the in silico library of reactants currently described in the ecosystem. This space is independent of static catalyst/condition libraries. The goal of this representation is to visualize the applicability domain achievable with modeling in terms of reactant structures. This directly relates to the generalizability of models trained on the dataset. 
+```bash
+conda activate somn
+```
 
-4. [Backend] Database and Dataset Partitions
-This is where reaction data is stored. It is intended to be a dynamic, serializable structure which can be recalled rapidly when training models. Pandas dataframes are serialized in the hdf5 format (subject to change). 
-
-5. [Backend] Modeling
-Modeling takes two main forms: (1) establishing the coverage of reaction space by a current snapshot of a dataset by broadly searching model architectures and hyperparameter configurations, and (2) rapidly generating inferences with ensembles of re-trained, pre-validated model architectures and hyperparameter configurations. The first step is intended to be used by the developers/overseers of a reaction system, and the second is intended to be usable by any experimentalist. Periodically, new data acquired should be added to the dataset, and step (1) should be redone to create a new library of validated architectures and configurations for inference-modeling (2). 
-
-6. [Backend] Descriptor Calculations for Ligands and Reactants
-This process is automated for ease-of-use. Grimme's xTB python package is used to (1) generate initial 3D geometries from 2D graphs input by the user, (2) search for and screen conformers using Grimme's CREST package, and (3) scrape relevant atomic property data and serialize it for conformer ensembles of structures in a heirarchical dictionary (for reactants) or align and store 3D structures (for catalysts). Then, reactant descriptors are computed using 3D coordinates and atomic properties to (1) bin atoms into radial bins for each conformer of each reactant, and (2) tabulate the relevant descriptor from the relevant atomic property of said atom. Finally, values are averaged across conformers and serialized. Finally, catalyst descriptors are calculated by using the alignment to define a plane of forced symmetry, construct a grid around the catalyst conformer ensembles, then prune that grid to half of the 3D structures. Finally, grid-based descriptors developed in the Denmark Laboratories and described elsewhere are calculated and serialized for each catalyst. The descriptor calculation for reactants is more rapid, as these are intended to be generalizable parameters. 
-
-
-Temporary sketch:
-![Lucid Somnambulist_3_1_2023](https://user-images.githubusercontent.com/46203561/222112280-61d2485f-3b9b-43a3-9af2-7b3ae113cb98.svg)
-
-
+ After creating this environment, install this cloned repository locally:
+ 
+ ```bash
+ pip install /path/to/package/Lucid_Somnambulist/Lucid_Somnambulist
+ ```
+ 
+ Finally, there is a dependency on SEDenmarkLab/molli-firstgen (as of 5.10.2023, branch 0.2.3). Install that package following its instructions into the environment.
+ 
+ # Getting Started
+ (Under development)
+  
