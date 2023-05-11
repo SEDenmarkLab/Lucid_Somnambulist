@@ -1,6 +1,8 @@
 # Lucid_Somnambulist
 Welcome to the public repository for code developed in collaboration between Hoffmann-La Roche (Process Chemistry & Catalysis in Basel, Switzerland) and the Scott E. Denmark Laboratory (University of Illinois at Urbana Champaign) to provide experimentalists rapid access to predicted reaction yields for Buchwald-Hartwig couplings. 
 
+This repository is under development.
+
 This work has a dependency on code developed within the Denmark Laboratories independent of this collaboration, and an alpha-test version of that code is available as the branch molli-firstgen-0.2.3. 
 
 # Description
