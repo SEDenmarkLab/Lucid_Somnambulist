@@ -531,8 +531,8 @@ def prep_mc_labels(df, zero_buffer: int = 3):
 def new_mask_random_feature_arrays(
     real_feature_dataframes: (pd.DataFrame),
     rand_feat_dataframes: (pd.DataFrame),
-    corr_cut=None,
     _vt=None,
+    prophetic=False,
 ):
     """
     Use preprocessing on real features to mask randomized feature arrays, creating an actual randomized feature test which
@@ -542,13 +542,22 @@ def new_mask_random_feature_arrays(
 
     rand out then real out as two tuples
 
+    Can also be used on prophetic features - set prophetic keyword to true DEV
+
+
+
     """
     ### Input frames are columns-instances, rows-features. For unsupervised feature selection, tr/va/te can be treated together
     labels = [str(f) for f in range(len(real_feature_dataframes))]
     combined_df = pd.concat(
         real_feature_dataframes, axis=1, keys=labels
     )  # concatenate instances on columns
-    comb_rand = pd.concat(rand_feat_dataframes, axis=1, keys=labels)
+    if prophetic == False:  # Using random features
+        comb_rand = pd.concat(rand_feat_dataframes, axis=1, keys=labels)
+    elif (
+        prophetic == True
+    ):  # MUST be a single df in a tuple/list, and is for prophetic reactions being masked
+        comb_rand = rand_feat_dataframes[0]
     mask = list(
         combined_df.nunique(axis=1) != 1
     )  # Boolean for rows with more than one unique value
@@ -566,28 +575,18 @@ def new_mask_random_feature_arrays(
     vt_rand = vt.transform(filtered_rand.transpose().to_numpy())
     sc_vt_real = sc.fit_transform(vt_real)
     sc_vt_rand = sc.transform(vt_rand)
-    ### This part is clunky, but it makes sure that either logical condition works.
-    if corr_cut == None:
-        proc_df_real = pd.DataFrame(sc_vt_real)
-        proc_df_rand = pd.DataFrame(sc_vt_rand)
-        # elif type(corr_cut) == float and corr_cut < 1.0:
-        #     proc_df_real = pd.DataFrame(sc_vt_real)
-        #     proc_df_rand = pd.DataFrame(sc_vt_rand)
-        #     print(proc_df_real.columns)
-        #     ### Only need to fit on real - the random features are random, after all. This also takes a lot of time, and this ensure direct 1:1 comparison.
-        #     correlated_feats = corrX_new(proc_df_real, cut=corr_cut)
-        #     proc_df_real.drop(columns=correlated_feats, inplace=True)
-        #     proc_df_rand.drop(columns=correlated_feats, inplace=True)
-        # print(proc_df_real.columns)
-    else:
-        raise Exception("Correlation cutoff under development")
+    proc_df_real = pd.DataFrame(sc_vt_real)
+    proc_df_rand = pd.DataFrame(sc_vt_rand)
     processed_rand_feats = pd.DataFrame(
         np.transpose(proc_df_rand.to_numpy()), columns=filtered_df.columns
     )  # Ensures labels stripped; gives transposed arrays (row = feature, column= instance)
     processed_real_feats = pd.DataFrame(
         np.transpose(proc_df_real.to_numpy()), columns=filtered_df.columns
     )
-    output_rand = tuple([processed_rand_feats[lbl] for lbl in labels])
+    if prophetic == False:
+        output_rand = tuple([processed_rand_feats[lbl] for lbl in labels])
+    elif prophetic == True:
+        output_rand = processed_rand_feats
     output_real = tuple([processed_real_feats[lbl] for lbl in labels])
     return output_rand, output_real
 
