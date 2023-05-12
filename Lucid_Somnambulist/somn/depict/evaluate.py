@@ -69,21 +69,26 @@ def plot_results(
         keys=["train", "val", "test"],
     )
     df.reset_index(inplace=True)  # Gets keys to be level_0 column
+    df["partition"] = df["level_0"]
     g = sns.lmplot(
         data=df,
         x="observed",
         y="predicted",
-        col="level_0",
-        ci=None,
+        col="partition",
+        hue="partition",
+        ci=85,
         height=5,
         aspect=1,
         palette="muted",
         scatter_kws={
-            "s": 20,
-            "alpha": 0.75,
+            "s": 15,
+            "alpha": 0.50,
         },
+        legend_out=False,
+        truncate=True,
+        robust=True,
     )
-    g.set(xlim=(-5, 120), ylim=(-5, 120))
+    g.set(xlim=(-5, 110), ylim=(-5, 110))
     print(g.axes)
     for ax in g.axes.flatten():
         ax.set_xticks([0, 20, 40, 60, 80, 100])
@@ -93,5 +98,6 @@ def plot_results(
         t, p = tup
         k, b, r, p, _ = linregress(t, p)
         out_stats[lab] = (k, b, r**2, p)
-    plt.savefig(f"{outdir}{expkey}_plot_trvate.png", dpi=250, transparent=True)
+    plt.savefig(f"{outdir}{expkey}_plot_tvt.png", dpi=250, transparent=True)
+    plt.clf()
     return out_stats
