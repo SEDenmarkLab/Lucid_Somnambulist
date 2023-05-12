@@ -1,9 +1,12 @@
-Under Development
+
+(C) 2023 N. Ian Rinehart and the Denmark laboratory
 
 # Lucid_Somnambulist
 Welcome to the public repository for code developed in collaboration between Hoffmann-La Roche (Process Chemistry & Catalysis in Basel, Switzerland) and the Scott E. Denmark Laboratory (University of Illinois at Urbana Champaign) to provide experimentalists rapid access to predicted reaction yields for Buchwald-Hartwig couplings. 
 
-This work has a dependency on code developed within the Denmark Laboratories independent of this collaboration, and an alpha-test version of that code is available as the branch molli-firstgen-0.2.3. 
+This repository is under development.
+
+This work has a dependency on code developed within the Denmark Laboratories, which can be found here: https://github.com/SEDenmarkLab/molli_firstgen.git. 
 
 # Description
  This repository contains a working project for a command-line tool that is meant for a non-expert. That tool still requires a basic understanding of how to install and run a command-line program on a Linux machine. The input of structures will be restricted to smiles strings (which can be obtained from most molecular drawing programs), cdxml (Chemdraw XML), or mol2 files. From those inputs, the workflows module has scripts which can be used from command-line to generate 3D geometries, perform a conformer search, calculate atomic properties necessary for RDF descriptors, and then calculate those RDF descriptors. Following that, a workflow to generate predictions for said new reactants can be used, and will take a set of pre-trained neural network models to make predictions. 
@@ -19,6 +22,7 @@ This work has a dependency on code developed within the Denmark Laboratories ind
   If using CPUs, keep in mind that this tool has not been optimized for distributed CPU support during neural network training, so that may require some development. This is only recommended for users with some expertise and familiarity with tensorflow documentation. However, to run this program for just making predictions as a non-expert, this can be done without changes because that process uses pre-trained models. 
   
 # Installation
+
 This code was developed with miniconda as a package manager, and it is strongly recommended to use that. An export of the environment is provided, and this can be installed with the following command:
   
  ```bash
@@ -37,7 +41,17 @@ conda activate somn
  pip install /path/to/package/Lucid_Somnambulist/Lucid_Somnambulist
  ```
  
- Finally, there is a dependency on SEDenmarkLab/molli-firstgen (as of 5.10.2023, branch 0.2.3). Install that package following its instructions into the environment.
+ Finally, there is a dependency on SEDenmarkLab/molli-firstgen. Install that package following its instructions into the environment.
+ 
+ A test will be implemented in a future commit, for now, please test an import:
+ 
+  ```bash
+ conda activate somn
+ 
+ python -c "import somn"
+ ```
+ 
+ The output should be hardware-dependent tensorflow messages marked "I" or "W". Depending on the presence and type of GPUs or drivers installed on your machine, these messages can change. Note: if an error (marked "E") is present, try to resolve it following tensorflow installation guidelines (more can be found at their documentation, linked above). 
  
  # Getting Started
  (Under development)
