@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.feature_selection import VarianceThreshold
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, MultiLabelBinarizer
 import random
 import itertools
 from copy import deepcopy
@@ -478,41 +478,61 @@ def random_splits(df, validation=False, n_splits: int = 1, fold: int = 7):
     return out
 
 
-def prep_for_binary_classifier(df_in, yield_cutoff: int = 1):
+def prep_mc_labels(df, zero_buffer: int = 3):
     """
-    Prepare data for classifier by getting class labels from continuous yields
+    Prepare y data for multiclass labels.
 
-    NOT TESTED YET
+    Takes dataframe (expects index) and converst to integer labels, then converts those to a binary label of length 5.
+
+    0 is <= zero_buffer, 1 is > zero_buffer, < 25, etc for the remaining 3 quartiles of yield.
+
+    For example, output will be [0,0,1,0,0] for a yield of > 25% and <= 50%.
 
     """
-    if type(df_in) == tuple:
-        out = []
-        for df in df_in:
-            df = df.where(
-                df > yield_cutoff, other=0, inplace=True
-            )  # collapse yields at or below yield cutoff to class zero
-            df = df.where(
-                df == 0, other=1, inplace=True
-            )  # collapse yields to class one
-            out.append(df)
-        return tuple(out)
-    elif isinstance(df_in, pd.DataFrame):
-        df = df.where(
-            df > yield_cutoff, other=0, inplace=True
-        )  # collapse yields at or below yield cutoff to class zero
-        df = df.where(df == 0, other=1, inplace=True)  # collapse yields to class one
-        return df
-    else:
-        raise Exception(
-            "Passed incorrect input to staticmethod of DataHandler to prep data for classification - check input."
-        )
+    input_y = df.values.to_numpy()
+    bins = [zero_buffer, 25, 50, 75, 100]
+    binned_y = (
+        np.digitize(input_y, bins, right=True) + 1
+    )  # Generates integer based on a value being <= the values in bins (i.e. <= zero_buffer is zero, > zb and <= 25 is one, etc ...)
+    new_y = MultiLabelBinarizer().fit_transform([tuple([k]) for k in binned_y])
+    return pd.DataFrame(new_y, index=df.index)
+
+
+# def prep_for_binary_classifier(df_in, yield_cutoff: int = 1):
+#     """
+#     Prepare data for classifier by getting class labels from continuous yields
+
+#     DEPRECIATED
+
+#     """
+#     if type(df_in) == tuple:
+#         out = []
+#         for df in df_in:
+#             df = df.where(
+#                 df > yield_cutoff, other=0, inplace=True
+#             )  # collapse yields at or below yield cutoff to class zero
+#             df = df.where(
+#                 df == 0, other=1, inplace=True
+#             )  # collapse yields to class one
+#             out.append(df)
+#         return tuple(out)
+#     elif isinstance(df_in, pd.DataFrame):
+#         df = df.where(
+#             df > yield_cutoff, other=0, inplace=True
+#         )  # collapse yields at or below yield cutoff to class zero
+#         df = df.where(df == 0, other=1, inplace=True)  # collapse yields to class one
+#         return df
+#     else:
+#         raise Exception(
+#             "Passed incorrect input to staticmethod of DataHandler to prep data for classification - check input."
+#         )
 
 
 def new_mask_random_feature_arrays(
     real_feature_dataframes: (pd.DataFrame),
     rand_feat_dataframes: (pd.DataFrame),
-    corr_cut=None,
     _vt=None,
+    prophetic=False,
 ):
     """
     Use preprocessing on real features to mask randomized feature arrays, creating an actual randomized feature test which
@@ -522,13 +542,22 @@ def new_mask_random_feature_arrays(
 
     rand out then real out as two tuples
 
+    Can also be used on prophetic features - set prophetic keyword to true DEV
+
+
+
     """
     ### Input frames are columns-instances, rows-features. For unsupervised feature selection, tr/va/te can be treated together
     labels = [str(f) for f in range(len(real_feature_dataframes))]
     combined_df = pd.concat(
         real_feature_dataframes, axis=1, keys=labels
     )  # concatenate instances on columns
-    comb_rand = pd.concat(rand_feat_dataframes, axis=1, keys=labels)
+    if prophetic == False:  # Using random features
+        comb_rand = pd.concat(rand_feat_dataframes, axis=1, keys=labels)
+    elif (
+        prophetic == True
+    ):  # MUST be a single df in a tuple/list, and is for prophetic reactions being masked
+        comb_rand = rand_feat_dataframes[0]
     mask = list(
         combined_df.nunique(axis=1) != 1
     )  # Boolean for rows with more than one unique value
@@ -546,28 +575,18 @@ def new_mask_random_feature_arrays(
     vt_rand = vt.transform(filtered_rand.transpose().to_numpy())
     sc_vt_real = sc.fit_transform(vt_real)
     sc_vt_rand = sc.transform(vt_rand)
-    ### This part is clunky, but it makes sure that either logical condition works.
-    if corr_cut == None:
-        proc_df_real = pd.DataFrame(sc_vt_real)
-        proc_df_rand = pd.DataFrame(sc_vt_rand)
-        # elif type(corr_cut) == float and corr_cut < 1.0:
-        #     proc_df_real = pd.DataFrame(sc_vt_real)
-        #     proc_df_rand = pd.DataFrame(sc_vt_rand)
-        #     print(proc_df_real.columns)
-        #     ### Only need to fit on real - the random features are random, after all. This also takes a lot of time, and this ensure direct 1:1 comparison.
-        #     correlated_feats = corrX_new(proc_df_real, cut=corr_cut)
-        #     proc_df_real.drop(columns=correlated_feats, inplace=True)
-        #     proc_df_rand.drop(columns=correlated_feats, inplace=True)
-        # print(proc_df_real.columns)
-    else:
-        raise Exception("Correlation cutoff under development")
+    proc_df_real = pd.DataFrame(sc_vt_real)
+    proc_df_rand = pd.DataFrame(sc_vt_rand)
     processed_rand_feats = pd.DataFrame(
         np.transpose(proc_df_rand.to_numpy()), columns=filtered_df.columns
     )  # Ensures labels stripped; gives transposed arrays (row = feature, column= instance)
     processed_real_feats = pd.DataFrame(
         np.transpose(proc_df_real.to_numpy()), columns=filtered_df.columns
     )
-    output_rand = tuple([processed_rand_feats[lbl] for lbl in labels])
+    if prophetic == False:
+        output_rand = tuple([processed_rand_feats[lbl] for lbl in labels])
+    elif prophetic == True:
+        output_rand = processed_rand_feats
     output_real = tuple([processed_real_feats[lbl] for lbl in labels])
     return output_rand, output_real
 
@@ -618,7 +637,7 @@ def preprocess_maxdiff(input: pd.DataFrame, concat_grid_desc=True, threshold=0.8
         ### Get percentile rank - select pct-based slice of features instead of number - like a threshold cutoff
         ranking = diff.rank(pct=True)
         idx = ranking[ranking >= threshold].index.to_list()
-        return df[idx]
+        return df[idx]  # Going to reorder the features
 
     def pull_type_(df):
         labels = df.columns

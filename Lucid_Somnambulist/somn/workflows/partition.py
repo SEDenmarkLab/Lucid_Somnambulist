@@ -13,7 +13,7 @@ from copy import deepcopy
 # Load in raw calculated descriptors + random descriptors
 
 
-def main(val_schema="", vt=None, corr_cut=None, rand=True):
+def main(val_schema="", vt=None, corr_cut=None, rand=False):
     """
     Validation Schema Argument (val_schema):
 
@@ -21,6 +21,9 @@ def main(val_schema="", vt=None, corr_cut=None, rand=True):
     in-sample and out-of-sample are abbreviate "i" and "o"
 
     val in, test out (or test out, val in) would be "vi_to" or "to_vi"
+
+    NOTE: if not running a random feature control, leave "rand" as False. This will save on space.
+    Turn this on if interested in testing the efficacy of descriptors.
 
     """
     assert bool(
@@ -210,7 +213,10 @@ if __name__ == "__main__":
     sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
 
     # Val have out of sample reactants
-    combos = preprocess.get_all_combos(unique_couplings)
+    # combos = preprocess.get_all_combos(unique_couplings)
+    combos = deepcopy(
+        unique_couplings
+    )  # This will significantly cut down on the number of partitions
     outdir = deepcopy(PART_)
     os.makedirs(outdir + "real/", exist_ok=True)
     os.makedirs(outdir + "rand/", exist_ok=True)

@@ -21,6 +21,7 @@ class PropheticInput:
     conformers = field(default="")
     failures = field(default="")
     roles_d = field(default={})
+    atomprops = field(default=[])
 
     # def __attrs_post_init__(self):
     #     self.__setattr__("state", None)
@@ -242,7 +243,7 @@ class PropheticInput:
             name="atomprops", scratch_dir=SCRATCH_ + "xtb_scratch/", nprocs=2
         )
         atomprops = concur(xtb.conformer_atom_props)()
-        print(atomprops)
+        # print(atomprops[0][0])
         atomprop_out = {}
         failures = []
         for confap, name in zip(atomprops, self.conformers.mol_index):
@@ -250,7 +251,44 @@ class PropheticInput:
                 atomprop_out[name] = confap
             else:
                 failures.append(name)
+        self.atomprops = atomprop_out
         return atomprop_out, failures
+
+    def sort_and_write_outputs(self):
+        """
+        Sort reactants by role and serialize them
+        """
+
+        if self.state == "single":  # Single molecules going in, easy output
+            assert len(self.atomprops) > 0
+            if self.role == "el":
+                fp = f"{STRUC_}_new_el_ap_buffer.json"
+
+            elif self.role == "nuc":
+                fp = f"{STRUC_}_new_nuc_ap_buffer.json"
+            with open(fp, "w") as k:
+                json.dump(self.atomprops, k)
+        elif (
+            self.state == "multi"
+        ):  # Many molecules going in; should work for el or nuc
+            nuc_ap_temp = {}
+            el_ap_temp = {}
+            for (
+                mol
+            ) in (
+                self.conformers
+            ):  # Collection with conformers calculated, but not iterating over conformers
+                molrole = self.roles_d[mol.name]
+                if molrole == "nuc":
+                    nuc_ap_temp[mol.name] = self.atomprops[mol.name]
+                elif molrole == "el":
+                    el_ap_temp[mol.name] = self.atomprops[mol.name]
+            if len(nuc_ap_temp.keys()) > 0:
+                with open(f"{STRUC_}_new_nuc_ap_buffer.json", "w") as j:
+                    json.dump(nuc_ap_temp, j)
+            if len(el_ap_temp.keys()) > 0:
+                with open(f"{STRUC_}_new_el_ap_buffer.json", "w") as m:
+                    json.dump(el_ap_temp, m)
 
     @classmethod
     def from_mol(cls, mol, smi, role):

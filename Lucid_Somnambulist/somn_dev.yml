@@ -14,4 +14,4 @@ dependencies:
   - crest=2.12
   - ipykernel=6.15.0
   - pytables=3.7.0
-# prefix: /home/rineharn/miniconda3/envs/somn_dev #Think about making this container-specific for commercial version
+  - rdkit
