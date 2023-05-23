@@ -154,7 +154,9 @@ def add_workflow():
             "There was an error attributing reactant roles for input structures"
         )
     ###                         Running conformer pipeline                               ###
+    print("STARTING CONFORMER GENERATION AND SCREENING")
     input_packet.conformer_pipeline()
+    print("STARTING ATOM PROPERTY CALCULATION")
     atomprops, ap_errors = input_packet.atomprop_pipeline()
     if len(ap_errors) > 0:
         warnings.warn(

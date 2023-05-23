@@ -132,9 +132,7 @@ class PropheticInput:
             concurrent=1,
         )
         # print("conformer search beginning")
-        output = concur_1(crest.conformer_search)(
-            ewin=20, mdlen=5, constr_val_angles=[]
-        )
+        output = concur_1(crest.conformer_search)(ewin=8, mdlen=5, constr_val_angles=[])
         # print("searched conf\n", output)
         buffer = []
         tracking = {}  # Used to track progress
@@ -145,6 +143,8 @@ class PropheticInput:
             else:
                 tracking[col.molecules[i].name] = False
         # print(buffer)
+        if len(buffer) == 0:
+            raise Exception(f"Error calculating conformers - search step failed")
         col2 = ml.Collection(
             name="searched", molecules=buffer
         )  # These have undergone a conformer search.
@@ -177,6 +177,8 @@ class PropheticInput:
                     tracking[col2.molecules[j].name] = False
                 else:
                     pass  # Already set to False, can skip.
+        if len(buffer2) == 0:
+            raise Exception(f"Error calculating conformers - screen step failed")
         col3 = ml.Collection(name="screened", molecules=buffer2)
         assert len(buffer2) > 0
         self.conformers = col3
@@ -234,6 +236,7 @@ class PropheticInput:
         """
         Calculate atom properties for descriptor calculation, and add to JSON files.
         """
+
         concur = ml.Concurrent(
             self.conformers,
             backup_dir=SCRATCH_ + "atomprops/",
