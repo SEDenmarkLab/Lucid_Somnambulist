@@ -12,10 +12,10 @@ class PropheticInput:
     Object for handling new structure(s). Will take valid input structure from InputParser and add to reactant database(s) and atomproperties files.
     """
 
-    name: str | list = field()
-    role: str | list = field()
-    smi: str | list = field()
-    struc: ml.Molecule | ml.Collection = field()
+    name = field()
+    role = field()
+    smi = field()
+    struc = field()
     state = field(default="")
     known = field(default="")
     conformers = field(default="")
