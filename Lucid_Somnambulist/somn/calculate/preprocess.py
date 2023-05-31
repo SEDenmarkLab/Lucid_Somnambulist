@@ -49,11 +49,19 @@ def load_data(optional_load=None):
     unique_couplings = sorted(
         list(set([f.rsplit("_", 3)[0] for f in handles]))
     )  # unique am_br pairs in dataset
-    if "experimental_catalysts" in requests:
+    if "maxdiff_catalyst" in requests:
         temp = deepcopy(CATDESC)
         cat_desc = preprocess_maxdiff(
             temp, concat_grid_desc=True, threshold=(0.90, 0.89)
         )
+    elif "correlated_catalyst" in requests:
+        ... #Perform correlated features cutoff for catalyst features. Perhaps look at multicolinearity
+    elif "embed_catalyst" in requests:
+        # temp = deepcopy(CATDESC)
+        cat_desc = "Set up load for isomap embedding"
+    elif "no_HI_RDF"in requests:
+        ...
+        ## Remove indicator fields for heteroatoms. This may be useful. 
     else:
         cat_desc = deepcopy(CATDESC)
     return (

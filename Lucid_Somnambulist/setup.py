@@ -25,9 +25,10 @@ setup(
         "Pyarrow",
         "scikit-learn>=0.22.1",
         "attrs",
-        "tensorflow=2.12.0",
-        "keras-tuner",
-        "jupyter",
+        ## Pip installs:
+        # "tensorflow=2.12.0",
+        # "keras-tuner",
+        # "jupyter",
     ],
     python_requires=">=3.9",
 )
