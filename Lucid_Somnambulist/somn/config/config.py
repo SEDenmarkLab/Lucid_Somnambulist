@@ -1,6 +1,4 @@
-# This module contains workflows which integrate the components of the other modules.
 
-# This is the starting point for users.
 
 import random
 import string
@@ -45,6 +43,4 @@ def set_global_write(
     Path(f"{WRITE_}scratch/").mkdir(parents=True, exist_ok=True)
 
 
-set_global_write() #If this is not called during import, then it must be explicitly imported/called to set the writable directories. 
-
-# from somn.config import 
+set_global_write()
