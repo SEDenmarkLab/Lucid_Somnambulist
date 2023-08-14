@@ -21,7 +21,7 @@ UNIQUE_ = "".join(
 
 
 def set_global_write(
-    _tempdir=rf"/home/nir2/somn_container_dev/somn_root/somn_scratch_{UNIQUE_}/",
+    _tempdir=rf"/mnt/c/Users/rineharn/workspace/somn_scratch_{UNIQUE_}/",
 ):
     """
     Setting global variables for consistent, graceful read/write
