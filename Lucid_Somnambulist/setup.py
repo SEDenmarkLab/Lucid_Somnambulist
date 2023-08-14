@@ -35,5 +35,5 @@ setup(
         "keras-tuner==1.3.5",
         "rdkit==2023.03.1",
     ],
-    python_requires=">=3.10",
+    python_requires=">=3.9",
 )

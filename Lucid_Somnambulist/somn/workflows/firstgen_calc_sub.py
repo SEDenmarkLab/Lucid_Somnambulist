@@ -4,6 +4,7 @@ import pickle
 from somn.calculate.RDF import (
     retrieve_amine_rdf_descriptors,
     retrieve_bromide_rdf_descriptors,
+    retrieve_chloride_rdf_descriptors,
 )
 from somn.calculate.preprocess import new_mask_random_feature_arrays
 from somn.build.assemble import (
@@ -23,6 +24,7 @@ data.load_sub_mols()
 data.load_all_desc()
 
 from somn.workflows import DESC_
+import molli as ml
 
 # DEBUG: the global variables exist within the namespace of data, and can be intuitively loaded via:
 # data.{global var}
@@ -34,7 +36,28 @@ from somn.workflows import DESC_
 ############################ Calculate reactant descriptors #############################
 
 
-def main(inc=0.75, substrate_pre=None, optional_load=None):
+def calculate_prophetic(
+    inc=0.75, geometries=ml.Collection, atomproperties=dict, react_type=""
+):
+    """
+    Vanilla substrate descriptor retrieval
+    """
+    if react_type == "am":
+        sub_dict = retrieve_amine_rdf_descriptors(
+            geometries, atomproperties, increment=inc
+        )
+    elif react_type == "br":
+        sub_dict = retrieve_bromide_rdf_descriptors(
+            geometries, atomproperties, increment=inc
+        )
+    elif react_type == "cl":
+        sub_dict = retrieve_chloride_rdf_descriptors(
+            geometries, atomproperties, increment=inc
+        )
+    return sub_dict
+
+
+def main(inc=0.75, substrate_pre=None, optional_load=None, serialize=True):
     """
     Run workflow to calculate real and random descriptors for substrates. Saves random features for ALL components,
     but only calculates substrate features. These are keyed feature sets, not assembled arrays.
@@ -89,8 +112,9 @@ def main(inc=0.75, substrate_pre=None, optional_load=None):
                 full_br_df = pd.DataFrame.from_dict(
                     br_desc, orient="index", columns=br_label
                 )
-                full_br_df.to_csv(DESC_ + "bromide_only_features.csv", header=True)
-                full_am_df.to_csv(DESC_ + "amine_only_features.csv", header=True)
+                if serialize == True:
+                    full_br_df.to_csv(DESC_ + "bromide_only_features.csv", header=True)
+                    full_am_df.to_csv(DESC_ + "amine_only_features.csv", header=True)
                 ### DEV ###
                 # print(full_am_df)
                 # print(full_am_df.corr())
@@ -111,6 +135,7 @@ def main(inc=0.75, substrate_pre=None, optional_load=None):
         if (
             type_ == "corr"
         ):  # This step will actually compute the correlated features mask
+
             am_mask = preprocess.corrX_new(
                 full_am_df, cut=value_, get_const=True, bool_out=True
             )
@@ -138,12 +163,13 @@ def main(inc=0.75, substrate_pre=None, optional_load=None):
     rand = make_randomized_features(
         sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc
     )
-    with open(DESC_ + "random_am_br_cat_solv_base.p", "wb") as k:
-        pickle.dump(rand, k)
-    with open(DESC_ + f"real_amine_desc_{_inc}.p", "wb") as g:
-        pickle.dump(sub_am_dict, g)
-    with open(DESC_ + f"real_bromide_desc_{_inc}.p", "wb") as q:
-        pickle.dump(sub_br_dict, q)
+    if serialize == True:
+        with open(DESC_ + "random_am_br_cat_solv_base.p", "wb") as k:
+            pickle.dump(rand, k)
+        with open(DESC_ + f"real_amine_desc_{_inc}.p", "wb") as g:
+            pickle.dump(sub_am_dict, g)
+        with open(DESC_ + f"real_bromide_desc_{_inc}.p", "wb") as q:
+            pickle.dump(sub_br_dict, q)
     return ((sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc), rand)
 
 
@@ -155,3 +181,4 @@ if __name__ == "__main__":
     desc_out = main(substrate_pre=("corr", 0.97), optional_load="experimental_catalyst")
     pickle.dump(desc_out, open(DESC_ + "real_rand_descriptor_buffer.p", "wb"))
     print(DESC_)
+

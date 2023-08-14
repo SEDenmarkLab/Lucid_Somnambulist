@@ -3,7 +3,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.10
+  - python=3.9
   - pandas=1.5.2
   - seaborn=0.12.2
   - scikit-learn=1.2.0
@@ -15,4 +15,3 @@ dependencies:
   - ipykernel=6.15.0
   - pytables=3.7.0
   - rdkit
-# prefix: /home/rineharn/miniconda3/envs/somn_dev #Think about making this container-specific for commercial version

@@ -1,6 +1,4 @@
-# This module contains workflows which integrate the components of the other modules.
 
-# This is the starting point for users.
 
 import random
 import string
@@ -45,6 +43,4 @@ def set_global_write(
     Path(f"{WRITE_}scratch/").mkdir(parents=True, exist_ok=True)
 
 
-### DEPRECIATING - DEV
-# set_global_write() #Replacing with Project class
-
+set_global_write()

@@ -14,15 +14,16 @@ class PropheticInput:
     Object for handling new structure(s). Will take valid input structure from InputParser and add to reactant database(s) and atomproperties files.
     """
 
-    name: str | list = field()
-    role: str | list = field()
-    smi: str | list = field()
-    struc: ml.Molecule | ml.Collection = field()
+    name = field()
+    role = field()
+    smi = field()
+    struc = field()
     state = field(default="")
     known = field(default="")
     conformers = field(default="")
     failures = field(default="")
     roles_d = field(default={})
+    atomprops = field(default=[])
 
     # def __attrs_post_init__(self):
     #     self.__setattr__("state", None)
@@ -135,9 +136,7 @@ class PropheticInput:
             concurrent=1,
         )
         # print("conformer search beginning")
-        output = concur_1(crest.conformer_search)(
-            ewin=20, mdlen=5, constr_val_angles=[]
-        )
+        output = concur_1(crest.conformer_search)(ewin=8, mdlen=5, constr_val_angles=[])
         # print("searched conf\n", output)
         buffer = []
         tracking = {}  # Used to track progress
@@ -148,6 +147,8 @@ class PropheticInput:
             else:
                 tracking[col.molecules[i].name] = False
         # print(buffer)
+        if len(buffer) == 0:
+            raise Exception(f"Error calculating conformers - search step failed")
         col2 = ml.Collection(
             name="searched", molecules=buffer
         )  # These have undergone a conformer search.
@@ -182,6 +183,8 @@ class PropheticInput:
                     tracking[col2.molecules[j].name] = False
                 else:
                     pass  # Already set to False, can skip.
+        if len(buffer2) == 0:
+            raise Exception(f"Error calculating conformers - screen step failed")
         col3 = ml.Collection(name="screened", molecules=buffer2)
         assert len(buffer2) > 0
         self.conformers = col3
@@ -241,6 +244,7 @@ class PropheticInput:
         """
         Calculate atom properties for descriptor calculation, and add to JSON files.
         """
+
         concur = ml.Concurrent(
             self.conformers,
             backup_dir=str(Project().scratch) + "/atomprops/",
@@ -260,7 +264,44 @@ class PropheticInput:
                 atomprop_out[name] = confap
             else:
                 failures.append(name)
+        self.atomprops = atomprop_out
         return atomprop_out, failures
+
+    def sort_and_write_outputs(self):
+        """
+        Sort reactants by role and serialize them
+        """
+
+        if self.state == "single":  # Single molecules going in, easy output
+            assert len(self.atomprops) > 0
+            if self.role == "el":
+                fp = f"{STRUC_}_new_el_ap_buffer.json"
+
+            elif self.role == "nuc":
+                fp = f"{STRUC_}_new_nuc_ap_buffer.json"
+            with open(fp, "w") as k:
+                json.dump(self.atomprops, k)
+        elif (
+            self.state == "multi"
+        ):  # Many molecules going in; should work for el or nuc
+            nuc_ap_temp = {}
+            el_ap_temp = {}
+            for (
+                mol
+            ) in (
+                self.conformers
+            ):  # Collection with conformers calculated, but not iterating over conformers
+                molrole = self.roles_d[mol.name]
+                if molrole == "nuc":
+                    nuc_ap_temp[mol.name] = self.atomprops[mol.name]
+                elif molrole == "el":
+                    el_ap_temp[mol.name] = self.atomprops[mol.name]
+            if len(nuc_ap_temp.keys()) > 0:
+                with open(f"{STRUC_}_new_nuc_ap_buffer.json", "w") as j:
+                    json.dump(nuc_ap_temp, j)
+            if len(el_ap_temp.keys()) > 0:
+                with open(f"{STRUC_}_new_el_ap_buffer.json", "w") as m:
+                    json.dump(el_ap_temp, m)
 
     @classmethod
     def from_mol(cls, mol, smi, role):
