@@ -21,7 +21,7 @@ from somn.util.project import Project
 ####
 
 
-def add_workflow():
+def add_workflow(project: Project):
     ### Basic checks on the input - start with the more difficult cdxml input, then go to smiles later
     ### Use molli for cdxml parse - it is better than openbabel. Use openbabel for smiles parsing and adding hydrogens (to both)
 
@@ -36,7 +36,6 @@ def add_workflow():
 
     """
 
-    project = Project()
     assert len(argv) > 1
     parser = argparse.ArgumentParser(
         usage="Specify format (smi or cdxml), then a smiles string/file with smiles or cdxml file, and finally indicate 'el' or 'nuc' for electrophile or nucleophile. Optionally, serialize output structures with '-ser' - must pass some input as an argument after, standard use is 'y'"
@@ -62,8 +61,10 @@ def add_workflow():
         parse = parsing.InputParser(
             serialize=True, path_to_write=str(project.structures)
         )
+        project.save(identifier=args.ser)  # Testing
     else:
         parse = parsing.InputParser(serialize=False)
+        project.save()
 
     ###             Checking inputs and generating initial 3D geometries.            ###
 
@@ -172,8 +173,11 @@ def add_workflow():
     with open(f"{project.structures}/newmol_ap_buffer.json", "w") as k:
         json.dump(atomprops, k)
 
-    print(ap_errors)
+    if len(ap_errors) != 0:
+        print(f"ERRORS DURING CALCULATIONS: \n{ap_errors}")
 
 
 if __name__ == "__main__":
-    add_workflow()
+    ### Assuming we want to always keep track of this
+    project = Project()
+    add_workflow(project)

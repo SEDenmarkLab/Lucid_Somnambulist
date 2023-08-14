@@ -23,8 +23,9 @@ from somn.calculate import preprocess
 data.load_sub_mols()
 data.load_all_desc()
 
-from somn.workflows import DESC_
+# from somn.workflows import DESC_
 import molli as ml
+from somn.util.project import Project
 
 # DEBUG: the global variables exist within the namespace of data, and can be intuitively loaded via:
 # data.{global var}
@@ -57,12 +58,17 @@ def calculate_prophetic(
     return sub_dict
 
 
-def main(inc=0.75, substrate_pre=None, optional_load=None, serialize=True):
+def main(
+    project: Project, inc=0.75, substrate_pre=None, optional_load=None, serialize=True
+):
     """
     Run workflow to calculate real and random descriptors for substrates. Saves random features for ALL components,
     but only calculates substrate features. These are keyed feature sets, not assembled arrays.
 
     Can be called to return real desc (5 member tuple, am,br,cat,solv,base) and random desc (similar tuple)
+
+    returns:
+    (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc), (random versions in same order)
     """
     (
         amines,
@@ -113,8 +119,12 @@ def main(inc=0.75, substrate_pre=None, optional_load=None, serialize=True):
                     br_desc, orient="index", columns=br_label
                 )
                 if serialize == True:
-                    full_br_df.to_csv(DESC_ + "bromide_only_features.csv", header=True)
-                    full_am_df.to_csv(DESC_ + "amine_only_features.csv", header=True)
+                    full_br_df.to_csv(
+                        f"{project.descriptors}/bromide_only_features.csv", header=True
+                    )
+                    full_am_df.to_csv(
+                        f"{project.descriptors}/amine_only_features.csv", header=True
+                    )
                 ### DEV ###
                 # print(full_am_df)
                 # print(full_am_df.corr())
@@ -135,7 +145,6 @@ def main(inc=0.75, substrate_pre=None, optional_load=None, serialize=True):
         if (
             type_ == "corr"
         ):  # This step will actually compute the correlated features mask
-
             am_mask = preprocess.corrX_new(
                 full_am_df, cut=value_, get_const=True, bool_out=True
             )
@@ -149,14 +158,22 @@ def main(inc=0.75, substrate_pre=None, optional_load=None, serialize=True):
             # print("Boolean mask:\n", br_mask)
             # print(br_label)
             # Saving selected features for inspection later
-            pd.Series(br_mask[0], index=br_label).to_csv(DESC_ + "bromide_mask.csv")
-            pd.Series(am_mask[0], index=am_label).to_csv(DESC_ + "amine_mask.csv")
+            pd.Series(br_mask[0], index=br_label).to_csv(
+                f"{project.descriptors}/bromide_mask.csv"
+            )
+            pd.Series(am_mask[0], index=am_label).to_csv(
+                f"{project.descriptors}/amine_mask.csv"
+            )
             sub_am_proc = full_am_df.loc[:, am_mask[0]]
             assert (sub_am_proc.columns == am_mask[1]).all()
             sub_br_proc = full_br_df.loc[:, br_mask[0]]
             assert (sub_br_proc.columns == br_mask[1]).all()
-            sub_am_proc.to_csv(DESC_ + "amine_selected_feat.csv", header=True)
-            sub_br_proc.to_csv(DESC_ + "bromide_selected_feat.csv", header=True)
+            sub_am_proc.to_csv(
+                f"{project.descriptors}/amine_selected_feat.csv", header=True
+            )
+            sub_br_proc.to_csv(
+                f"{project.descriptors}/bromide_selected_feat.csv", header=True
+            )
         else:
             ## Placeholder for alternative other preprocessing methods.
             pass
@@ -164,11 +181,11 @@ def main(inc=0.75, substrate_pre=None, optional_load=None, serialize=True):
         sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc
     )
     if serialize == True:
-        with open(DESC_ + "random_am_br_cat_solv_base.p", "wb") as k:
+        with open(f"{project.descriptors}/random_am_br_cat_solv_base.p", "wb") as k:
             pickle.dump(rand, k)
-        with open(DESC_ + f"real_amine_desc_{_inc}.p", "wb") as g:
+        with open(f"{project.descriptors}/real_amine_desc_{_inc}.p", "wb") as g:
             pickle.dump(sub_am_dict, g)
-        with open(DESC_ + f"real_bromide_desc_{_inc}.p", "wb") as q:
+        with open(f"{project.descriptors}/real_bromide_desc_{_inc}.p", "wb") as q:
             pickle.dump(sub_br_dict, q)
     return ((sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc), rand)
 
@@ -178,7 +195,28 @@ if __name__ == "__main__":
     #     (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc),
     #     rand,
     # ) #Format of output
-    desc_out = main(substrate_pre=("corr", 0.97), optional_load="experimental_catalyst")
-    pickle.dump(desc_out, open(DESC_ + "real_rand_descriptor_buffer.p", "wb"))
-    print(DESC_)
+    from sys import argv
 
+    if argv[1] == "new":
+        assert len(argv) >= 3
+        project = Project()
+        project.save(identifier=argv[2])
+    else:
+        try:
+            project = Project.reload(how=argv[1])
+        except:
+            raise Exception(
+                "Must pass valid identifier or 'last' to load project. Can say 'new' and give an identifier"
+            )
+
+    desc_out = main(
+        project, substrate_pre=("corr", 0.97), optional_load="experimental_catalyst"
+    )
+    ### DEBUG
+    # import pandas as pd
+
+    # print(desc_out[0][0]) #Visualize entries
+    ### DEBUG
+    pickle.dump(
+        desc_out, open(f"{project.descriptors}/real_rand_descriptor_buffer.p", "wb")
+    )

@@ -26,7 +26,7 @@ from somn.data import (
 
 def load_data(optional_load=None):
     """
-    Return everything as a copied object from the global variables. Format:
+    Load data into memory. Format:
     (amines,bromides,dataset,handles,unique_couplings,a_prop,br_prop,base_desc,solv_desc,cat_desc)
 
     """

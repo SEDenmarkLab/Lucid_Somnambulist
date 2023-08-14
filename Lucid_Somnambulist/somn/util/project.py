@@ -1,6 +1,9 @@
 from pathlib import Path
 import shutil as su
 from uuid import uuid1
+import json
+from json import JSONDecoder
+from collections import OrderedDict
 
 
 class Project(object):
@@ -37,53 +40,69 @@ class Project(object):
             Path(cls.scratch).mkdir(parents=True, exist_ok=False)
         return cls._instance
 
-    def __getstate__(cls):
-        state = cls.__dict__.copy()
-        state["path"] = cls.path
-        print(state)
-        return state
-
-    def __setstate__(cls, state):
-        cls.__dict__.update(state)
-
-    def save(cls, path=""):
+    def save(cls, identifier=None):
         """
         Saves the details of project to a JSON
         """
         from datetime import date
 
         timestamp = date.today()
-        print(timestamp)
+        # print(timestamp) ## DEBUG
         output = {
             "path": rf"{cls.path}/",
             "timestamp": rf"{timestamp}",
             "unique": rf"{cls.unique}",
         }
-        print(output)
+        # print(output) ## DEBUG
+        ## Identifier gets added IF it is known (i.e. user specifies a special name). Placeholder for now.
+        if type(identifier) == str:
+            output["identifier"] = identifier
+
+        pkg = cls.get_json()
+        with open(pkg, "r") as g:
+            projects = json.load(g, object_pairs_hook=OrderedDict)
+            # last_ = max(list(map(int, projects.keys())))
+        if cls.unique in projects.keys():
+            import warnings
+
+            warnings.warn(
+                f"The identifier {cls.unique} is already a known project: check prior work with this identifier. \
+Saving a preexisting project is not necessary and changes the order of projects.JSON, \
+as well as posing risks for errors. Project has not been saved again."
+            )
+            return None
+        projects[cls.unique] = output
+        with open(pkg, "w") as k:
+            json.dump(projects, k, indent=4)
+
+    @staticmethod
+    def get_json():
+        """
+        Get package JSON path to look up projects
+        """
         import pkg_resources
-        import json
 
         pkg = pkg_resources.resource_filename("somn.data", "projects.JSON")
-        with open(pkg, "r") as g:
-            projects = json.load(g)
-            last_ = max(list(map(int, projects.keys())))
-            projects[last_ + 1] = output
-        with open(pkg, "w") as k:
-            json.dump(projects, k)
+        return pkg
 
     @classmethod
-    def reload(cls, entry: dict):
+    def reload(cls, how=""):
         """
-        Used to reload a specific instance (need the pass the unique ID)
+        IF
+        how = "last"
+        return most recent entry
+        OR
+        how = [unique ID]
+        return entry for specific identifier
+        """
 
-        Does not make directories, but still should operate as a singleton.
-        """
-        path = entry["path"]
-        unique = entry["unique"]
-        timestamp = entry["timestamp"]
-        if path == None:
-            raise Exception("reloading project requires specific path to be specified")
-        else:
+        def __load_entry(cls, entry: dict):
+            """
+            Used to reload a specific instance (need the pass the unique ID)
+            """
+            path = entry["path"]
+            unique = entry["unique"]
+            timestamp = entry["timestamp"]
             cls._instance = super(Project, cls).__new__(cls)
             cls.path = path
             cls.unique = unique
@@ -93,7 +112,25 @@ class Project(object):
             cls.descriptors = Path(f"{path}/descriptors/")
             cls.structures = Path(f"{path}/structures/")
             cls.output = Path(f"{path}/outputs/")
-        return cls._instance
+            return cls._instance
+
+        pkg = cls.get_json()
+        with open(pkg, "r") as g:
+            projects = json.load(g, object_pairs_hook=OrderedDict)
+        # print(f"KEYS, {projects.keys()}")
+        if how == "last":
+            last_entry = projects.popitem(last=True)[1]
+            # print(last_entry) ## DEBUG
+            last_instance = __load_entry(cls, entry=last_entry)
+            return last_instance
+        elif how in projects.keys():
+            entry = projects[how]
+            # print(entry)  ## DEBUG
+            return __load_entry(cls, entry=entry)
+        else:
+            raise ValueError(
+                f"Did not find {how} in projects.JSON; cannot look up files."
+            )
 
 
 ### TESTING
@@ -115,20 +152,21 @@ class Project(object):
 # su.rmtree(self.path)
 
 
-if __name__ == "__main__":
-    # k = Project()
-    # k.save()
+# if __name__ == "__main__":
+# k = Project()
+# k.save()
 
-    import json
+# import json
 
-    p = json.load(
-        open(
-            "somn_container/Lucid_Somnambulist/Lucid_Somnambulist/somn/data/projects.JSON",
-            "r",
-        )
-    )
-    l = Project.reload(entry=p["1"])
-    print(l.unique)
-    print(l.path)
-    print(l.timestamp)
-    print(p["1"])
+# p = json.load(
+#     open(
+#         "somn_container/Lucid_Somnambulist/Lucid_Somnambulist/somn/data/projects.JSON",
+#         "r",
+#     )
+# )
+# l = Project.reload(how="last")
+# l = Project.reload(how="3aa386dc3a6711eea32118c04d0a4970")
+# print(l.unique)
+# print(l.path)
+# print(l.timestamp)
+# l.save()

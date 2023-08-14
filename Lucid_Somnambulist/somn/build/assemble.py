@@ -4,7 +4,6 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.feature_selection import VarianceThreshold
 import numpy as np
 from itertools import product
-from somn.workflows import DESC_
 from somn.data import BASEDESC, SOLVDESC, CATDESC
 
 
@@ -168,6 +167,8 @@ def assemble_descriptors_from_handles(handle_input, desc: tuple, substrate_mask=
     This is meant to use am_dict and br_dict as conformer-averaged descriptors.
     This lets the user apply different parameters to descriptor tabulation flexibly.
 
+    Masking for substrates should be a tuple of length 2, with amine, then bromide masks (boolean list).
+
     """
     if type(handle_input) == str:
         rxn_hndls = [f for f in handle_input.split(",") if f != ""]
@@ -183,7 +184,7 @@ def assemble_descriptors_from_handles(handle_input, desc: tuple, substrate_mask=
         subm = None
     elif type(substrate_mask) == tuple:
         assert len(substrate_mask) == 2
-        subm = substrate_mask
+        subm = list(substrate_mask)
     am_dict_real, br_dict_real, cat_real, solv_real, base_real = desc
     basedf = base_real.transpose()
     solvdf = solv_real.transpose()
@@ -212,7 +213,7 @@ def assemble_descriptors_from_handles(handle_input, desc: tuple, substrate_mask=
                 brdesc = vectorize_substrate_desc(br_dict, br, feat_mask=None)
             else:
                 raise Exception(
-                    "Substrate mask was not None or a list - check arguments for assembling descriptors."
+                    "Substrate mask caused an error - check arguments for assembling descriptors."
                 )
             handlestring = handle_input[i]
             columns.append(amdesc + brdesc + catdesc + solvdesc + basedesc)
@@ -297,13 +298,14 @@ def load_calculated_substrate_descriptors():
     Load calculated substrate descriptors - skip calculation step to save time
     """
     import pickle
-    from somn.workflows import DESC_
     from glob import glob
+    from somn.util.project import Project
 
-    am = glob(DESC_ + "real_amine_desc_*.p")
-    br = glob(DESC_ + "real_bromide_desc_*.p")
+    project = Project()
+    am = glob(f"{project.descriptors}/real_amine_desc_*.p")
+    br = glob(f"{project.descriptors}/real_bromide_desc_*.p")
     try:
-        with open(DESC_ + "random_am_br_cat_solv_base.p", "rb") as k:
+        with open(f"{project.descriptors}/random_am_br_cat_solv_base.p", "rb") as k:
             rand = pickle.load(k)
     except:
         raise Exception(

@@ -7,7 +7,9 @@ from somn.build.assemble import (
     assemble_random_descriptors_from_handles,
 )
 import os
-from somn.workflows import PART_, DESC_
+
+# from somn.workflows import PART_, DESC_
+from somn.util.project import Project
 from copy import deepcopy
 from glob import glob
 
@@ -196,7 +198,8 @@ def check_sub_status():
     """
     Helper function to check if substrates have been calculated.
     """
-    k = glob(DESC_ + "real_*_desc_*.p")
+    project = Project()
+    k = glob(f"{project.descriptors}/real_*_desc_*.p")
     if len(k) == 2:
         return True
     elif len(k) == 1:
@@ -211,15 +214,48 @@ def check_sub_status():
 
 def fetch_precalc_sub_desc():
     """
-    Check IF the substrate calculation workflow has been performed, then load those descriptors. If not, return "None"
+    Fetch precalculated descriptors (after checking if they are done).
     """
-    amine = glob(DESC_ + "real_amine_desc_*.p")
-    bromide = glob(DESC_ + "real_bromide_desc_*.p")
-    random = DESC_ + "random_am_br_cat_solv_base.p"
+    project = Project()
+    amine = glob(f"{project.descriptors}/real_amine_desc_*.p")
+    bromide = glob(f"{project.descriptors}/real_bromide_desc_*.p")
+    random = f"{project.descriptors}/random_am_br_cat_solv_base.p"
     return amine, bromide, random
 
 
+def get_precalc_sub_desc():
+    """
+    Check status, then load descriptors if they are precalculated
+    """
+    status = check_sub_status()
+    if status == True:  # Already calculated
+        amf, brf, rand = fetch_precalc_sub_desc()
+        import pickle
+
+        sub_am_dict = pickle.load(open(amf, "rb"))
+        sub_br_dict = pickle.load(open(brf, "rb"))
+        real = (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc)
+        return real, rand
+    else:
+        return False
+
+
 if __name__ == "__main__":
+    from sys import argv
+
+    if argv[1] == "new":
+        assert len(argv >= 3)
+        project = Project()
+        project.save(identifier=argv[2])
+    else:
+        try:
+            project = Project.reload(how=argv[1])
+        except:
+            raise Exception(
+                "Must pass valid identifier or 'last' to load project. Can say 'new' and give an identifier"
+            )
+
+    # project = Project() ## DEBUG
     (
         amines,
         bromides,
@@ -232,20 +268,13 @@ if __name__ == "__main__":
         solv_desc,
         cat_desc,
     ) = preprocess.load_data(optional_load="experimental_catalyst")
-    status = check_sub_status()
-    if status == True:  # Already calculated
-        amf, brf, rand = fetch_precalc_sub_desc()
-        import pickle
 
-        sub_am_dict = pickle.load(open(amf, "rb"))
-        sub_br_dict = pickle.load(open(brf, "rb"))
-        real = (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc)
-    elif status == False:  # Need to calculate
+    # Checking project status to make sure sub descriptors are calculated
+    sub_desc = get_precalc_sub_desc()
+    if sub_desc == False:  # Need to calculate
         real, rand = calc_sub(optional_load="experimental_catalyst")
-    # (sub_am_dict, sub_br_dict), rand = load_calculated_substrate_descriptors()
-    # TESTING - both work.
-    # print(real[0].keys())
-    # print(sub_am_dict.keys())
+    else:
+        real, rand = sub_desc
 
     sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
 
@@ -254,7 +283,7 @@ if __name__ == "__main__":
     combos = deepcopy(
         unique_couplings
     )  # This will significantly cut down on the number of partitions
-    outdir = deepcopy(PART_)
+    outdir = deepcopy(f"{project.partitions}/")
     os.makedirs(outdir + "real/", exist_ok=True)
     os.makedirs(outdir + "rand/", exist_ok=True)
     realout = outdir + "real/"
