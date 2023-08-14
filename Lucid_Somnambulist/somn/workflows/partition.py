@@ -7,8 +7,9 @@ from somn.build.assemble import (
     assemble_random_descriptors_from_handles,
 )
 import os
-from somn.workflows import PART_
+from somn.workflows import PART_, DESC_
 from copy import deepcopy
+from glob import glob
 
 # Load in raw calculated descriptors + random descriptors
 
@@ -191,6 +192,33 @@ def partition_pipeline_val(name_, tr, va, te, vt=None, corr_cut=None, rand=True)
     )
 
 
+def check_sub_status():
+    """
+    Helper function to check if substrates have been calculated.
+    """
+    k = glob(DESC_ + "real_*_desc_*.p")
+    if len(k) == 2:
+        return True
+    elif len(k) == 1:
+        raise Exception("Substrate descriptors are being mixed up -- DEBUG")
+    elif len(k) == 0:
+        return False
+    else:
+        raise Exception(
+            "DEBUG - inappropriate number of files in DESC_ directory that look like substrate descriptor files"
+        )
+
+
+def fetch_precalc_sub_desc():
+    """
+    Check IF the substrate calculation workflow has been performed, then load those descriptors. If not, return "None"
+    """
+    amine = glob(DESC_ + "real_amine_desc_*.p")
+    bromide = glob(DESC_ + "real_bromide_desc_*.p")
+    random = DESC_ + "random_am_br_cat_solv_base.p"
+    return amine, bromide, random
+
+
 if __name__ == "__main__":
     (
         amines,
@@ -204,7 +232,16 @@ if __name__ == "__main__":
         solv_desc,
         cat_desc,
     ) = preprocess.load_data(optional_load="experimental_catalyst")
-    real, rand = calc_sub(optional_load="experimental_catalyst")
+    status = check_sub_status()
+    if status == True:  # Already calculated
+        amf, brf, rand = fetch_precalc_sub_desc()
+        import pickle
+
+        sub_am_dict = pickle.load(open(amf, "rb"))
+        sub_br_dict = pickle.load(open(brf, "rb"))
+        real = (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc)
+    elif status == False:  # Need to calculate
+        real, rand = calc_sub(optional_load="experimental_catalyst")
     # (sub_am_dict, sub_br_dict), rand = load_calculated_substrate_descriptors()
     # TESTING - both work.
     # print(real[0].keys())

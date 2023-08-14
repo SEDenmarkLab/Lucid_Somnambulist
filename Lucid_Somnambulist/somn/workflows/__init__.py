@@ -45,6 +45,6 @@ def set_global_write(
     Path(f"{WRITE_}scratch/").mkdir(parents=True, exist_ok=True)
 
 
-set_global_write() #If this is not called during import, then it must be explicitly imported/called to set the writable directories. 
+### DEPRECIATING - DEV
+# set_global_write() #Replacing with Project class
 
-# from somn.config import 

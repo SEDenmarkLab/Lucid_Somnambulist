@@ -89,7 +89,9 @@ def main(inc=0.75, substrate_pre=None, optional_load=None, serialize=True):
         import pandas as pd
 
         ### Assemble a feature array with row:instance,column:feature to perform preprocessing
-        if len(substrate_pre) == 2:
+        if (
+            len(substrate_pre) == 2
+        ):  # This is the first step for correlated features - assembling full arrays
             type_, value_ = substrate_pre
             if type_ == "corr":
                 am_desc = {}
@@ -129,14 +131,17 @@ def main(inc=0.75, substrate_pre=None, optional_load=None, serialize=True):
         )
     if (
         type_ != None and value_ != None
-    ):  # Need to process then make matching random features. - using what was calculated above
-        if type_ == "corr":
+    ):  # Need to process then make matching random features.
+        if (
+            type_ == "corr"
+        ):  # This step will actually compute the correlated features mask
+
             am_mask = preprocess.corrX_new(
                 full_am_df, cut=value_, get_const=True, bool_out=True
             )
             ### DEBUG
-            # print("Boolean mask:\n", am_mask)
-            # print(am_label)
+            print("Boolean mask:\n", am_mask)
+            print(am_label)
             br_mask = preprocess.corrX_new(
                 full_br_df, cut=value_, get_const=True, bool_out=True
             )
@@ -152,6 +157,9 @@ def main(inc=0.75, substrate_pre=None, optional_load=None, serialize=True):
             assert (sub_br_proc.columns == br_mask[1]).all()
             sub_am_proc.to_csv(DESC_ + "amine_selected_feat.csv", header=True)
             sub_br_proc.to_csv(DESC_ + "bromide_selected_feat.csv", header=True)
+        else:
+            ## Placeholder for alternative other preprocessing methods.
+            pass
     rand = make_randomized_features(
         sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc
     )
@@ -166,7 +174,11 @@ def main(inc=0.75, substrate_pre=None, optional_load=None, serialize=True):
 
 
 if __name__ == "__main__":
-    (
-        (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc),
-        rand,
-    ) = main(inc=0.80, substrate_pre=None, serialize=False)
+    # (
+    #     (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc),
+    #     rand,
+    # ) #Format of output
+    desc_out = main(substrate_pre=("corr", 0.97), optional_load="experimental_catalyst")
+    pickle.dump(desc_out, open(DESC_ + "real_rand_descriptor_buffer.p", "wb"))
+    print(DESC_)
+

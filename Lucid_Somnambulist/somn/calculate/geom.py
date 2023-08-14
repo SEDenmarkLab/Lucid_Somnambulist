@@ -1,9 +1,11 @@
 import molli as ml
 import json
 from attrs import define, field
-from somn.workflows import SCRATCH_, STRUC_, DESC_
+
+# from somn.workflows import SCRATCH_, STRUC_, DESC_
 from somn.data import ACOL, BCOL, ASMI, BSMI, AMINES, BROMIDES
 import pandas as pd
+from somn.util.project import Project
 
 
 @define
@@ -121,12 +123,14 @@ class PropheticInput:
             )
         # Perform sequential search and screen of conformers.
         crest = ml.CRESTDriver(
-            name="confs", scratch_dir=SCRATCH_ + "crest_scratch_1/", nprocs=2
+            name="confs",
+            scratch_dir=str(Project().scratch) + "/crest_scratch_1/",
+            nprocs=2,
         )
         concur_1 = ml.Concurrent(
             col,
-            backup_dir=SCRATCH_ + "crest_search/",
-            logfile=SCRATCH_ + "out1.log",
+            backup_dir=str(Project().scratch) + "/crest_search/",
+            logfile=str(Project().scratch) + "/out1.log",
             update=60,
             timeout=10000,
             concurrent=1,
@@ -151,14 +155,16 @@ class PropheticInput:
         # print(col2.molecules)
         concur_2 = ml.Concurrent(
             col2,
-            backup_dir=SCRATCH_ + "crest_screen/",
-            logfile=SCRATCH_ + "out2.log",
+            backup_dir=str(Project().scratch) + "/crest_screen/",
+            logfile=str(Project().scratch) + "/out2.log",
             update=30,
             timeout=10000,
             concurrent=1,
         )
         crest = ml.CRESTDriver(
-            name="confs", scratch_dir=SCRATCH_ + "crest_scratch_2/", nprocs=2
+            name="confs",
+            scratch_dir=str(Project().scratch) + "/crest_scratch_2/",
+            nprocs=2,
         )
         # print("conformer screen beginning")
         output2 = concur_2(crest.confomer_screen)(
@@ -197,17 +203,19 @@ class PropheticInput:
         self.failures = failures
         if len(self.failures) > 0:
             towrite = ml.Collection(name="failed", molecules=self.failures)
-            towrite.to_zip(STRUC_ + "input_mols_failed_conf_step.zip")
+            towrite.to_zip(
+                str(Project().structures) + "/input_mols_failed_conf_step.zip"
+            )
         assert len(self.conformers.molecules) > 0
         # These are the core dataset structures; should it be an external volume? DEV
         if self.state == "single":  # Single molecules going in
             assert len(self.conformers.molecules) == 1
             if self.role == "el":
                 BCOL.add(self.conformers[0])
-                BCOL.to_zip(STRUC_ + "newtotal_bromide.zip")
+                BCOL.to_zip(str(Project().structures) + "/newtotal_bromide.zip")
             elif self.role == "nuc":
                 ACOL.add(self.conformers[0])
-                ACOL.to_zip(STRUC_ + "newtotal_amine.zip")
+                ACOL.to_zip(str(Project().structures) + "/newtotal_amine.zip")
         elif (
             self.state == "multi"
         ):  # Many molecules going in; should work for el or nuc
@@ -224,12 +232,12 @@ class PropheticInput:
                     if nb == False:
                         nb = True
             if na == True:
-                ACOL.to_zip(STRUC_ + "newtotal_amine.zip")
+                ACOL.to_zip(str(Project().structures) + "/newtotal_amine.zip")
             if nb == True:
-                BCOL.to_zip(STRUC_ + "newtotal_bromide.zip")
+                BCOL.to_zip(str(Project().structures) + "/newtotal_bromide.zip")
         ## Save things - these are backups
-        self.conformers.to_zip(STRUC_ + "newstruc_geoms.zip")
-        with open(STRUC_ + "newstruc_roles.json", "w") as k:
+        self.conformers.to_zip(str(Project().structures) + "/newstruc_geoms.zip")
+        with open(str(Project().structures) + "/newstruc_roles.json", "w") as k:
             json.dump(self.roles_d, k)
 
     def atomprop_pipeline(self):
@@ -239,11 +247,13 @@ class PropheticInput:
 
         concur = ml.Concurrent(
             self.conformers,
-            backup_dir=SCRATCH_ + "atomprops/",
-            logfile=SCRATCH_ + "atomprops.log",
+            backup_dir=str(Project().scratch) + "/atomprops/",
+            logfile=str(Project().scratch) + "/atomprops.log",
         )
         xtb = ml.XTBDriver(
-            name="atomprops", scratch_dir=SCRATCH_ + "xtb_scratch/", nprocs=2
+            name="atomprops",
+            scratch_dir=str(Project().scratch) + "/xtb_scratch/",
+            nprocs=2,
         )
         atomprops = concur(xtb.conformer_atom_props)()
         # print(atomprops[0][0])
