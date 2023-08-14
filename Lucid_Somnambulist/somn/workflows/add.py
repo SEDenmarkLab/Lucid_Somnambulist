@@ -7,9 +7,11 @@ import molli as ml
 import argparse
 from pathlib import Path
 from somn.build import parsing
-from somn.workflows import STRUC_
+
+# from somn.workflows import STRUC_
 from somn.calculate.geom import PropheticInput
 import warnings
+from somn.util.project import Project
 
 # temp_work = r"C:\Users\rineharn\workspace/"
 # temp_work = r"/mnt/c/Users/rineharn/workspace/linux/"
@@ -22,6 +24,7 @@ import warnings
 if __name__ == "__main__":
     ### Basic checks on the input - start with the more difficult cdxml input, then go to smiles later
     ### Use molli for cdxml parse - it is better than openbabel. Use openbabel for smiles parsing and adding hydrogens (to both)
+    project = Project()
     assert len(argv) > 1
     parser = argparse.ArgumentParser(
         usage="Specify format (smi or cdxml), then a smiles string/file with smiles or cdxml file, and finally indicate 'el' or 'nuc' for electrophile or nucleophile. Optionally, serialize output structures with '-ser' - must pass some input as an argument after, standard use is 'y'"
@@ -44,7 +47,9 @@ if __name__ == "__main__":
         args.ser
     ):  # Serialization during parsing to check for errors - this is important for users to troubleshoot
         # assert Path(args.ser[1]).exists()
-        parse = parsing.InputParser(serialize=True, path_to_write=STRUC_)
+        parse = parsing.InputParser(
+            serialize=True, path_to_write=str(project.structures)
+        )
     else:
         parse = parsing.InputParser(serialize=False)
 
@@ -99,13 +104,13 @@ if __name__ == "__main__":
 
     ###             Building pipeline object for getting molecular geometries           ###
 
-    collection.to_zip(parse.path_to_write + "input_struc_preopt_col.zip")
+    collection.to_zip(parse.path_to_write + "/input_struc_preopt_col.zip")
     import json
 
     assert not Path(
-        STRUC_ + "newmol_smi_buffer.json"
+        str(project.structures) + "/newmol_smi_buffer.json"
     ).exists()  # Make sure we won't overwrite something
-    with open(STRUC_ + "newmol_smi_buffer.json", "w") as k:
+    with open(f"{project.structures}/newmol_smi_buffer.json", "w") as k:
         json.dump(smiles_d, k)
 
     smi_list = [smiles_d[n.name] for n in collection.molecules]
@@ -132,7 +137,7 @@ if __name__ == "__main__":
     if len(ap_errors) > 0:
         warnings.warn(
             f"Looks like {len(ap_errors)} molecules failed at the atomproperty calculation step - this singlepoint calc usually fails because \
-            the input structure is not valid. Check that backed up structure in the working directory {STRUC_}"
+            the input structure is not valid. Check that backed up structure in the working directory {project.structures}"
         )
-    with open(STRUC_ + "newmol_ap_buffer.json", "w") as k:
+    with open(f"{project.structures}/newmol_ap_buffer.json", "w") as k:
         json.dump(atomprops, k)

@@ -7,3 +7,6 @@ from somn.database.databasing import WRITE_
 
 
 ############################ Calculated reactant descriptors #############################
+"""
+This is under development, but is coming. This tool is not validated (yet) for adding new catalysts, so this is lower-priority functionality. 
+"""

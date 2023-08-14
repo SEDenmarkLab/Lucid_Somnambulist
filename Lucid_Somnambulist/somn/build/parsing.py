@@ -37,7 +37,9 @@ class InputParser:
         makedirs(self.path_to_write, exist_ok=True)
         for mol in mols_to_write:
             assert isinstance(mol, ml.Molecule)
-            with open(self.path_to_write + f"{mol.name}_{specific_msg}.mol2", "w") as g:
+            with open(
+                self.path_to_write + f"/{mol.name}_{specific_msg}.mol2", "w"
+            ) as g:
                 g.write(mol.to_mol2())
 
     def get_mol_from_graph(self, user_input):
@@ -204,15 +206,15 @@ class InputParser:
 
     def preopt_geom(self, col: ml.Collection, update=None):
         xtb = ml.XTBDriver(
-            "preopt", scratch_dir=self.path_to_write + "scratch/", nprocs=1
+            "preopt", scratch_dir=self.path_to_write + "/scratch/", nprocs=1
         )
         if update == None:
             opt = ml.Concurrent(
-                col, backup_dir=self.path_to_write + "scratch/", update=2
+                col, backup_dir=self.path_to_write + "/scratch/", update=2
             )(xtb.optimize)(method="gfn2")
         elif type(update) == int:
             opt = ml.Concurrent(
-                col, backup_dir=self.path_to_write + "scratch/", update=update
+                col, backup_dir=self.path_to_write + "/scratch/", update=update
             )(xtb.optimize)(method="gfn2")
         else:
             raise Exception(
