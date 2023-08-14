@@ -7,3 +7,14 @@ Need to perform cleanup after all of the tf scratch work - that is not necessary
 
 Tensorboard integration might be nice - see some graphs of what's going on with the models' gradients. 
 """
+
+from somn.learn.learning import hypermodel_search
+from sys import argv
+exp = argv[1]
+
+assert isinstance(exp,str)
+
+if __name__ == "__main__":
+    ## Will do hypermodel search with specified experiment - this will create models from an existing partition
+    ## Need to test how to ensure that the partition call and the search call operate on the same folder. 
+    hypermodel_search(exp)
