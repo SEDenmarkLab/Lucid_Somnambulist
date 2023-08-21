@@ -4,6 +4,7 @@ from uuid import uuid1
 import json
 from json import JSONDecoder
 from collections import OrderedDict
+from attrs import define, field
 
 
 class Project(object):
@@ -131,6 +132,16 @@ as well as posing risks for errors. Project has not been saved again."
             raise ValueError(
                 f"Did not find {how} in projects.JSON; cannot look up files."
             )
+
+
+@define
+class UserProjectSpec:
+    """
+    Object for handling user input to specify project directories during command-line execution.
+    """
+
+    id = field(default="")
+    unique = field(default="")
 
 
 ### TESTING

@@ -2,9 +2,9 @@ import molli as ml
 from somn.workflows.firstgen_calc_sub import main as calc_sub
 from somn.calculate import preprocess
 from somn.build.assemble import (
-    load_calculated_substrate_descriptors,
+    # load_calculated_substrate_descriptors,
     assemble_descriptors_from_handles,
-    assemble_random_descriptors_from_handles,
+    # assemble_random_descriptors_from_handles,
 )
 import os
 
@@ -16,7 +16,9 @@ from glob import glob
 # Load in raw calculated descriptors + random descriptors
 
 
-def main(val_schema="", vt=None, corr_cut=None, rand=False):
+def main(
+    val_schema="", vt=None, mask_substrates=True, rand=False, serialize_rand=False
+):
     """
     Validation Schema Argument (val_schema):
 
@@ -28,11 +30,26 @@ def main(val_schema="", vt=None, corr_cut=None, rand=False):
     NOTE: if not running a random feature control, leave "rand" as False. This will save on space.
     Turn this on if interested in testing the efficacy of descriptors.
 
+    For substrate masking, the boolean argument is being passed to a few functions down. The assemble_*_descriptors_from_handles function will handle it.
+
     """
     assert bool(
         set([val_schema])
         & set(["to_vi", "vi_to", "random", "vo_to", "to_vo", "noval_to", "to_noval"])
     )
+    if mask_substrates == True:
+        import pandas as pd
+
+        am_mask = pd.read_csv(
+            f"{Project().descriptors}/amine_mask.csv", header=0, index_col=0
+        )
+        br_mask = pd.read_csv(
+            f"{Project().descriptors}/bromide_mask.csv", header=0, index_col=0
+        )
+        sub_mask = (am_mask, br_mask)
+        # print("DEBUG",sub_mask[0], sub_mask[0]["0"], type(sub_mask[0]))
+    else:
+        sub_mask = None
     if val_schema == "vo_to" or val_schema == "to_vo":
         import random
 
@@ -68,11 +85,18 @@ def main(val_schema="", vt=None, corr_cut=None, rand=False):
             tr_int, te = preprocess.outsamp_by_handle(dataset, outsamp_test_handles)
             tr, va = preprocess.outsamp_by_handle(tr_int, outsamp_val_handles)
             partition_pipeline_val(
-                name_, tr, va, te, vt=vt, corr_cut=corr_cut, rand=rand
+                name_,
+                tr,
+                va,
+                te,
+                vt=vt,
+                sub_mask=sub_mask,
+                rand=rand,
+                serialize_rand=serialize_rand,
             )
-            ### DEBUG
-            if i == 4:
-                break
+            # ### DEBUG
+            # if i == 4:
+            #     break
     elif val_schema == "noval_to" or val_schema == "to_noval":
         for i, val in enumerate(combos):
             am, br = val.split("_")
@@ -104,37 +128,48 @@ def main(val_schema="", vt=None, corr_cut=None, rand=False):
                 tr, va = preprocess.random_splits(
                     temp, validation=False, n_splits=1, fold=7
                 )
-            if 80 < i < 106:
+            #### DEV
+            if 65 < i < 73:  # Actually run these
                 pass
             else:
-                continue
+                continue  # Skip others
+            #### DEV
             partition_pipeline_val(
-                name_, tr, va, te, vt=vt, corr_cut=corr_cut, rand=rand
+                name_,
+                tr,
+                va,
+                te,
+                vt=vt,
+                sub_mask=sub_mask,
+                rand=rand,
+                serialize_rand=serialize_rand,
             )
             #### DEBUG
             # if i == 4:
             # break
 
 
-def partition_pipeline_noval(name_, tr, te, vt=None, corr_cut=None, rand=True):
+def partition_pipeline_noval(
+    name_, tr, te, vt=None, rand=True, sub_mask=False, serialize_rand=False
+):
     """
     Partition pipeline, but for models with no validation set
     """
-    x_tr = assemble_random_descriptors_from_handles(tr.index.tolist(), rand)
-    x_te = assemble_random_descriptors_from_handles(te.index.tolist(), rand)
+    x_tr = assemble_descriptors_from_handles(tr.index.tolist(), rand, sub_mask=sub_mask)
+    x_te = assemble_descriptors_from_handles(te.index.tolist(), rand, sub_mask=sub_mask)
     x_tr_real = assemble_descriptors_from_handles(
-        tr.index.tolist(), sub_am_dict, sub_br_dict
+        tr.index.tolist(), sub_am_dict, sub_br_dict, sub_mask=sub_mask
     )
     x_te_real = assemble_descriptors_from_handles(
-        te.index.tolist(), sub_am_dict, sub_br_dict
+        te.index.tolist(), sub_am_dict, sub_br_dict, sub_mask=sub_mask
     )
     (x_tr_, x_te_), (
         x_tr_re,
         x_te_re,
     ) = preprocess.new_mask_random_feature_arrays(
-        (x_tr_real, x_te_real), (x_tr, x_te), _vt=vt, corr_cut=corr_cut
+        (x_tr_real, x_te_real), (x_tr, x_te), _vt=vt
     )  # Use this for only train/test
-    if rand == True:
+    if serialize_rand == True:
         x_tr_.to_feather(randout + name_ + "_xtr.feather")
         x_te_.to_feather(randout + name_ + "_xte.feather")
         tr.transpose().reset_index(drop=True).to_feather(
@@ -149,22 +184,44 @@ def partition_pipeline_noval(name_, tr, te, vt=None, corr_cut=None, rand=True):
     te.transpose().reset_index(drop=True).to_feather(realout + name_ + "_yte.feather")
 
 
-def partition_pipeline_val(name_, tr, va, te, vt=None, corr_cut=None, rand=True):
-    x_tr = assemble_random_descriptors_from_handles(tr.index.tolist(), rand)
-    x_va = assemble_random_descriptors_from_handles(va.index.tolist(), rand)
-    x_te = assemble_random_descriptors_from_handles(te.index.tolist(), rand)
+def partition_pipeline_val(
+    name_, tr, va, te, vt=None, rand=False, sub_mask=False, serialize_rand=False
+):
+    """
+    NOTE: sub_mask is passed on to vectorize_substrate_descriptors, and must be a tuple of length 2, with (amine,bromide) masks. Can be pd.Series, pd.DataFrame (with a column "0"), or a numpy array of boolean values.
+    """
+    if isinstance(rand, tuple):
+        x_tr = assemble_descriptors_from_handles(
+            tr.index.tolist(), rand, sub_mask=sub_mask
+        )
+        x_va = assemble_descriptors_from_handles(
+            va.index.tolist(), rand, sub_mask=sub_mask
+        )
+        x_te = assemble_descriptors_from_handles(
+            te.index.tolist(), rand, sub_mask=sub_mask
+        )
+    else:  ### DEV - need to change this
+        raise Exception(
+            "Must pass random descriptors to partition pipeline function - this is going to be depreciated later"
+        )
     # Real features used to generate masks for random features
-    x_tr_real = assemble_descriptors_from_handles(tr.index.tolist(), real)
-    x_va_real = assemble_descriptors_from_handles(va.index.tolist(), real)
-    x_te_real = assemble_descriptors_from_handles(te.index.tolist(), real)
+    x_tr_real = assemble_descriptors_from_handles(
+        tr.index.tolist(), real, sub_mask=sub_mask
+    )
+    x_va_real = assemble_descriptors_from_handles(
+        va.index.tolist(), real, sub_mask=sub_mask
+    )
+    x_te_real = assemble_descriptors_from_handles(
+        te.index.tolist(), real, sub_mask=sub_mask
+    )
     (x_tr_, x_va_, x_te_), (
         x_tr_re,
         x_va_re,
         x_te_re,
     ) = preprocess.new_mask_random_feature_arrays(
-        (x_tr_real, x_va_real, x_te_real), (x_tr, x_va, x_te), _vt=vt, corr_cut=corr_cut
+        (x_tr_real, x_va_real, x_te_real), (x_tr, x_va, x_te), _vt=vt
     )
-    if rand == True:
+    if serialize_rand == True:
         ### Rand copies of X
         x_tr_.to_feather(randout + name_ + "_rand-feat_xtr.feather")
         x_va_.to_feather(randout + name_ + "_rand-feat_xva.feather")
@@ -229,11 +286,14 @@ def get_precalc_sub_desc():
     """
     status = check_sub_status()
     if status == True:  # Already calculated
-        amf, brf, rand = fetch_precalc_sub_desc()
+        amf, brf, rand_fp = fetch_precalc_sub_desc()
         import pickle
 
-        sub_am_dict = pickle.load(open(amf, "rb"))
-        sub_br_dict = pickle.load(open(brf, "rb"))
+        assert len(amf) == 1 & len(brf) == 1
+        sub_am_dict = pickle.load(open(amf[0], "rb"))
+        sub_br_dict = pickle.load(open(brf[0], "rb"))
+        with open(rand_fp, "rb") as k:
+            rand = pickle.load(k)
         real = (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc)
         return real, rand
     else:
@@ -244,7 +304,7 @@ if __name__ == "__main__":
     from sys import argv
 
     if argv[1] == "new":
-        assert len(argv >= 3)
+        assert len(argv) >= 3
         project = Project()
         project.save(identifier=argv[2])
     else:
@@ -267,22 +327,27 @@ if __name__ == "__main__":
         base_desc,
         solv_desc,
         cat_desc,
-    ) = preprocess.load_data(optional_load="experimental_catalyst")
+    ) = preprocess.load_data(optional_load="maxdiff_catalyst")
 
     # Checking project status to make sure sub descriptors are calculated
     sub_desc = get_precalc_sub_desc()
     if sub_desc == False:  # Need to calculate
-        real, rand = calc_sub(optional_load="experimental_catalyst")
+        real, rand = calc_sub(
+            project, optional_load="maxdiff_catalyst", substrate_pre=("corr", 0.90)
+        )
     else:
         real, rand = sub_desc
 
     sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
-
+    print(rand)
     # Val have out of sample reactants
     # combos = preprocess.get_all_combos(unique_couplings)
     combos = deepcopy(
         unique_couplings
     )  # This will significantly cut down on the number of partitions
+    import pandas as pd
+
+    # print(pd.DataFrame(combos).to_string())
     outdir = deepcopy(f"{project.partitions}/")
     os.makedirs(outdir + "real/", exist_ok=True)
     os.makedirs(outdir + "rand/", exist_ok=True)
@@ -290,5 +355,5 @@ if __name__ == "__main__":
     randout = outdir + "rand/"
 
     main(
-        val_schema="vi_to", corr_cut=None, vt=0, rand=False
+        val_schema="vi_to", vt=0, mask_substrates=True, rand=rand, serialize_rand=False
     )  ## Correlation cutoff is under development: should not be implemented here.

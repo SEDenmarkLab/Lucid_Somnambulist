@@ -275,10 +275,10 @@ class PropheticInput:
         if self.state == "single":  # Single molecules going in, easy output
             assert len(self.atomprops) > 0
             if self.role == "el":
-                fp = f"{STRUC_}_new_el_ap_buffer.json"
+                fp = f"{Project().structures}/new_el_ap_buffer.json"
 
             elif self.role == "nuc":
-                fp = f"{STRUC_}_new_nuc_ap_buffer.json"
+                fp = f"{Project().structures}/new_nuc_ap_buffer.json"
             with open(fp, "w") as k:
                 json.dump(self.atomprops, k)
         elif (
@@ -297,11 +297,15 @@ class PropheticInput:
                 elif molrole == "el":
                     el_ap_temp[mol.name] = self.atomprops[mol.name]
             if len(nuc_ap_temp.keys()) > 0:
-                with open(f"{STRUC_}_new_nuc_ap_buffer.json", "w") as j:
+                with open(f"{Project().structures}/new_nuc_ap_buffer.json", "w") as j:
                     json.dump(nuc_ap_temp, j)
             if len(el_ap_temp.keys()) > 0:
-                with open(f"{STRUC_}_new_el_ap_buffer.json", "w") as m:
+                with open(f"{Project().structures}/new_el_ap_buffer.json", "w") as m:
                     json.dump(el_ap_temp, m)
+        else:
+            raise RuntimeError(
+                "DEBUG: State error for PropheticInput class -- as a result, outputs not serializing."
+            )
 
     @classmethod
     def from_mol(cls, mol, smi, role):

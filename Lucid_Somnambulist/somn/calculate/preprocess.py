@@ -55,13 +55,13 @@ def load_data(optional_load=None):
             temp, concat_grid_desc=True, threshold=(0.90, 0.89)
         )
     elif "correlated_catalyst" in requests:
-        ... #Perform correlated features cutoff for catalyst features. Perhaps look at multicolinearity
+        ...  # Perform correlated features cutoff for catalyst features. Perhaps look at multicolinearity
     elif "embed_catalyst" in requests:
         # temp = deepcopy(CATDESC)
         cat_desc = "Set up load for isomap embedding"
-    elif "no_HI_RDF"in requests:
+    elif "no_HI_RDF" in requests:
         ...
-        ## Remove indicator fields for heteroatoms. This may be useful. 
+        ## Remove indicator fields for heteroatoms. This may be useful.
     else:
         cat_desc = deepcopy(CATDESC)
     return (

@@ -63,5 +63,35 @@
         "timestamp": "2023-08-14",
         "unique": "116990d63a7611ee9f2d18c04d0a4970",
         "identifier": "testingsub"
+    },
+    "edd55fb23d5711eea33d18c04d0a4970": {
+        "path": "SOMN_DEV/edd55fb23d5711eea33d18c04d0a4970/",
+        "timestamp": "2023-08-17",
+        "unique": "edd55fb23d5711eea33d18c04d0a4970",
+        "identifier": "DEV"
+    },
+    "fc782baa3d9111ee80a118c04d0a4970": {
+        "path": "somn_scratch/fc782baa3d9111ee80a118c04d0a4970/",
+        "timestamp": "2023-08-18",
+        "unique": "fc782baa3d9111ee80a118c04d0a4970",
+        "identifier": "testing_partitions"
+    },
+    "1090293a3d9211eeb6c018c04d0a4970": {
+        "path": "somn_scratch/1090293a3d9211eeb6c018c04d0a4970/",
+        "timestamp": "2023-08-18",
+        "unique": "1090293a3d9211eeb6c018c04d0a4970",
+        "identifier": "testing_partitions"
+    },
+    "509d48be3d9211eeb9bd18c04d0a4970": {
+        "path": "somn_scratch/509d48be3d9211eeb9bd18c04d0a4970/",
+        "timestamp": "2023-08-18",
+        "unique": "509d48be3d9211eeb9bd18c04d0a4970",
+        "identifier": "testing_partitions"
+    },
+    "cc3d1f3a3d9211eebdbe18c04d0a4970": {
+        "path": "somn_scratch/cc3d1f3a3d9211eebdbe18c04d0a4970/",
+        "timestamp": "2023-08-18",
+        "unique": "cc3d1f3a3d9211eebdbe18c04d0a4970",
+        "identifier": "testing_partitions"
     }
 }
