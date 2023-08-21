@@ -303,6 +303,7 @@ def retrieve_amine_rdf_descriptors(
         conf_rdfs = {}
         a_idx_l = [mol.atoms.index(f) for f in mol.atoms]
         for k, conf in enumerate(mol.conformers):
+            print("DEBUG", k, mol.name)
             df = pd.DataFrame.from_dict(apd[mol.name][k], orient="columns")
             coords = conf.coord
             # a,b,c,d = get_molplane(coords,n_idx,ipso_idx,leftref)

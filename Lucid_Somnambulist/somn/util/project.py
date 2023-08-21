@@ -134,14 +134,14 @@ as well as posing risks for errors. Project has not been saved again."
             )
 
 
-@define
-class UserProjectSpec:
-    """
-    Object for handling user input to specify project directories during command-line execution.
-    """
+# @define
+# class UserProjectSpec:
+#     """
+#     Object for handling user input to specify project directories during command-line execution.
+#     """
 
-    id = field(default="")
-    unique = field(default="")
+#     id = field(default="")
+#     unique = field(default="")
 
 
 ### TESTING

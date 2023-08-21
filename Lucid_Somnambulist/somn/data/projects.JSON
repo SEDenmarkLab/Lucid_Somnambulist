@@ -93,5 +93,11 @@
         "timestamp": "2023-08-18",
         "unique": "cc3d1f3a3d9211eebdbe18c04d0a4970",
         "identifier": "testing_partitions"
+    },
+    "bc09d9b63fe311eeb9fc18c04d0a4970": {
+        "path": "somn_scratch/bc09d9b63fe311eeb9fc18c04d0a4970/",
+        "timestamp": "2023-08-21",
+        "unique": "bc09d9b63fe311eeb9fc18c04d0a4970",
+        "identifier": "vt_mask"
     }
 }

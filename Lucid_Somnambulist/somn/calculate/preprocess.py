@@ -596,7 +596,7 @@ def new_mask_random_feature_arrays(
     elif prophetic == True:
         output_rand = processed_rand_feats
     output_real = tuple([processed_real_feats[lbl] for lbl in labels])
-    return output_rand, output_real
+    return output_rand, output_real, vt.variances_
 
 
 def get_all_combos(unique_couplings):

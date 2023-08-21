@@ -33,10 +33,11 @@ class tf_organizer:
         of the same type in the partition directory.
     """
 
-    def __init__(self, name, partition_dir="", validation=True):
+    def __init__(self, name, partition_dir="", validation=True, inference=False):
         self.name = name
         self.part_dir = partition_dir
         self.val = validation
+        self.inference = inference
         if validation == True:
             (
                 self.files,
@@ -58,6 +59,15 @@ class tf_organizer:
         self.partitions, self.partIDs = self.organize_partitions()
         self.log = []
         self.results = {}  # This is for storing results to save later to a json
+        if inference == True:
+            self.masks = self.get_partition_masks()
+
+    def get_partition_masks(self):
+        """
+        Used for inferencing - will retrieve variance threshold masks used to build partitions, and apply them to new feature arrays.
+        """
+        masks = sorted(glob(self.part_dir + "/*vtmask.csv"))
+        return masks
 
     def get_partitions(self, val=True):
         """
@@ -95,7 +105,9 @@ class tf_organizer:
                 if parts.count(parts[0]) != len(
                     parts
                 ):  # All elements are the same; checking
-                    raise Exception("filepath parsing FAILED")
+                    raise Exception(
+                        "filepath parsing FAILED during organize_partitions - check folder"
+                    )
                 partitions.append((xtr, xva, xte, ytr, yva, yte))
                 part_IDS.append(int(x_tr[0]))
         elif self.val == False:
@@ -162,6 +174,10 @@ class tfDriver:
         self.get_next_part(iter_=False)
         self.x_y = self.prep_x_y()
         self.input_dim = self.x_y[0][0].shape[1]
+        if self.organizer.inference == True:
+            masks = self.prep_masks(self.organizer.masks)
+            self.masks = masks
+            self.current_mask = masks[0]
 
     def get_next_part(self, iter_=True):
         """
@@ -190,8 +206,18 @@ class tfDriver:
         if iter_ == True:
             self.x_y = self.prep_x_y()
             self.input_dim = self.x_y[0][0].shape[1]
+            self.current_mask = self.masks[curr_idx]
+
         print("Getting next partition", "\n\n", self.organizer.log[-1], new_current)
         # return new_current,current_number ### vestigial - no longer used
+
+    def prep_masks(self, paths: tuple):
+        out = []
+        for pth in paths:
+            df = pd.read_csv(pth, header=0, index_col=0)
+            np_mask = df.to_numpy()
+            out.append(np_mask)
+        return tuple(out)
 
     def prep_x_y(self):
         """

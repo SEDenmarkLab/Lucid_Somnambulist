@@ -18,6 +18,7 @@ class PropheticInput:
     role = field()
     smi = field()
     struc = field()
+    parser = field()
     state = field(default="")
     known = field(default="")
     conformers = field(default="")
@@ -204,7 +205,7 @@ class PropheticInput:
         if len(self.failures) > 0:
             towrite = ml.Collection(name="failed", molecules=self.failures)
             towrite.to_zip(
-                str(Project().structures) + "/input_mols_failed_conf_step.zip"
+                str(self.parser.path_to_write) + "/input_mols_failed_conf_step.zip"
             )
         assert len(self.conformers.molecules) > 0
         # These are the core dataset structures; should it be an external volume? DEV
@@ -212,32 +213,42 @@ class PropheticInput:
             assert len(self.conformers.molecules) == 1
             if self.role == "el":
                 BCOL.add(self.conformers[0])
-                BCOL.to_zip(str(Project().structures) + "/newtotal_bromide.zip")
+                BCOL.to_zip(str(self.parser.path_to_write) + "/newtotal_bromide.zip")
             elif self.role == "nuc":
                 ACOL.add(self.conformers[0])
-                ACOL.to_zip(str(Project().structures) + "/newtotal_amine.zip")
+                ACOL.to_zip(str(self.parser.path_to_write) + "/newtotal_amine.zip")
         elif (
             self.state == "multi"
         ):  # Many molecules going in; should work for el or nuc
             na = False
             nb = False
+            am_str = []
+            br_str = []
             for mol in self.conformers:
                 molrole = self.roles_d[mol.name]
                 if molrole == "nuc":
                     ACOL.add(mol)
+                    am_str.append(mol)
                     if na == False:
                         na = True
                 elif molrole == "el":
                     BCOL.add(mol)
+                    br_str.append(mol)
                     if nb == False:
                         nb = True
             if na == True:
-                ACOL.to_zip(str(Project().structures) + "/newtotal_amine.zip")
+                ACOL.to_zip(str(self.parser.path_to_write) + "/newtotal_amine.zip")
+                ml.Collection(name="proph_am", molecules=am_str).to_zip(
+                    str(self.parser.path_to_write) + "/prophetic_amines.zip"
+                )
             if nb == True:
-                BCOL.to_zip(str(Project().structures) + "/newtotal_bromide.zip")
+                BCOL.to_zip(str(self.parser.path_to_write) + "/newtotal_bromide.zip")
+                ml.Collection(name="proph_br", molecules=br_str).to_zip(
+                    str(self.parser.path_to_write) + "/prophetic_bromides.zip"
+                )
         ## Save things - these are backups
-        self.conformers.to_zip(str(Project().structures) + "/newstruc_geoms.zip")
-        with open(str(Project().structures) + "/newstruc_roles.json", "w") as k:
+        self.conformers.to_zip(str(self.parser.path_to_write) + "/newstruc_geoms.zip")
+        with open(str(self.parser.path_to_write) + "/newstruc_roles.json", "w") as k:
             json.dump(self.roles_d, k)
 
     def atomprop_pipeline(self):
@@ -275,10 +286,10 @@ class PropheticInput:
         if self.state == "single":  # Single molecules going in, easy output
             assert len(self.atomprops) > 0
             if self.role == "el":
-                fp = f"{Project().structures}/new_el_ap_buffer.json"
+                fp = f"{self.parser.path_to_write}/new_el_ap_buffer.json"
 
             elif self.role == "nuc":
-                fp = f"{Project().structures}/new_nuc_ap_buffer.json"
+                fp = f"{self.parser.path_to_write}/new_nuc_ap_buffer.json"
             with open(fp, "w") as k:
                 json.dump(self.atomprops, k)
         elif (
@@ -286,6 +297,7 @@ class PropheticInput:
         ):  # Many molecules going in; should work for el or nuc
             nuc_ap_temp = {}
             el_ap_temp = {}
+            ### DEBUG - this doesn't work
             for (
                 mol
             ) in (
@@ -297,10 +309,14 @@ class PropheticInput:
                 elif molrole == "el":
                     el_ap_temp[mol.name] = self.atomprops[mol.name]
             if len(nuc_ap_temp.keys()) > 0:
-                with open(f"{Project().structures}/new_nuc_ap_buffer.json", "w") as j:
+                with open(
+                    f"{self.parser.path_to_write}/new_nuc_ap_buffer.json", "w"
+                ) as j:
                     json.dump(nuc_ap_temp, j)
             if len(el_ap_temp.keys()) > 0:
-                with open(f"{Project().structures}/new_el_ap_buffer.json", "w") as m:
+                with open(
+                    f"{self.parser.path_to_write}/new_el_ap_buffer.json", "w"
+                ) as m:
                     json.dump(el_ap_temp, m)
         else:
             raise RuntimeError(
@@ -319,12 +335,14 @@ class PropheticInput:
         return k
 
     @classmethod
-    def from_col(cls, col, smi_list, role_list):
+    def from_col(cls, col, smi_list, role_list, parser):
         """
         Initiate pipelien for new molecules
 
         collection, smiles list, role list
         """
-        k = cls([f.name for f in col.molecules], role_list, smi_list, col)
+        k = cls(
+            [f.name for f in col.molecules], role_list, smi_list, col, parser=parser
+        )
         k.check_input()
         return k

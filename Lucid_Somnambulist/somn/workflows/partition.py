@@ -163,9 +163,13 @@ def partition_pipeline_noval(
     x_te_real = assemble_descriptors_from_handles(
         te.index.tolist(), sub_am_dict, sub_br_dict, sub_mask=sub_mask
     )
-    (x_tr_, x_te_), (
-        x_tr_re,
-        x_te_re,
+    (
+        (x_tr_, x_te_),
+        (
+            x_tr_re,
+            x_te_re,
+        ),
+        vt_mask,
     ) = preprocess.new_mask_random_feature_arrays(
         (x_tr_real, x_te_real), (x_tr, x_te), _vt=vt
     )  # Use this for only train/test
@@ -182,6 +186,7 @@ def partition_pipeline_noval(
     x_te_re.to_feather(realout + name_ + "_xte.feather")
     tr.transpose().reset_index(drop=True).to_feather(realout + name_ + "_ytr.feather")
     te.transpose().reset_index(drop=True).to_feather(realout + name_ + "_yte.feather")
+    pd.Series(vt_mask).to_csv(realout + name_ + "_vtmask.csv")
 
 
 def partition_pipeline_val(
@@ -214,10 +219,14 @@ def partition_pipeline_val(
     x_te_real = assemble_descriptors_from_handles(
         te.index.tolist(), real, sub_mask=sub_mask
     )
-    (x_tr_, x_va_, x_te_), (
-        x_tr_re,
-        x_va_re,
-        x_te_re,
+    (
+        (x_tr_, x_va_, x_te_),
+        (
+            x_tr_re,
+            x_va_re,
+            x_te_re,
+        ),
+        vt_mask,
     ) = preprocess.new_mask_random_feature_arrays(
         (x_tr_real, x_va_real, x_te_real), (x_tr, x_va, x_te), _vt=vt
     )
@@ -249,6 +258,7 @@ def partition_pipeline_val(
     te.transpose().reset_index(drop=True).to_feather(
         realout + name_ + "_real-feat_yte.feather"
     )
+    pd.Series(vt_mask).to_csv(realout + name_ + "_vtmask.csv")
 
 
 def check_sub_status():

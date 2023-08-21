@@ -94,6 +94,22 @@ def vectorize_substrate_desc(sub_df_dict, sub, feat_mask=None):
         )
 
 
+def load_substrate_masks():
+    """
+    Load substrate masks for inferencing.
+
+    MUST instantiate singleton project before calling.
+    """
+    from somn.util.project import Project
+
+    project = Project()
+    afp = f"{project.descriptors}/amine_mask.csv"
+    bfp = f"{project.descriptors}/bromide_mask.csv"
+    am_mask = pd.read_csv(afp, header=0, index_col=0)
+    br_mask = pd.read_csv(bfp, header=0, index_col=0)
+    return (am_mask, br_mask)
+
+
 # def assemble_random_descriptors_from_handles(
 #     handle_input, desc: tuple, substrate_mask=None
 # ):
