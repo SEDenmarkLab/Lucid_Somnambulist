@@ -1,3 +1,6 @@
+import os
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import numpy as np
 import pandas as pd
 from sklearn.feature_selection import VarianceThreshold
@@ -6,6 +9,7 @@ import random
 import itertools
 from copy import deepcopy
 from somn.build.parsing import cleanup_handles
+from somn.util.project import Project
 
 from somn import data
 
@@ -536,6 +540,70 @@ def prep_mc_labels(df, zero_buffer: int = 3):
 #         )
 
 
+def preprocess_prophetic_features(
+    project: Project, features, prediction_experiment="", vt=0
+):
+    """
+    Workflow to recreate preprocessing from model training and apply it to prophetic features
+    """
+    partition_dir = f"{project.partitions}/real"
+    from somn.learn.learning import tf_organizer
+
+    os.makedirs(
+        f"{project.partitions}/prophetic_{prediction_experiment}/", exist_ok=False
+    )
+
+    organ = tf_organizer(
+        name="prophetic_pre",
+        partition_dir=partition_dir,
+        validation=True,
+        inference=True,
+    )
+    IDs = organ.partIDs
+    masks = organ.masks
+    # print(IDs)
+    # print(organ.masks)
+    output = []
+    for id, m1, m2 in zip(IDs, masks[0], masks[1]):
+        mask1 = pd.read_csv(m1, header=0, index_col=0)["0"].values
+        mask2 = (
+            pd.read_csv(m2, header=0, index_col=0)["0"].values > vt
+        )  # variances; should be turned into boolean
+        temp1 = mask_prophetic_features(features, mask1, scale=False)
+        last = mask_prophetic_features(temp1, mask2, scale=True)
+        last.transpose().reset_index(drop=True).to_feather(
+            f"{project.partitions}/prophetic_{prediction_experiment}/{id}_processed_features.feather"
+        )
+        output.append(
+            f"{project.partitions}/prophetic_{prediction_experiment}/{id}_processed_features.feather"
+        )
+    # print(output)
+    organ.prophetic_features = output
+    return organ
+
+
+def mask_prophetic_features(features: pd.DataFrame, mask: np.ndarray, scale=True):
+    """
+    Requires a pre-assembled feature array (with any substrate masking already done), and will apply
+    a preprocessing mask (based on variance threshold) from "memory" of a particular modeling experiment.
+
+    NOTE: columns are features
+    """
+    assert isinstance(features, pd.DataFrame)
+    # print("DEBUG",len(mask), features.shape[1])
+    assert len(mask) == features.shape[1]
+
+    ### Mask features
+    output = features[features.columns[mask]]
+    if scale is True:
+        sc = MinMaxScaler()
+        scaled = sc.fit_transform(features.to_numpy())
+        sc = pd.DataFrame(scaled, index=features.index)
+        return sc
+    else:
+        return output
+
+
 def new_mask_random_feature_arrays(
     real_feature_dataframes: (pd.DataFrame),
     rand_feat_dataframes: (pd.DataFrame),
@@ -596,7 +664,8 @@ def new_mask_random_feature_arrays(
     elif prophetic == True:
         output_rand = processed_rand_feats
     output_real = tuple([processed_real_feats[lbl] for lbl in labels])
-    return output_rand, output_real, vt.variances_
+    ### mask is nunique (basically single value column filter), and variances will be useful IF someone wants to apply a specific cutoff
+    return output_rand, output_real, (mask, vt.variances_)
 
 
 def get_all_combos(unique_couplings):

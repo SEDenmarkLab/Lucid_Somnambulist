@@ -1,3 +1,6 @@
+import os
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import molli as ml
 from somn.workflows.firstgen_calc_sub import main as calc_sub
 from somn.calculate import preprocess
@@ -6,7 +9,7 @@ from somn.build.assemble import (
     assemble_descriptors_from_handles,
     # assemble_random_descriptors_from_handles,
 )
-import os
+
 
 # from somn.workflows import PART_, DESC_
 from somn.util.project import Project
@@ -17,7 +20,12 @@ from glob import glob
 
 
 def main(
-    val_schema="", vt=None, mask_substrates=True, rand=False, serialize_rand=False
+    project,
+    val_schema="",
+    vt=None,
+    mask_substrates=True,
+    rand=False,
+    serialize_rand=False,
 ):
     """
     Validation Schema Argument (val_schema):
@@ -41,10 +49,10 @@ def main(
         import pandas as pd
 
         am_mask = pd.read_csv(
-            f"{Project().descriptors}/amine_mask.csv", header=0, index_col=0
+            f"{project.descriptors}/amine_mask.csv", header=0, index_col=0
         )
         br_mask = pd.read_csv(
-            f"{Project().descriptors}/bromide_mask.csv", header=0, index_col=0
+            f"{project.descriptors}/bromide_mask.csv", header=0, index_col=0
         )
         sub_mask = (am_mask, br_mask)
         # print("DEBUG",sub_mask[0], sub_mask[0]["0"], type(sub_mask[0]))
@@ -89,6 +97,7 @@ def main(
                 tr,
                 va,
                 te,
+                project,
                 vt=vt,
                 sub_mask=sub_mask,
                 rand=rand,
@@ -139,6 +148,7 @@ def main(
                 tr,
                 va,
                 te,
+                project,
                 vt=vt,
                 sub_mask=sub_mask,
                 rand=rand,
@@ -190,7 +200,16 @@ def partition_pipeline_noval(
 
 
 def partition_pipeline_val(
-    name_, tr, va, te, vt=None, rand=False, sub_mask=False, serialize_rand=False
+    name_,
+    tr,
+    va,
+    te,
+    project=None,
+    vt=None,
+    rand=None,
+    real=None,
+    sub_mask=False,
+    serialize_rand=False,
 ):
     """
     NOTE: sub_mask is passed on to vectorize_substrate_descriptors, and must be a tuple of length 2, with (amine,bromide) masks. Can be pd.Series, pd.DataFrame (with a column "0"), or a numpy array of boolean values.
@@ -209,6 +228,14 @@ def partition_pipeline_val(
         raise Exception(
             "Must pass random descriptors to partition pipeline function - this is going to be depreciated later"
         )
+    assert isinstance(real, tuple)
+    ### Make out dirs
+    outdir = f"{project.partitions}/"
+    realout = f"{outdir}real/"
+    randout = f"{outdir}rand/"
+    os.makedirs(outdir + "real/", exist_ok=True)
+    os.makedirs(outdir + "rand/", exist_ok=True)
+    ###
     # Real features used to generate masks for random features
     x_tr_real = assemble_descriptors_from_handles(
         tr.index.tolist(), real, sub_mask=sub_mask
@@ -226,7 +253,7 @@ def partition_pipeline_val(
             x_va_re,
             x_te_re,
         ),
-        vt_mask,
+        (unique_mask, vt_mask),
     ) = preprocess.new_mask_random_feature_arrays(
         (x_tr_real, x_va_real, x_te_real), (x_tr, x_va, x_te), _vt=vt
     )
@@ -258,7 +285,16 @@ def partition_pipeline_val(
     te.transpose().reset_index(drop=True).to_feather(
         realout + name_ + "_real-feat_yte.feather"
     )
-    pd.Series(vt_mask).to_csv(realout + name_ + "_vtmask.csv")
+    import pandas as pd
+
+    pd.Series(vt_mask).to_csv(f"{realout}{name_}_vtmask.csv")
+    pd.Series(unique_mask).to_csv(f"{realout}{name_}_constmask.csv")
+    ### DEV ###
+    # print(
+    #     f"DEBUG:\n SHAPE OF processed X ARRAY: {x_tr_re.shape}\n SHAPE OF raw X Array: {x_tr_real.shape}\n SHAPE of mask: {vt_mask.shape}\n name: {name_}"
+    # )
+    # raise Exception("DEBUG")
+    ###########
 
 
 def check_sub_status():
@@ -292,7 +328,7 @@ def fetch_precalc_sub_desc():
 
 def get_precalc_sub_desc():
     """
-    Check status, then load descriptors if they are precalculated
+    Check status, then load sub descriptors if they are precalculated
     """
     status = check_sub_status()
     if status == True:  # Already calculated
@@ -304,8 +340,8 @@ def get_precalc_sub_desc():
         sub_br_dict = pickle.load(open(brf[0], "rb"))
         with open(rand_fp, "rb") as k:
             rand = pickle.load(k)
-        real = (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc)
-        return real, rand
+        # real = (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc)
+        return sub_am_dict, sub_br_dict, rand
     else:
         return False
 
@@ -345,11 +381,12 @@ if __name__ == "__main__":
         real, rand = calc_sub(
             project, optional_load="maxdiff_catalyst", substrate_pre=("corr", 0.90)
         )
+        sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
     else:
-        real, rand = sub_desc
+        sub_am_dict, sub_br_dict, rand = sub_desc
 
-    sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
-    print(rand)
+    # sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
+    # print(rand)
     # Val have out of sample reactants
     # combos = preprocess.get_all_combos(unique_couplings)
     combos = deepcopy(
@@ -365,5 +402,10 @@ if __name__ == "__main__":
     randout = outdir + "rand/"
 
     main(
-        val_schema="vi_to", vt=0, mask_substrates=True, rand=rand, serialize_rand=False
+        project,
+        val_schema="vi_to",
+        vt=0,
+        mask_substrates=True,
+        rand=rand,
+        serialize_rand=False,
     )  ## Correlation cutoff is under development: should not be implemented here.

@@ -1,3 +1,6 @@
+import os
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 import pandas as pd
 from glob import glob
@@ -126,6 +129,7 @@ def assemble_desc_for_inference_mols(
     project: Project,
     requests: str,
     organizer: tf_organizer,
+    desc: tuple,
     masks: tuple,
     prediction_experiment: str,
     pred_str,
@@ -137,26 +141,26 @@ def assemble_desc_for_inference_mols(
     from somn.workflows.add import add_workflow
 
     args = ["multsmi", requests, "mult", "-ser", "t"]
-    try:
-        add_workflow(
-            project=project,
-            prediction_experiment=prediction_experiment,
-            parser_args=args,
-        )
-    except:
-        raise Exception(
-            "Something went wrong with calculating substrate descriptors for new molecules - check inputs"
-        )
+    # try:
+    add_workflow(
+        project=project,
+        prediction_experiment=prediction_experiment,
+        parser_args=args,
+    )
+    # except:
+    #     raise Exception(
+    #         "Something went wrong with calculating substrate descriptors for new molecules - check inputs"
+    #     )
     ### Now we're ready to calculate RDF features
     from somn.workflows.firstgen_calc_sub import calculate_prophetic
     import molli as ml
     import json
 
     prophetic_amine_col = ml.Collection.from_zip(
-        f"{project.structures}/{prediction_experiment}/prophetic_amine.zip"
+        f"{project.structures}/{prediction_experiment}/prophetic_amines.zip"
     )
     prophetic_bromide_col = ml.Collection.from_zip(
-        f"{project.structures}/{prediction_experiment}/prophetic_bromide.zip"
+        f"{project.structures}/{prediction_experiment}/prophetic_bromides.zip"
     )
     p_ap = json.load(
         open(f"{project.structures}/{prediction_experiment}/newmol_ap_buffer.json")
@@ -168,13 +172,34 @@ def assemble_desc_for_inference_mols(
     p_b_desc = calculate_prophetic(
         inc=0.75, geometries=prophetic_bromide_col, atomproperties=p_ap, react_type="br"
     )
+    print(p_a_desc, p_a_desc["azepane"])
     ### Now we're ready to assemble features
+    am, br, ca, so, ba = desc
+    am.update(p_a_desc)
+    br.update(p_b_desc)
+    upd_desc = (am, br, ca, so, ba)
+    # print(upd_desc)
+    prophetic_features = assemble_descriptors_from_handles(
+        pred_str, desc=upd_desc, sub_mask=masks
+    )
+    print("DEBUG", prophetic_features)
+    prophetic_features.reset_index(drop=True).to_feather(
+        f"{project.descriptors}/prophetic_{prediction_experiment}.feather"
+    )
+    from somn.calculate.preprocess import new_mask_random_feature_arrays
 
 
 if __name__ == "__main__":
     project = Project.reload(how="cc3d1f3a3d9211eebdbe18c04d0a4970")
+
+    ### DEV ###
+    import shutil
+
+    shutil.rmtree(f"{project.structures}/testing-03/")
     # raise Exception("DEBUG")
-    tot, pred_str = prep_requests()
+    ###########
+
+    tot, requested_pairs = prep_requests()
 
     # raise Exception("DEBUG")
 
@@ -182,11 +207,40 @@ if __name__ == "__main__":
         name="testing", partition_dir=f"{project.partitions}/real", inference=True
     )
     masks = load_substrate_masks()
+
+    # (
+    #     amines,
+    #     bromides,
+    #     dataset,
+    #     handles,
+    #     unique_couplings,
+    #     a_prop,
+    #     br_prop,
+    #     base_desc,
+    #     solv_desc,
+    #     cat_desc,
+    # ) = load_data(optional_load="maxdiff_catalyst")
+    # print(type(cat_desc))
+    # sub_desc = get_precalc_sub_desc()
+    # if sub_desc == False:  # Need to calculate
+    #     raise Exception(
+    #         "Tried to load descriptors for inference, but could not locate pre-calcualted descriptors. This could lead to problems with predictions; check input project."
+    #     )
+    # else:
+    #     sub_am_dict, sub_br_dict, rand = sub_desc
+    ### Make sure we calculate with the same preprocessing (maxdiff and correlated features)
+    from somn.workflows.firstgen_calc_sub import main as calc_sub
+
+    real, rand = calc_sub(
+        project, substrate_pre=("corr", 0.90), optional_load="maxdiff_catalyst"
+    )
+    pred_str = ",".join(requested_pairs)
     assemble_desc_for_inference_mols(
-        project,
-        f"{project.scratch}/all_requests.csv",
-        organ,
-        masks,
+        project=project,
+        requests=f"{project.scratch}/all_requests.csv",
+        organizer=organ,
+        masks=masks,
+        desc=real,
         prediction_experiment="testing-03",
         pred_str=pred_str,
     )

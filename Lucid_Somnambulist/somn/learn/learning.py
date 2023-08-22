@@ -66,8 +66,9 @@ class tf_organizer:
         """
         Used for inferencing - will retrieve variance threshold masks used to build partitions, and apply them to new feature arrays.
         """
-        masks = sorted(glob(self.part_dir + "/*vtmask.csv"))
-        return masks
+        mask1 = sorted(glob(self.part_dir + "/*_constmask.csv"))
+        mask2 = sorted(glob(self.part_dir + "/*_vtmask.csv"))
+        return mask1, mask2
 
     def get_partitions(self, val=True):
         """

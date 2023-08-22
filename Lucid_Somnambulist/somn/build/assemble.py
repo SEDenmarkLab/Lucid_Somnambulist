@@ -1,6 +1,8 @@
 from itertools import product
 import pandas as pd
+import os
 
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 # from sklearn.preprocessing import MinMaxScaler
 # from sklearn.feature_selection import VarianceThreshold
 import numpy as np
@@ -238,7 +240,7 @@ def assemble_descriptors_from_handles(handle_input, desc: tuple, sub_mask=None):
         raise ValueError(
             "Must pass manual string input of handles OR list from dataset"
         )
-    if sub_mask == None:
+    if sub_mask is None:
         subm = None
     elif type(sub_mask) == tuple:
         assert len(sub_mask) == 2
@@ -255,7 +257,7 @@ def assemble_descriptors_from_handles(handle_input, desc: tuple, sub_mask=None):
     # am_dict = am_dict_real
 
     ### Trying to assemble descriptors for labelled examples with specific conditions ###
-    if prophetic == False:
+    if prophetic is False:
         columns = []
         labels = []
         for i, handle in enumerate(rxn_hndls):
@@ -264,12 +266,12 @@ def assemble_descriptors_from_handles(handle_input, desc: tuple, sub_mask=None):
             solvdesc = solvdf[int(solv)].tolist()
             basedesc = basedf[base].tolist()
             ### CHANGES HERE SUBSTRATE MASKING
-            if subm != None:
+            if subm is not None:
                 assert isinstance(subm, list)
                 amdesc = vectorize_substrate_desc(am_dict, am, feat_mask=subm[0])
                 brdesc = vectorize_substrate_desc(br_dict, br, feat_mask=subm[1])
                 # print(f"DEBUG used sub mask {amdesc}")
-            elif subm == None:
+            elif subm is None:
                 amdesc = vectorize_substrate_desc(am_dict, am, feat_mask=None)
                 brdesc = vectorize_substrate_desc(br_dict, br, feat_mask=None)
             else:
@@ -294,7 +296,7 @@ def assemble_descriptors_from_handles(handle_input, desc: tuple, sub_mask=None):
         # ### DEVELOPMENT
         return outdf
     ### Trying to assemble descriptors for ALL conditions for specific amine/bromide couplings ###
-    elif prophetic == True:
+    elif prophetic is True:
         solv_base_cond = ["1_a", "1_b", "1_c", "2_a", "2_b", "2_c", "3_a", "3_b", "3_c"]
         allcats = [str(f + 1) for f in range(21) if f != 14]
         s = "{}_{}_{}"
@@ -308,11 +310,11 @@ def assemble_descriptors_from_handles(handle_input, desc: tuple, sub_mask=None):
             catdesc = catdf[cat].tolist()
             solvdesc = solvdf[int(solv)].tolist()
             basedesc = basedf[base].tolist()
-            if subm != None:
+            if subm is not None:
                 assert isinstance(subm, list)
                 amdesc = vectorize_substrate_desc(am_dict, am, feat_mask=subm[0])
                 brdesc = vectorize_substrate_desc(br_dict, br, feat_mask=subm[1])
-            elif subm == None:
+            elif subm is None:
                 amdesc = vectorize_substrate_desc(am_dict, am, feat_mask=None)
                 brdesc = vectorize_substrate_desc(br_dict, br, feat_mask=None)
             else:

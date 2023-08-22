@@ -99,5 +99,22 @@
         "timestamp": "2023-08-21",
         "unique": "bc09d9b63fe311eeb9fc18c04d0a4970",
         "identifier": "vt_mask"
+    },
+    "2cf082ac407e11eeac8618c04d0a4970": {
+        "path": "somn_scratch/2cf082ac407e11eeac8618c04d0a4970/",
+        "timestamp": "2023-08-21",
+        "unique": "2cf082ac407e11eeac8618c04d0a4970",
+        "identifier": "testing_partition_changes"
+    },
+    "48daebfe40a311eeba1e18c04d0a4970": {
+        "path": "somn_scratch/48daebfe40a311eeba1e18c04d0a4970/",
+        "timestamp": "2023-08-21",
+        "unique": "48daebfe40a311eeba1e18c04d0a4970",
+        "identifier": "corr_0.90_shape_test"
+    },
+    "a3d2e63040a611eea75618c04d0a4970": {
+        "path": "somn_scratch/a3d2e63040a611eea75618c04d0a4970/",
+        "timestamp": "2023-08-21",
+        "unique": "a3d2e63040a611eea75618c04d0a4970"
     }
 }

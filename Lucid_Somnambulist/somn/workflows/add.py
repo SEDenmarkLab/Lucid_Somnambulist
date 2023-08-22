@@ -1,7 +1,9 @@
 # This workflow adds structures to the feature database (without requiring experimental data).
 # This may be useful for analyzing component space or performing unsupervised learning tasks.
 # This workflow also can be used by predict to generate features for new structures.
+import os
 
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 from sys import argv
 import molli as ml
 import argparse
@@ -86,7 +88,7 @@ def add_workflow(project: Project, prediction_experiment: str, parser_args=None)
             )
         collection, err = parse.preopt_geom(pre)
     elif args.fmt[0] == "multsmi":
-        print("got to multsmi")
+        # print("DEBUG got to multsmi")
         if Path(args.fmt[1]).suffix == ".smi":
             multismi_inp = parse.scrape_biovia_smi_file(args.fmt[1])
             collection, smiles_d = parse.get_mol_from_smiles(
@@ -94,7 +96,7 @@ def add_workflow(project: Project, prediction_experiment: str, parser_args=None)
             )
         elif Path(args.fmt[1]).suffix == ".csv":
             pre, smiles_d, roles = parse.scrape_smiles_csv(args.fmt[1])
-            print("DEBUG", pre.mol_index)
+            # print("DEBUG", pre.mol_index)
             collection, err = parse.prep_collection(pre, update=20)
         else:
             raise Exception(
@@ -136,9 +138,14 @@ def add_workflow(project: Project, prediction_experiment: str, parser_args=None)
     collection.to_zip(parse.path_to_write + "/input_struc_preopt_col.zip")
     import json
 
-    assert not Path(
-        str(parse.path_to_write) + "/newmol_smi_buffer.json"
-    ).exists()  # Make sure we won't overwrite something
+    try:
+        assert not Path(
+            str(parse.path_to_write) + "/newmol_smi_buffer.json"
+        ).exists()  # Make sure we won't overwrite something
+    except:
+        raise Exception(
+            f"{parse.path_to_write} was passed as the path to write for molecule input, but it exists. To avoid overwriting, workflow has been aborted."
+        )
     with open(f"{parse.path_to_write}/newmol_smi_buffer.json", "w") as k:
         json.dump(smiles_d, k)
 

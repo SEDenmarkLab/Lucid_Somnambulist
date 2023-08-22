@@ -163,7 +163,7 @@ class InputParser:
                     )
                 elif type(names) == list:
                     newmol = ml.Molecule.from_mol2(
-                        obconv.WriteString(obmol), name=f"pr{names[i]}"
+                        obconv.WriteString(obmol), name=f"{names[i]}"
                     )
                 mols_out.append(newmol)
                 del obmol
@@ -287,13 +287,12 @@ class InputParser:
                 recursive_mode=True,
                 names=df.iloc[:, 3].to_list(),
             )
-            print("NUCS DEBUG", nucs.molecules)
+            # print("NUCS DEBUG", nucs.molecules)
             elecs, smiles_d_ = self.get_mol_from_smiles(
                 df.iloc[:, 2].to_list(),
                 recursive_mode=True,
                 names=df.iloc[:, 4].to_list(),
             )
-            print(elecs)
             roles = ["nuc" for f in nucs] + ["el" for k in elecs]
             nucs.extend(elecs)
             smiles_d.update(smiles_d_)
