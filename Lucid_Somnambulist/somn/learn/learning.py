@@ -175,10 +175,18 @@ class tfDriver:
         self.get_next_part(iter_=False)
         self.x_y = self.prep_x_y()
         self.input_dim = self.x_y[0][0].shape[1]
-        if self.organizer.inference == True:
-            masks = self.prep_masks(self.organizer.masks)
-            self.masks = masks
-            self.current_mask = masks[0]
+        if self.organizer.inference is True:
+            # masks = self.prep_masks(self.organizer.masks)
+            try:
+                self.prophetic = self.organizer.prophetic_features
+                self.models = self.organizer.models
+                self.curr_model = self.models[0]
+                self.curr_feat = self.prophetic[0]
+            except:
+                raise Exception(
+                    "Tried to construct a tfDriver instance for inferencing without identifying\
+                                models or prophetic features. Check input tf_organizer object."
+                )
 
     def get_next_part(self, iter_=True):
         """
@@ -204,21 +212,39 @@ class tfDriver:
         current_number = self.organizer.log[-1]
         self.current_part = new_current
         self.current_part_id = current_number
-        if iter_ == True:
+        if iter_ is True:
             self.x_y = self.prep_x_y()
             self.input_dim = self.x_y[0][0].shape[1]
-            self.current_mask = self.masks[curr_idx]
+            # self.current_mask = self.masks[curr_idx]
+            if (
+                self.organizer.inference is True
+            ):  # When making predictions, iterate on models and preprocessed prophetic features
+                self.curr_model = self.models[0]
+                self.curr_feat = self.prophetic[0]
 
         print("Getting next partition", "\n\n", self.organizer.log[-1], new_current)
         # return new_current,current_number ### vestigial - no longer used
 
-    def prep_masks(self, paths: tuple):
-        out = []
-        for pth in paths:
-            df = pd.read_csv(pth, header=0, index_col=0)
-            np_mask = df.to_numpy()
-            out.append(np_mask)
-        return tuple(out)
+    ### Depreciated - this is done beforehand
+    # def prep_masks(self, paths: tuple):
+    #     out = []
+    #     for pth in paths:
+    #         df = pd.read_csv(pth, header=0, index_col=0)
+    #         np_mask = df.to_numpy()
+    #         out.append(np_mask)
+    #     return tuple(out)
+    ### Depreciated
+    def load_prophetic_model_and_x(self):
+        """
+        Load current model and prophetic features
+
+        model (compiled), and pd.DataFrame (index=instance, column=features)
+        """
+        model_path = self.curr_model
+        feat_path = self.curr_feat
+        model = tf.keras.models.load_model(model_path)
+        feat = pd.read_feather(feat_path).transpose()
+        return model, feat
 
     def prep_x_y(self):
         """

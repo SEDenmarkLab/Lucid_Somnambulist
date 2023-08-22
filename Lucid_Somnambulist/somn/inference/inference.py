@@ -22,75 +22,113 @@ from somn.workflows.partition import (
 
 def hypermodel_inference(
     project: Project,
-    request_dict: dict,
+    # request_dict: dict,
     model_experiment="",
     prediction_experiment="",
     optional_load="maxdiff_catalyst",
-    real=True,
+    substrate_pre=("corr", 0.90),
+    vt=0,
+    # real=True,
 ):
     """
     project must contain (1) partitions, and (2) pre-trained hypermodels.
     """
-    if real == True:
-        organ = tf_organizer(
-            f"inference_{model_experiment}",
-            partition_dir=f"{project.partitions}/real",
-            validation=True,
-            inference=True,
-        )
-    elif real == False:
-        try:
-            organ = tf_organizer(
-                f"inference_{model_experiment}",
-                partition_dir=f"{project.partitions}/rand",
-                validation=True,
-                inference=True,
-            )
-        except:
-            raise Exception(
-                "Attempted to make inferences using models trained on random features, but could not find/load those models. Check partitions"
-            )
-    else:
-        raise Exception(
-            "Must specify real = True or False, representing whether inferences should be made using 'real' chemical descriptors, or random ones (as a control)"
-        )
-    drive = tfDriver(organ)
-    model_dir = f"{project.output}/{model_experiment}/out/"
-    pred_buffer_fp = f"{project.output}prediction_buffer_{model_experiment}_{prediction_experiment}.csv"
-    # sub_desc, rand = load_calculated_substrate_descriptors()
-    ### Get descriptors so that features for predictions can be assembled
-    (
-        amines,
-        bromides,
-        dataset,
-        handles,
-        unique_couplings,
-        a_prop,
-        br_prop,
-        base_desc,
-        solv_desc,
-        cat_desc,
-    ) = load_data(optional_load=optional_load)
-    sub_desc = get_precalc_sub_desc()
-    if sub_desc == False:  # Need to calculate
-        raise Exception(
-            "Tried to load descriptors for inference, but could not locate pre-calcualted descriptors. This could lead to problems with predictions; check input project."
-        )
-    else:
-        real, rand = sub_desc
-    masks = load_substrate_masks()
-    total_requests = prep_requests()
-    assemble_desc_for_inference_mols(
+    # if real == True:
+    #     organ = tf_organizer(
+    #         f"inference_{model_experiment}",
+    #         partition_dir=f"{project.partitions}/real",
+    #         validation=True,
+    #         inference=True,
+    #     )
+    # elif real == False:
+    #     try:
+    #         organ = tf_organizer(
+    #             f"inference_{model_experiment}",
+    #             partition_dir=f"{project.partitions}/rand",
+    #             validation=True,
+    #             inference=True,
+    #         )
+    #     except:
+    #         raise Exception(
+    #             "Attempted to make inferences using models trained on random features, but could not find/load those models. Check partitions"
+    #         )
+    # else:
+    #     raise Exception(
+    #         "Must specify real = True or False, representing whether inferences should be made using 'real' chemical descriptors, or random ones (as a control)"
+    #     )
+    # drive = tfDriver(organ)
+    # model_dir = f"{project.output}/{model_experiment}/out/"
+    # pred_buffer_fp = f"{project.output}prediction_buffer_{model_experiment}_{prediction_experiment}.csv"
+    # # sub_desc, rand = load_calculated_substrate_descriptors()
+    # ### Get descriptors so that features for predictions can be assembled
+    # (
+    #     amines,
+    #     bromides,
+    #     dataset,
+    #     handles,
+    #     unique_couplings,
+    #     a_prop,
+    #     br_prop,
+    #     base_desc,
+    #     solv_desc,
+    #     cat_desc,
+    # ) = load_data(optional_load=optional_load)
+    # sub_desc = get_precalc_sub_desc()
+    # if sub_desc == False:  # Need to calculate
+    #     raise Exception(
+    #         "Tried to load descriptors for inference, but could not locate pre-calcualted descriptors. This could lead to problems with predictions; check input project."
+    #     )
+    # else:
+    #     real, rand = sub_desc
+    from somn.workflows.firstgen_calc_sub import main as calc_sub
+
+    sub_masks = load_substrate_masks()
+    total_requests, requested_pairs = prep_requests()
+    real, rand = calc_sub(
+        project, substrate_pre=substrate_pre, optional_load=optional_load
+    )
+    pred_str = ",".join(requested_pairs)
+    ### Building prophetic feature array with matching substrate and other preprocessing
+    prophetic_raw = assemble_desc_for_inference_mols(
         project=project,
         requests=f"{project.scratch}/all_requests.csv",
-        organizer=organ,
-        masks=masks,
+        sub_masks=sub_masks,
+        desc=real,
+        prediction_experiment=prediction_experiment,
+        pred_str=pred_str,
     )
+    prophetic_fp = f"{project.descriptors}/prophetic_{prediction_experiment}.feather"
+    try:
+        import pathlib
+
+        assert pathlib.Path(prophetic_fp).exists()
+    except:
+        raise Exception(
+            f"Warning, the filepath {prophetic_fp} is not real - something went wrong with \
+                        generation of the prophetic feature array. Check project directory for \
+                        {project.unique}"
+        )
+    ### Raw feature arrays are assembled. Now, partition-specific preprocessing is needed.
+    from somn.calculate.preprocess import preprocess_prophetic_features
+
+    prophetic_organizer = preprocess_prophetic_features(
+        project=project,
+        features=prophetic_raw.transpose(),
+        prediction_experiment=prediction_experiment,
+        vt=vt,
+    )
+    prophetic_organizer.models = sorted(
+        list(glob(f"{project.output}/{model_experiment}/out/*.h5"))
+    )
+    prophetic_driver = tfDriver(organizer=prophetic_organizer)
+    print("DEBUG", prophetic_organizer.inference, prophetic_driver.models)
 
 
 def prep_requests():
     """
     Get requested predictions
+
+    Returns a DataFrame and a list of requested pairs (i.e. [amine_bromide,])
     """
     files = glob(f"{Project().scratch}/*_request.csv")
     assert (
@@ -128,14 +166,15 @@ def prep_requests():
 def assemble_desc_for_inference_mols(
     project: Project,
     requests: str,
-    organizer: tf_organizer,
     desc: tuple,
-    masks: tuple,
+    sub_masks: tuple,
     prediction_experiment: str,
     pred_str,
 ):
     """
-    pipeline to generate feature arrays for inference molecules
+    pipeline to generate raw feature array for inference molecules
+
+    will require partition-specific preprocessing by a separate function
     """
     ### Get molecular geometries first
     from somn.workflows.add import add_workflow
@@ -180,67 +219,75 @@ def assemble_desc_for_inference_mols(
     upd_desc = (am, br, ca, so, ba)
     # print(upd_desc)
     prophetic_features = assemble_descriptors_from_handles(
-        pred_str, desc=upd_desc, sub_mask=masks
+        pred_str, desc=upd_desc, sub_mask=sub_masks
     )
-    print("DEBUG", prophetic_features)
+    # print("DEBUG", prophetic_features)
     prophetic_features.reset_index(drop=True).to_feather(
         f"{project.descriptors}/prophetic_{prediction_experiment}.feather"
     )
-    from somn.calculate.preprocess import new_mask_random_feature_arrays
+    # from somn.calculate.preprocess import new_mask_random_feature_arrays
+    return prophetic_features
 
 
 if __name__ == "__main__":
     project = Project.reload(how="cc3d1f3a3d9211eebdbe18c04d0a4970")
 
-    ### DEV ###
-    import shutil
-
-    shutil.rmtree(f"{project.structures}/testing-03/")
-    # raise Exception("DEBUG")
-    ###########
-
-    tot, requested_pairs = prep_requests()
-
-    # raise Exception("DEBUG")
-
-    organ = tf_organizer(
-        name="testing", partition_dir=f"{project.partitions}/real", inference=True
-    )
-    masks = load_substrate_masks()
-
-    # (
-    #     amines,
-    #     bromides,
-    #     dataset,
-    #     handles,
-    #     unique_couplings,
-    #     a_prop,
-    #     br_prop,
-    #     base_desc,
-    #     solv_desc,
-    #     cat_desc,
-    # ) = load_data(optional_load="maxdiff_catalyst")
-    # print(type(cat_desc))
-    # sub_desc = get_precalc_sub_desc()
-    # if sub_desc == False:  # Need to calculate
-    #     raise Exception(
-    #         "Tried to load descriptors for inference, but could not locate pre-calcualted descriptors. This could lead to problems with predictions; check input project."
-    #     )
-    # else:
-    #     sub_am_dict, sub_br_dict, rand = sub_desc
-    ### Make sure we calculate with the same preprocessing (maxdiff and correlated features)
-    from somn.workflows.firstgen_calc_sub import main as calc_sub
-
-    real, rand = calc_sub(
-        project, substrate_pre=("corr", 0.90), optional_load="maxdiff_catalyst"
-    )
-    pred_str = ",".join(requested_pairs)
-    assemble_desc_for_inference_mols(
+    hypermodel_inference(
         project=project,
-        requests=f"{project.scratch}/all_requests.csv",
-        organizer=organ,
-        masks=masks,
-        desc=real,
-        prediction_experiment="testing-03",
-        pred_str=pred_str,
+        model_experiment="testing_search04",
+        prediction_experiment="testing_pred01",
     )
+
+    # ####################### DEV #################################
+    # import shutil
+
+    # shutil.rmtree(f"{project.structures}/testing-03/")
+    # # raise Exception("DEBUG")
+    # ###########
+
+    # tot, requested_pairs = prep_requests()
+
+    # # raise Exception("DEBUG")
+
+    # organ = tf_organizer(
+    #     name="testing", partition_dir=f"{project.partitions}/real", inference=True
+    # )
+    # masks = load_substrate_masks()
+
+    # # (
+    # #     amines,
+    # #     bromides,
+    # #     dataset,
+    # #     handles,
+    # #     unique_couplings,
+    # #     a_prop,
+    # #     br_prop,
+    # #     base_desc,
+    # #     solv_desc,
+    # #     cat_desc,
+    # # ) = load_data(optional_load="maxdiff_catalyst")
+    # # print(type(cat_desc))
+    # # sub_desc = get_precalc_sub_desc()
+    # # if sub_desc == False:  # Need to calculate
+    # #     raise Exception(
+    # #         "Tried to load descriptors for inference, but could not locate pre-calcualted descriptors. This could lead to problems with predictions; check input project."
+    # #     )
+    # # else:
+    # #     sub_am_dict, sub_br_dict, rand = sub_desc
+    # ### Make sure we calculate with the same preprocessing (maxdiff and correlated features)
+    # from somn.workflows.firstgen_calc_sub import main as calc_sub
+
+    # real, rand = calc_sub(
+    #     project, substrate_pre=("corr", 0.90), optional_load="maxdiff_catalyst"
+    # )
+    # pred_str = ",".join(requested_pairs)
+    # assemble_desc_for_inference_mols(
+    #     project=project,
+    #     requests=f"{project.scratch}/all_requests.csv",
+    #     # organizer=organ,
+    #     sub_masks=masks,
+    #     desc=real,
+    #     prediction_experiment="testing-03",
+    #     pred_str=pred_str,
+    # )
+    ############################# DEV END ############################################
