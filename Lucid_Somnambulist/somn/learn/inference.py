@@ -313,11 +313,11 @@ if __name__ == "__main__":
 
     with open("DEVOPS_PKL_PRED.p", "wb") as g:
         pickle.dump((raw_predictions, requests), g)
-    ####################### DEV PROCSSING ###################################
-    import pickle
+    ####################### DEV PREDICTION VISUALIZATION ###################################
+    # import pickle
 
-    with open("DEVOPS_PKL_PRED.p", "wb") as g:
-        output = pickle.load(g)
+    # with open("DEVOPS_PKL_PRED.p", "wb") as g:
+    #     output = pickle.load(g)
 
 
 # ##################################################################################
