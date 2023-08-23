@@ -80,6 +80,8 @@ def hypermodel_inference(
     #     )
     # else:
     #     real, rand = sub_desc
+    output_buffer = []
+
     from somn.workflows.firstgen_calc_sub import main as calc_sub
 
     sub_masks = load_substrate_masks()
@@ -117,11 +119,63 @@ def hypermodel_inference(
         prediction_experiment=prediction_experiment,
         vt=vt,
     )
-    prophetic_organizer.models = sorted(
-        list(glob(f"{project.output}/{model_experiment}/out/*.h5"))
+
+    # model_info = [prophetic_organizer.get_partition_info(m)[0] for m in all_models]
+    # prophetic_organizer.models = sorted(
+    #     list(glob(f"{project.output}/{model_experiment}/out/*.h5"))
+    # )
+    all_models = sorted(list(glob(f"{project.output}/{model_experiment}/out/*.h5")))
+    prophetic_driver = tfDriver(
+        organizer=prophetic_organizer, prophetic_models=all_models
     )
-    prophetic_driver = tfDriver(organizer=prophetic_organizer)
-    print("DEBUG", prophetic_organizer.inference, prophetic_driver.models)
+    # prophetic_driver.sort_inference_models(all_models)
+    print(
+        "DEBUG - inference is",
+        prophetic_driver.organizer.inference,
+        prophetic_organizer.inference,
+        prophetic_driver.models,
+        len(prophetic_driver.models),
+        len(prophetic_driver.prophetic),
+    )
+    ### Iterate over tuple of models (multiple hyperparameter sets can be handled per partition), and
+    ### concatenate predictions for those with the predictions from multiple models from the next partition
+    ### (and so on).
+    for i, (model_, feat_) in enumerate(
+        zip(prophetic_driver.models, prophetic_organizer.prophetic_features)
+    ):
+        # print(
+        #     f"DEVELOPMENT - working on partition {i}\nmodel_ is {model_}\ndriver model is {prophetic_driver.curr_models}"
+        # )
+        assert model_ == prophetic_driver.curr_models
+        assert feat_ == prophetic_driver.curr_prophetic
+        from tensorflow import keras
+        from keras.models import Model
+
+        models, feat = prophetic_driver.load_prophetic_hypermodels_and_x()
+        feat: pd.DataFrame
+
+        if i == 0:
+            pred_idx = feat.index.to_list()
+            # print("DEV", feat.index)
+        else:
+            assert (
+                feat.index.to_list() == pred_idx
+            )  # All index lists should match or something BAD is happening
+        for model in models:
+            predictions = model.predict(feat.values)
+            # print("DEV", predictions.shape)
+            output_buffer.append(pd.Series(predictions.ravel(), index=pred_idx))
+        prophetic_driver.get_next_part()
+    # print("DEVELOPMENT - final output buffer", output_buffer)
+    # print("DEVELOPMENT - first output buffer", output_buffer[0], output_buffer[0].shape)
+    concat = pd.concat(output_buffer, axis=1)
+    # print("DEVELOPMENT - concat ", concat, concat.shape)
+    # pred_out = pd.DataFrame(concat, index=pred_idx)
+    concat.to_csv(
+        f"{project.output}/{prediction_experiment}_rawpredictions.csv", header=True
+    )
+    # print(concat)
+    return concat, total_requests
 
 
 def prep_requests():
@@ -174,7 +228,11 @@ def assemble_desc_for_inference_mols(
     """
     pipeline to generate raw feature array for inference molecules
 
-    will require partition-specific preprocessing by a separate function
+    input "requests" should be a file path to a .csv which will contain many reactions tabulated as:
+
+    UserID,     nucleophile (SMILES)        electrophile (SMILES)       (optional) name for nucleophile     (optional) name for electrophile
+
+    Each row will be considered an individual request. The final output will have all of these in one feature array as a batch of requests.
     """
     ### Get molecular geometries first
     from somn.workflows.add import add_workflow
@@ -229,65 +287,114 @@ def assemble_desc_for_inference_mols(
     return prophetic_features
 
 
+def process_raw_predictions(raw_pred: pd.DataFrame, requests: pd.DataFrame):
+    """
+    Pass the raw predictions and requests dataframes from hypermodel_inference to process them.
+    """
+
+
 if __name__ == "__main__":
     project = Project.reload(how="cc3d1f3a3d9211eebdbe18c04d0a4970")
 
-    hypermodel_inference(
+    ####################### DEV PREDICTIONS #################################
+    import shutil
+
+    shutil.rmtree(f"{project.structures}/testing_pred01/")
+    shutil.rmtree(f"{project.partitions}/prophetic_testing_pred01/")
+    # raise Exception("DEBUG")
+    ###########
+
+    raw_predictions, requests = hypermodel_inference(
         project=project,
         model_experiment="testing_search04",
         prediction_experiment="testing_pred01",
     )
+    import pickle
 
-    # ####################### DEV #################################
-    # import shutil
+    with open("DEVOPS_PKL_PRED.p", "wb") as g:
+        pickle.dump((raw_predictions, requests), g)
+    ####################### DEV PROCSSING ###################################
+    import pickle
 
-    # shutil.rmtree(f"{project.structures}/testing-03/")
-    # # raise Exception("DEBUG")
-    # ###########
+    with open("DEVOPS_PKL_PRED.p", "wb") as g:
+        output = pickle.load(g)
 
-    # tot, requested_pairs = prep_requests()
 
-    # # raise Exception("DEBUG")
+# ##################################################################################
 
-    # organ = tf_organizer(
-    #     name="testing", partition_dir=f"{project.partitions}/real", inference=True
-    # )
-    # masks = load_substrate_masks()
+# # Developing a quick function to sort different hypermodels by their partition
 
-    # # (
-    # #     amines,
-    # #     bromides,
-    # #     dataset,
-    # #     handles,
-    # #     unique_couplings,
-    # #     a_prop,
-    # #     br_prop,
-    # #     base_desc,
-    # #     solv_desc,
-    # #     cat_desc,
-    # # ) = load_data(optional_load="maxdiff_catalyst")
-    # # print(type(cat_desc))
-    # # sub_desc = get_precalc_sub_desc()
-    # # if sub_desc == False:  # Need to calculate
-    # #     raise Exception(
-    # #         "Tried to load descriptors for inference, but could not locate pre-calcualted descriptors. This could lead to problems with predictions; check input project."
-    # #     )
-    # # else:
-    # #     sub_am_dict, sub_br_dict, rand = sub_desc
-    # ### Make sure we calculate with the same preprocessing (maxdiff and correlated features)
-    # from somn.workflows.firstgen_calc_sub import main as calc_sub
 
-    # real, rand = calc_sub(
-    #     project, substrate_pre=("corr", 0.90), optional_load="maxdiff_catalyst"
-    # )
-    # pred_str = ",".join(requested_pairs)
-    # assemble_desc_for_inference_mols(
-    #     project=project,
-    #     requests=f"{project.scratch}/all_requests.csv",
-    #     # organizer=organ,
-    #     sub_masks=masks,
-    #     desc=real,
-    #     prediction_experiment="testing-03",
-    #     pred_str=pred_str,
-    # )
-    ############################# DEV END ############################################
+#     model_experiment = "testing_search04"
+#     prediction_experiment = "testing_pred01"
+
+#     k = tf_organizer(name="dev")
+#     all_models = sorted(list(glob(f"{project.output}/{model_experiment}/out/*.h5")))
+#     model_info = [k.get_partition_info(m)[0].split("hpset")[0] for m in all_models]
+
+#     def sort_models(all_models, organ: tf_organizer):
+#         model_info = [
+#             organ.get_partition_info(m)[0].split("hpset")[0] for m in all_models
+#         ]
+#         from collections import OrderedDict
+
+#         output = []
+#         sort = OrderedDict()
+#         for id, pa in zip(model_info, all_models):
+#             if id in sort.keys():
+#                 sort[id].append(pa)
+#             else:
+#                 sort[id] = [pa]
+#         for id_, paths in sort.items():
+#             output.append(tuple(paths))
+#         return output
+
+#     test = sort_models(all_models, k)
+#     print(test)
+# ##################################################################################
+# tot, requested_pairs = prep_requests()
+
+# # raise Exception("DEBUG")
+
+# organ = tf_organizer(
+#     name="testing", partition_dir=f"{project.partitions}/real", inference=True
+# )
+# masks = load_substrate_masks()
+
+# # (
+# #     amines,
+# #     bromides,
+# #     dataset,
+# #     handles,
+# #     unique_couplings,
+# #     a_prop,
+# #     br_prop,
+# #     base_desc,
+# #     solv_desc,
+# #     cat_desc,
+# # ) = load_data(optional_load="maxdiff_catalyst")
+# # print(type(cat_desc))
+# # sub_desc = get_precalc_sub_desc()
+# # if sub_desc == False:  # Need to calculate
+# #     raise Exception(
+# #         "Tried to load descriptors for inference, but could not locate pre-calcualted descriptors. This could lead to problems with predictions; check input project."
+# #     )
+# # else:
+# #     sub_am_dict, sub_br_dict, rand = sub_desc
+# ### Make sure we calculate with the same preprocessing (maxdiff and correlated features)
+# from somn.workflows.firstgen_calc_sub import main as calc_sub
+
+# real, rand = calc_sub(
+#     project, substrate_pre=("corr", 0.90), optional_load="maxdiff_catalyst"
+# )
+# pred_str = ",".join(requested_pairs)
+# assemble_desc_for_inference_mols(
+#     project=project,
+#     requests=f"{project.scratch}/all_requests.csv",
+#     # organizer=organ,
+#     sub_masks=masks,
+#     desc=real,
+#     prediction_experiment="testing-03",
+#     pred_str=pred_str,
+# )
+############################# DEV END ############################################

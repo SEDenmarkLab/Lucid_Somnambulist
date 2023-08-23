@@ -2,6 +2,9 @@ import os
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import numpy as np
+import warnings
+
+warnings.simplefilter(action="ignore", category=FutureWarning)
 import pandas as pd
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import MinMaxScaler, MultiLabelBinarizer

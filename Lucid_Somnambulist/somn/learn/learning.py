@@ -9,14 +9,14 @@ from math import exp
 import json
 
 # from somn.workflows import PART_, OUTPUT_ ## Depreciated
-import kerastuner as kt
+import keras_tuner as kt
 from keras.callbacks import (
     EarlyStopping,
     TerminateOnNaN,
     ReduceLROnPlateau,
     TensorBoard,
 )
-from somn.depict.evaluate import plot_results
+from somn.util.visualize import plot_results
 import numpy as np
 from somn.util.project import Project
 
@@ -169,19 +169,20 @@ class tfDriver:
         reports validation metrics
     """
 
-    def __init__(self, organizer: tf_organizer):
+    def __init__(self, organizer: tf_organizer, prophetic_models=None):
         self.paths = organizer.partitions
         self.organizer = organizer
         self.get_next_part(iter_=False)
         self.x_y = self.prep_x_y()
         self.input_dim = self.x_y[0][0].shape[1]
         if self.organizer.inference is True:
+            assert prophetic_models is not None
             # masks = self.prep_masks(self.organizer.masks)
             try:
                 self.prophetic = self.organizer.prophetic_features
-                self.models = self.organizer.models
-                self.curr_model = self.models[0]
-                self.curr_feat = self.prophetic[0]
+                self.sort_inference_models(prophetic_models)
+                self.curr_models = self.models[0]
+                self.curr_prophetic = self.prophetic[0]
             except:
                 raise Exception(
                     "Tried to construct a tfDriver instance for inferencing without identifying\
@@ -219,8 +220,8 @@ class tfDriver:
             if (
                 self.organizer.inference is True
             ):  # When making predictions, iterate on models and preprocessed prophetic features
-                self.curr_model = self.models[0]
-                self.curr_feat = self.prophetic[0]
+                self.curr_models = self.models[curr_idx]
+                self.curr_prophetic = self.prophetic[curr_idx]
 
         print("Getting next partition", "\n\n", self.organizer.log[-1], new_current)
         # return new_current,current_number ### vestigial - no longer used
@@ -234,17 +235,45 @@ class tfDriver:
     #         out.append(np_mask)
     #     return tuple(out)
     ### Depreciated
-    def load_prophetic_model_and_x(self):
+    def load_prophetic_hypermodels_and_x(self) -> (tf.keras.models.Model, pd.DataFrame):
         """
         Load current model and prophetic features
 
         model (compiled), and pd.DataFrame (index=instance, column=features)
         """
-        model_path = self.curr_model
-        feat_path = self.curr_feat
-        model = tf.keras.models.load_model(model_path)
+        assert self.organizer.inference is True
+        model_paths = self.curr_models
+        feat_path = self.curr_prophetic
+        models = []
+        for path in model_paths:
+            model = tf.keras.models.load_model(path)
+            models.append(model)
         feat = pd.read_feather(feat_path).transpose()
-        return model, feat
+        return models, feat
+
+    def sort_inference_models(self, allmodels):
+        """
+        pass all model paths (list of string paths from glob()) as an argument
+        """
+        assert self.organizer.inference is True
+        # assert self.allmodels
+        # all_models = self.allmodels
+        model_info = [
+            self.organizer.get_partition_info(m)[0].split("hpset")[0] for m in allmodels
+        ]
+        from collections import OrderedDict
+
+        output = []
+        sort = OrderedDict()
+        for id, pa in zip(model_info, allmodels):
+            if id in sort.keys():
+                sort[id].append(pa)
+            else:
+                sort[id] = [pa]
+        for id_, paths in sort.items():
+            output.append(tuple(paths))
+        self.models = output
+        # return output
 
     def prep_x_y(self):
         """
