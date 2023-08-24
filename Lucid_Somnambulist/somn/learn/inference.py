@@ -299,8 +299,11 @@ if __name__ == "__main__":
     ####################### DEV PREDICTIONS #################################
     import shutil
 
-    shutil.rmtree(f"{project.structures}/testing_pred01/")
-    shutil.rmtree(f"{project.partitions}/prophetic_testing_pred01/")
+    try:
+        shutil.rmtree(f"{project.structures}/testing_pred01/")
+        shutil.rmtree(f"{project.partitions}/prophetic_testing_pred01/")
+    except:
+        pass
     # raise Exception("DEBUG")
     ###########
 

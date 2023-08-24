@@ -20,10 +20,10 @@ setup(
     author="N. Ian Rinehart",
     author_email="nir2@illinois.edu",
     install_requires=[
-        "seaborn",
-        "pandas",
-        "Pillow",
-        "pyarrow",
+        "seaborn==0.12.2",
+        "pandas==1.5.2",
+        "Pillow==9.3.0",
+        "pyarrow==8.0.0",
         "numpy>=1.19.0",
         "PyYAML>=5.3",
         "scikit-learn>=0.22.1",
@@ -35,5 +35,5 @@ setup(
         "keras-tuner==1.3.5",
         "rdkit==2023.03.1",
     ],
-    python_requires=">=3.9",
+    python_requires=">=3.10",
 )

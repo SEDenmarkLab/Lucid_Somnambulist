@@ -260,6 +260,8 @@ class PropheticInput:
             self.conformers,
             backup_dir=str(Project().scratch) + "/atomprops/",
             logfile=str(Project().scratch) + "/atomprops.log",
+            timeout=6000,
+            concurrent=2,
         )
         xtb = ml.XTBDriver(
             name="atomprops",
@@ -267,6 +269,8 @@ class PropheticInput:
             nprocs=2,
         )
         atomprops = concur(xtb.conformer_atom_props)()
+        # print(atomprops[0])
+        # raise Exception("DEBUG")
         # print(atomprops[0][0])
         atomprop_out = {}
         failures = []
