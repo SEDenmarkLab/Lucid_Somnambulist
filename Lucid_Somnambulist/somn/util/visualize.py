@@ -12,6 +12,7 @@ from glob import glob
 from somn.util.project import Project
 from matplotlib import cm
 from matplotlib.colors import ListedColormap
+import os
 
 
 #### Depreciated
@@ -126,11 +127,11 @@ def get_cond_label(x_: int, pos):
     return labels[pos]
 
 
-def get_cat_label(x_, pos, preds: pd.DataFrame):
+def get_cat_label(x_, pos):
     # print(x_,pos)
     if type(pos) == None:
         print("error")
-    y_ = np.arange(1, max(preds["catalyst"].values) + 1)
+    y_ = np.arange(1, 22)
     y_ = np.delete(y_, 14)
     y_ = y_.tolist()
     return str(y_[pos])
@@ -224,7 +225,13 @@ def load_predictions(prediction_experiment=None):
     return preds
 
 
-def visualize_predictions(query=None, prediction_experiment=None, plot_type="average"):
+def visualize_predictions(
+    query=None,
+    prediction_experiment=None,
+    requestor="",
+    plot_value="average",
+    plot_type="heatmap",
+):
     """
     Method to visualize a heatmap of predictions for a specific coupling
 
@@ -234,7 +241,7 @@ def visualize_predictions(query=None, prediction_experiment=None, plot_type="ave
     ### Some simple checks before we get started
     assert isinstance(prediction_experiment, str) & isinstance(query, str)
     assert len(query.split("_")) == 2
-    assert plot_type in ["average", "stdev"]
+    assert plot_value in ["average", "stdev"]
     project = Project()
     preds = load_predictions(prediction_experiment=prediction_experiment)
     pred_handles = preds.index.to_list()
@@ -249,9 +256,12 @@ def visualize_predictions(query=None, prediction_experiment=None, plot_type="ave
     preds_subset = preds.loc[query_handles, ["average", "stdev"]]
     ### Check if the predictions have already been processed/saved and serialize if appropriate
     file_check = glob(f"{project.output}/processed_{query}_predictions.csv")
+    ##folder_check
+    if not os.path.exists(f"{project.output}/{prediction_experiment}/{requestor}/"):
+        os.makedirs(f"{project.output}/{prediction_experiment}/{requestor}/")
     if not file_check:
         preds_subset.to_csv(
-            f"{project.output}/processed_{query}_predictions.csv",
+            f"{project.output}/{prediction_experiment}/{requestor}/{query}_processed.csv",
             header=True,
         )
     ### Some prep - these are used to format the heatmap
@@ -276,11 +286,11 @@ def visualize_predictions(query=None, prediction_experiment=None, plot_type="ave
     y_ = np.arange(1, max(preds_subset["catalyst"].values) + 1)
     y_ = np.delete(y_, 14)
     ### Getting 2D array for 3D data organized
-    z_pre = preds_subset[[plot_type, "catalyst", "code"]].sort_values(
+    z_pre = preds_subset[[plot_value, "catalyst", "code"]].sort_values(
         ["catalyst", "code"], inplace=False
     )
-    temp_yld = z_pre[["code", "catalyst", plot_type]]
-    yields = temp_yld[plot_type].to_list()
+    temp_yld = z_pre[["code", "catalyst", plot_value]]
+    yields = temp_yld[plot_value].to_list()
     z_ = []
     for k in range(len(y_)):  # y is catalysts
         temp = []
@@ -294,77 +304,194 @@ def visualize_predictions(query=None, prediction_experiment=None, plot_type="ave
     sns.set_theme(style="white")
     Z_r = np.round(Z, decimals=0)
     data = pd.DataFrame(Z_r, index=y_, columns=x_)
-    N = 512
-    max_frac = np.max(Z_r) / 100.0
-    if (
-        max_frac >= 1.00
-    ):  # This ensures that if max prediction is at (or above) 100, then we will just use the normal colormap
-        cmap_ = "viridis"
-    else:
-        cbar_top = int(max_frac * N) + 1
-        # print(cbar_top)
-        other_frac = 1 - max_frac
-        viridis = cm.get_cmap("viridis", cbar_top)
-        newcolors = viridis(np.linspace(0, 1, cbar_top))
-        # upper_frac = (100.0-np.max(Z_r))/100.0
-        # num = int(np.round(upper_frac*N,decimals=0)-5)
-        # print(num)
-        # print(num/512)
-        # print(np.max(Z_r))
-        # print(N*other_frac)
-        newcolors = np.append(
-            newcolors,
-            [
-                np.array([78 / 256, 76 / 256, 43 / 256, 0.60])
-                for f in range(int(N * other_frac))
-            ],
-            axis=0,
-        )
-        # print(newcolors)
-        cmap_ = ListedColormap(newcolors)
+    if plot_type == "heatmap":
+        N = 512
+        max_frac = np.max(Z_r) / 100.0
+        if (
+            max_frac >= 1.00
+        ):  # This ensures that if max prediction is at (or above) 100, then we will just use the normal colormap
+            cmap_ = "viridis"
+        else:
+            cbar_top = int(max_frac * N) + 3
+            # print(cbar_top)
+            other_frac = 1 - max_frac
+            viridis = plt.get_cmap(name="viridis", lut=cbar_top)
+            newcolors = viridis(np.linspace(0, 1, cbar_top))
+            # upper_frac = (100.0-np.max(Z_r))/100.0
+            # num = int(np.round(upper_frac*N,decimals=0)-5)
+            # print(num)
+            # print(num/512)
+            # print(np.max(Z_r))
+            # print(N*other_frac)
+            newcolors = np.append(
+                newcolors,
+                [
+                    np.array([78 / 256, 76 / 256, 43 / 256, 0.60])
+                    for f in range(int(N * other_frac))
+                ],
+                axis=0,
+            )
+            # print(newcolors)
+            cmap_ = ListedColormap(newcolors)
 
-    ax = sns.heatmap(
-        data=data,
-        # cmap='viridis',
-        cmap=cmap_,
-        square=True,
-        vmin=0.0,
-        vmax=100,
-        # vmax=500,
-        # vmax = np.max(Z_r),
-        # center=np.max(Z_r)/2,
-        cbar=True,
-        cbar_kws={
-            "shrink": 0.75,
-            "extend": "max",
-            "extendrect": True,
-            "ticks": [0, 15, 30, 50, 75, 100],
-            # "ticks": [100, 200, 300, 400, 500],  # For metric
-            "spacing": "proportional",
-            "label": "Predicted Yield",
-            "location": "right",
-            # 'extendfrac':(100.0-np.max(Z_r))/np.max(Z_r)
-        },
-        # center=50.0
-    )
-    # ax.yaxis.set_major_formatter(get_cat_label)
-    ax.xaxis.set_major_formatter(get_cond_label)
-    ax.tick_params("x", labelsize="small")
-    plt.setp(
-        ax.xaxis.get_majorticklabels(), rotation=-60, ha="left", rotation_mode="anchor"
-    )
-    plt.setp(
-        ax.yaxis.get_majorticklabels(), rotation=0, ha="center", rotation_mode="anchor"
-    )
-    plt.subplots_adjust(bottom=0.25)
-    # plt.show()
-    # plt.savefig("rewrite_heatmaps/" + sys.argv[1] + "_heat.svg")
-    plt.savefig(
-        f"{project.output}/{prediction_experiment}_{query}_heatmap_{plot_type}.svg"
-    )
-    plt.show()
-    plt.clf()
+        ax = sns.heatmap(
+            data=data,
+            # cmap='viridis',
+            cmap=cmap_,
+            square=True,
+            vmin=0.0,
+            vmax=100,
+            # vmax=500,
+            # vmax = np.max(Z_r),
+            # center=np.max(Z_r)/2,
+            cbar=True,
+            cbar_kws={
+                "shrink": 0.75,
+                "extend": "max",
+                "extendrect": True,
+                "ticks": [0, 15, 30, 50, 75, 100],
+                # "ticks": [100, 200, 300, 400, 500],  # For metric
+                "spacing": "proportional",
+                "label": "Predicted Yield",
+                "location": "right",
+                # 'extendfrac':(100.0-np.max(Z_r))/np.max(Z_r)
+            },
+            # center=50.0
+        )
+        # ax.yaxis.set_major_formatter(get_cat_label)
+        ax.xaxis.set_major_formatter(get_cond_label)
+        ax.tick_params("x", labelsize="small")
+        plt.setp(
+            ax.xaxis.get_majorticklabels(),
+            rotation=-60,
+            ha="left",
+            rotation_mode="anchor",
+        )
+        plt.setp(
+            ax.yaxis.get_majorticklabels(),
+            rotation=0,
+            ha="center",
+            rotation_mode="anchor",
+        )
+        plt.subplots_adjust(bottom=0.25)
+        # plt.show()
+        # plt.savefig("rewrite_heatmaps/" + sys.argv[1] + "_heat.svg")
+        plt.savefig(
+            f"{project.output}/{prediction_experiment}/{requestor}/{query}_heatmap_{plot_value}.png",
+            dpi=300,
+        )
+        # plt.show()
+        plt.clf()
+    elif plot_type == "violin":
+        sns.set_theme(style="white")
+        data = pd.Series(Z.flatten(), name="Predicted Yields")
+        ax = sns.violinplot(x=data, scale="count", inner="point", cut=0)
+        ax.set_xlim(0.0, 100.0)
+        plt.savefig(
+            f"{project.output}/{prediction_experiment}/{requestor}/{query}_violin_{plot_value}.png",
+            format="png",
+            dpi=300,
+        )
+        plt.clf()
+    elif plot_type == "3d":
+        from matplotlib.ticker import LinearLocator
+
+        fig = plt.figure(figsize=(6, 6))
+        ax1 = fig.add_subplot(1, 1, 1, projection="3d")
+        plt.tight_layout(h_pad=10.0, w_pad=3.0)
+        fig.subplots_adjust(bottom=0.20)
+
+        def init():
+            ax1.plot_surface(X, Y, Z, cmap=cm.cividis, linewidth=0)
+            ax1.set_zlim(0.0, 100.0)
+            ax1.zaxis.set_major_formatter(round_z)
+            ax1.zaxis.set_major_locator(LinearLocator(10))
+            ax1.yaxis.set_major_formatter(get_cat_label)
+            ax1.xaxis.set_major_formatter(get_cond_label)
+            ax1.yaxis.set_major_locator(LinearLocator(20))
+            ax1.xaxis.set_major_locator(LinearLocator(9))
+            ax1.tick_params("x", labelsize="small")
+            plt.setp(
+                ax1.xaxis.get_majorticklabels(),
+                rotation=45,
+                ha="right",
+                rotation_mode="anchor",
+            )
+            plt.setp(
+                ax1.yaxis.get_majorticklabels(),
+                rotation=-55,
+                ha="center",
+                rotation_mode="anchor",
+            )
+            ax1.yaxis._axinfo["label"]["space_factor"] = 7
+            # plt.subplots_adjust(up=0.5)
+            # plt.tight_layout(h_pad=10.0,w_pad=3.0)
+            fig.subplots_adjust(bottom=0.15)
+            return fig
+
+        # def anim_func(i):
+        #     ax1.view_init(45, 100 - 20 * math.cos((math.pi * i) / 180))
+        #     return (fig,)
+
+        # ani = animation.FuncAnimation(
+        #     fig, anim_func, init_func=init, frames=360, blit=True
+        # )
+        init()
+        ax1.view_init(22, -25)
+        plt.yticks(fontsize=12)
+        # ani.save(__tst+'085inc.gif',fps=25,dpi=300)
+        plt.savefig(
+            f"{project.output}/{prediction_experiment}/{requestor}/{query}_3d_{plot_value}.png",
+            format="png",
+            dpi=300,
+        )
+        plt.clf()
+
+
+def plot_preds(query="", prediction_experiment="", requestor=""):
+    """
+    Wrapper for generating visualizations of predictions.
+
+    "all" will plot all of the predictions available recursively.
+
+    any specific amine_bromide handle will plot that set of predictions, specifically.
+    """
+    import shutil
+
+    try:
+        shutil.rmtree(
+            f"/home/nir2/somn_container_dev/somn_scratch/cc3d1f3a3d9211eebdbe18c04d0a4970/outputs/testing_pred01/"
+        )
+    except:
+        pass
+    project = Project()
+    if query == "all":
+        df = load_predictions(prediction_experiment)
+        uni = get_unique_couplings(df.index)
+        for q in uni:
+            for t in ["heatmap", "violin", "3d"]:
+                visualize_predictions(
+                    query=q,
+                    prediction_experiment=prediction_experiment,
+                    requestor=requestor,
+                    plot_value="average",
+                    plot_type=t,
+                )
+    else:
+        for t in ["heatmap", "violin", "3d"]:
+            visualize_predictions(
+                query=query,
+                prediction_experiment=prediction_experiment,
+                requestor=requestor,
+                plot_value="average",
+                plot_type=t,
+            )
 
 
 if __name__ == "__main__":
-    ...
+    project = Project.reload(how="cc3d1f3a3d9211eebdbe18c04d0a4970")
+    # for t in ["heatmap", "violin", "3d"]:
+    #     visualize_predictions(
+    #         "dioxazinane_testBr01", "testing_pred01", plot_value="average", plot_type=t
+    #     )
+    plot_preds(query="all", prediction_experiment="testing_pred01", requestor="carrie")

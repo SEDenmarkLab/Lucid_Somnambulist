@@ -129,14 +129,14 @@ def hypermodel_inference(
         organizer=prophetic_organizer, prophetic_models=all_models
     )
     # prophetic_driver.sort_inference_models(all_models)
-    print(
-        "DEBUG - inference is",
-        prophetic_driver.organizer.inference,
-        prophetic_organizer.inference,
-        prophetic_driver.models,
-        len(prophetic_driver.models),
-        len(prophetic_driver.prophetic),
-    )
+    # print(
+    #     "DEBUG - inference is",
+    #     prophetic_driver.organizer.inference,
+    #     prophetic_organizer.inference,
+    #     prophetic_driver.models,
+    #     len(prophetic_driver.models),
+    #     len(prophetic_driver.prophetic),
+    # )
     ### Iterate over tuple of models (multiple hyperparameter sets can be handled per partition), and
     ### concatenate predictions for those with the predictions from multiple models from the next partition
     ### (and so on).
