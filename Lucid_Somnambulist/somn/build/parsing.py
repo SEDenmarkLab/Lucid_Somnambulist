@@ -34,7 +34,7 @@ class InputParser:
         self.names_known_tot = names_known
 
     def serialize(self, mols_to_write: list, specific_msg=""):
-        makedirs(self.path_to_write, exist_ok=True)
+        makedirs(self.path_to_write + "/mol_buffer", exist_ok=True)
         for mol in mols_to_write:
             assert isinstance(mol, ml.Molecule)
             with open(
@@ -163,7 +163,7 @@ class InputParser:
                     )
                 elif type(names) == list:
                     newmol = ml.Molecule.from_mol2(
-                        obconv.WriteString(obmol), name=f"pr{names[i]}"
+                        obconv.WriteString(obmol), name=f"{names[i]}"
                     )
                 mols_out.append(newmol)
                 del obmol
@@ -239,27 +239,68 @@ class InputParser:
             preopt, errs_pre = self.preopt_geom(col_h, update=update)
         return preopt, errs_h.extend(errs_pre)
 
+    # def scrape_smiles_csv(self, fpath):
+    #     """
+    #     Scrapes smiles strings out of a csv file
+
+    #     SMILES strings should be column index 0, required role should be index 1, and optional name should be column index 2
+    #     """
+    #     df = pd.read_csv(fpath, header=0, index_col=0)
+    #     if len(df.columns) == 2:
+    #         collection, smiles_d = self.get_mol_from_smiles(
+    #             df.iloc[:, 0].to_list(), recursive_mode=True
+    #         )
+    #         roles = df.iloc[:, 1].to_list()
+    #         return collection, smiles_d, roles
+    #     elif len(df.columns) > 2:
+    #         collection, smiles_d = self.get_mol_from_smiles(
+    #             df.iloc[:, 0].to_list(),
+    #             recursive_mode=True,
+    #             names=df.iloc[:, 2].to_list(),
+    #         )
+    #         roles = df.iloc[:, 1].to_list()
+    #         return collection, smiles_d, roles
+
     def scrape_smiles_csv(self, fpath):
         """
         Scrapes smiles strings out of a csv file
 
-        SMILES strings should be column index 0, required role should be index 1, and optional name should be column index 2
+        Requestor ID or uuid should be column 0, Nuc SMILES should be column 1, El SMILES should be column 2, optional name for nuc column 3, optional name for el column 4
         """
         df = pd.read_csv(fpath, header=0, index_col=0)
-        if len(df.columns) == 2:
-            collection, smiles_d = self.get_mol_from_smiles(
-                df.iloc[:, 0].to_list(), recursive_mode=True
+        assert isinstance(df, pd.DataFrame)
+        # print("DEBUG", df)
+        if len(df.columns) == 3:
+            nucs, smiles_d = self.get_mol_from_smiles(
+                df.iloc[:, 1].to_list(), recursive_mode=True
             )
-            roles = df.iloc[:, 1].to_list()
-            return collection, smiles_d, roles
-        elif len(df.columns) > 2:
-            collection, smiles_d = self.get_mol_from_smiles(
-                df.iloc[:, 0].to_list(),
+            elecs, smiles_d_ = self.get_mol_from_smiles(
+                df.iloc[:, 2].to_list(), recursive_mode=True
+            )
+            roles = ["nuc" for f in nucs] + ["el" for k in elecs]
+            nucs.extend(elecs)
+            smiles_d.update(smiles_d_)
+            return nucs, smiles_d, roles
+        elif len(df.columns) == 5:
+            nucs, smiles_d = self.get_mol_from_smiles(
+                df.iloc[:, 1].to_list(),
                 recursive_mode=True,
-                names=df.iloc[:, 2].to_list(),
+                names=df.iloc[:, 3].to_list(),
             )
-            roles = df.iloc[:, 1].to_list()
-            return collection, smiles_d, roles
+            # print("NUCS DEBUG", nucs.molecules)
+            elecs, smiles_d_ = self.get_mol_from_smiles(
+                df.iloc[:, 2].to_list(),
+                recursive_mode=True,
+                names=df.iloc[:, 4].to_list(),
+            )
+            roles = ["nuc" for f in nucs] + ["el" for k in elecs]
+            nucs.extend(elecs)
+            smiles_d.update(smiles_d_)
+            return nucs, smiles_d, roles
+        else:
+            raise Exception(
+                "Input requests .csv file not formatted correctly - need 3 or 5 columns, see function scrape_smiles_csv in InputParser"
+            )
 
     def scrape_biovia_smi_file(self, fpath):
         """

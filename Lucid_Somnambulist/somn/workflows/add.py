@@ -1,7 +1,9 @@
 # This workflow adds structures to the feature database (without requiring experimental data).
 # This may be useful for analyzing component space or performing unsupervised learning tasks.
 # This workflow also can be used by predict to generate features for new structures.
+import os
 
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 from sys import argv
 import molli as ml
 import argparse
@@ -21,7 +23,7 @@ from somn.util.project import Project
 ####
 
 
-def add_workflow(project: Project):
+def add_workflow(project: Project, prediction_experiment: str, parser_args=None):
     ### Basic checks on the input - start with the more difficult cdxml input, then go to smiles later
     ### Use molli for cdxml parse - it is better than openbabel. Use openbabel for smiles parsing and adding hydrogens (to both)
 
@@ -36,7 +38,7 @@ def add_workflow(project: Project):
 
     """
 
-    assert len(argv) > 1
+    assert (len(parser_args) > 1) or (len(argv) > 1)
     parser = argparse.ArgumentParser(
         usage="Specify format (smi or cdxml), then a smiles string/file with smiles or cdxml file, and finally indicate 'el' or 'nuc' for electrophile or nucleophile. Optionally, serialize output structures with '-ser' - must pass some input as an argument after, standard use is 'y'"
     )
@@ -50,16 +52,17 @@ def add_workflow(project: Project):
     )
     parser.add_argument(
         "-ser",
-        help="Optional serialize argument, pass -ser and the path to save to",
+        help="Optional serialize argument, pass -ser t",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(parser_args)
     ###                     Check serialization and instantiate parser              ###
     if (
         args.ser
     ):  # Serialization during parsing to check for errors - this is important for users to troubleshoot
         # assert Path(args.ser[1]).exists()
         parse = parsing.InputParser(
-            serialize=True, path_to_write=str(project.structures)
+            serialize=True,
+            path_to_write=f"{project.structures}/{prediction_experiment}",
         )
         project.save(identifier=args.ser)  # Testing
     else:
@@ -85,14 +88,15 @@ def add_workflow(project: Project):
             )
         collection, err = parse.preopt_geom(pre)
     elif args.fmt[0] == "multsmi":
-        print("got to multsmi")
+        # print("DEBUG got to multsmi")
         if Path(args.fmt[1]).suffix == ".smi":
             multismi_inp = parse.scrape_biovia_smi_file(args.fmt[1])
             collection, smiles_d = parse.get_mol_from_smiles(
                 multismi_inp, recursive_mode=True
             )
-        elif Path(args.fmg[1]).suffix == ".csv":
+        elif Path(args.fmt[1]).suffix == ".csv":
             pre, smiles_d, roles = parse.scrape_smiles_csv(args.fmt[1])
+            # print("DEBUG", pre.mol_index)
             collection, err = parse.prep_collection(pre, update=20)
         else:
             raise Exception(
@@ -134,28 +138,39 @@ def add_workflow(project: Project):
     collection.to_zip(parse.path_to_write + "/input_struc_preopt_col.zip")
     import json
 
-    assert not Path(
-        str(project.structures) + "/newmol_smi_buffer.json"
-    ).exists()  # Make sure we won't overwrite something
-    with open(f"{project.structures}/newmol_smi_buffer.json", "w") as k:
+    try:
+        assert not Path(
+            str(parse.path_to_write) + "/newmol_smi_buffer.json"
+        ).exists()  # Make sure we won't overwrite something
+    except:
+        raise Exception(
+            f"{parse.path_to_write} was passed as the path to write for molecule input, but it exists. To avoid overwriting, workflow has been aborted."
+        )
+    with open(f"{parse.path_to_write}/newmol_smi_buffer.json", "w") as k:
         json.dump(smiles_d, k)
 
     smi_list = [smiles_d[n.name] for n in collection.molecules]
 
     if args.fmt[0] == "smi":  # Single structure
-        input_packet = PropheticInput.from_col(collection, smi_list, [args.r])
+        input_packet = PropheticInput.from_col(
+            collection, smi_list, [args.r], parser=parse
+        )
         # print(input_packet.struc)
 
-    elif args.fmt[0] == "multismi":
-        input_packet = PropheticInput.from_col(collection, smi_list, roles)
+    elif args.fmt[0] == "multsmi":
+        input_packet = PropheticInput.from_col(
+            collection, smi_list, roles, parser=parse
+        )
         # print(input_packet.struc)
     elif args.fmt[0] == "cdxml":
         input_packet = PropheticInput.from_col(
-            collection, smi_list, [args.r for f in collection.molecules]
+            collection, smi_list, [args.r for f in collection.molecules], parser=parse
         )
         # print(input_packet.struc)
     elif args.fmt[0] == "mol2":  # Single structure
-        input_packet = PropheticInput.from_col(collection, smi_list, [args.r])
+        input_packet = PropheticInput.from_col(
+            collection, smi_list, [args.r], parser=parse
+        )
     else:
         raise Exception(
             "There was an error attributing reactant roles for input structures"
@@ -168,16 +183,21 @@ def add_workflow(project: Project):
     if len(ap_errors) > 0:
         warnings.warn(
             f"Looks like {len(ap_errors)} molecules failed at the atomproperty calculation step - this singlepoint calc usually fails because \
-            the input structure is not valid. Check that backed up structure in the working directory {project.structures}"
+            the input structure is not valid. Check that backed up structure in the working directory {parse.path_to_write}"
         )
-    with open(f"{project.structures}/newmol_ap_buffer.json", "w") as k:
+    with open(f"{parse.path_to_write}/newmol_ap_buffer.json", "w") as k:
         json.dump(atomprops, k)
 
     if len(ap_errors) != 0:
         print(f"ERRORS DURING CALCULATIONS: \n{ap_errors}")
+    # print("DEBUG", input_packet.roles_d, input_packet.state)
+    input_packet.sort_and_write_outputs()
 
 
 if __name__ == "__main__":
     ### Assuming we want to always keep track of this
+    # args = argv
+    # assert len(args) >= 2
+    # how = args[1]
     project = Project()
-    add_workflow(project)
+    add_workflow(project, prediction_experiment="testing01")

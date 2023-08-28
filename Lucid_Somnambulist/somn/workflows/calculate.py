@@ -8,8 +8,8 @@ from somn.calculate.RDF import (
 )
 from somn.calculate.preprocess import new_mask_random_feature_arrays
 from somn.build.assemble import (
-    assemble_descriptors_from_handles,
-    assemble_random_descriptors_from_handles,
+    # assemble_descriptors_from_handles,
+    # assemble_random_descriptors_from_handles,
     make_randomized_features,
     get_labels,
 )
@@ -149,8 +149,8 @@ def main(
                 full_am_df, cut=value_, get_const=True, bool_out=True
             )
             ### DEBUG
-            print("Boolean mask:\n", am_mask)
-            print(am_label)
+            # print("Boolean mask:\n", am_mask)
+            # print(am_label)
             br_mask = preprocess.corrX_new(
                 full_br_df, cut=value_, get_const=True, bool_out=True
             )
@@ -180,6 +180,7 @@ def main(
     rand = make_randomized_features(
         sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc
     )
+    # print(rand)
     if serialize == True:
         with open(f"{project.descriptors}/random_am_br_cat_solv_base.p", "wb") as k:
             pickle.dump(rand, k)

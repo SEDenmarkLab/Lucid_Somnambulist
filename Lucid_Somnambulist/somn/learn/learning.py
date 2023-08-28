@@ -7,16 +7,18 @@ from keras.layers import Dense, Dropout, Input, GaussianNoise
 from keras.optimizers import Adam, Adadelta
 from math import exp
 import json
-from somn.workflows import PART_, OUTPUT_
-import kerastuner as kt
+
+# from somn.workflows import PART_, OUTPUT_ ## Depreciated
+import keras_tuner as kt
 from keras.callbacks import (
     EarlyStopping,
     TerminateOnNaN,
     ReduceLROnPlateau,
     TensorBoard,
 )
-from somn.depict.evaluate import plot_results
+from somn.util.visualize import plot_results
 import numpy as np
+from somn.util.project import Project
 
 
 class tf_organizer:
@@ -31,10 +33,11 @@ class tf_organizer:
         of the same type in the partition directory.
     """
 
-    def __init__(self, name, partition_dir="", validation=True):
+    def __init__(self, name, partition_dir="", validation=True, inference=False):
         self.name = name
         self.part_dir = partition_dir
         self.val = validation
+        self.inference = inference
         if validation == True:
             (
                 self.files,
@@ -56,6 +59,16 @@ class tf_organizer:
         self.partitions, self.partIDs = self.organize_partitions()
         self.log = []
         self.results = {}  # This is for storing results to save later to a json
+        if inference == True:
+            self.masks = self.get_partition_masks()
+
+    def get_partition_masks(self):
+        """
+        Used for inferencing - will retrieve variance threshold masks used to build partitions, and apply them to new feature arrays.
+        """
+        mask1 = sorted(glob(self.part_dir + "/*_constmask.csv"))
+        mask2 = sorted(glob(self.part_dir + "/*_vtmask.csv"))
+        return mask1, mask2
 
     def get_partitions(self, val=True):
         """
@@ -93,7 +106,9 @@ class tf_organizer:
                 if parts.count(parts[0]) != len(
                     parts
                 ):  # All elements are the same; checking
-                    raise Exception("filepath parsing FAILED")
+                    raise Exception(
+                        "filepath parsing FAILED during organize_partitions - check folder"
+                    )
                 partitions.append((xtr, xva, xte, ytr, yva, yte))
                 part_IDS.append(int(x_tr[0]))
         elif self.val == False:
@@ -154,12 +169,25 @@ class tfDriver:
         reports validation metrics
     """
 
-    def __init__(self, organizer: tf_organizer):
+    def __init__(self, organizer: tf_organizer, prophetic_models=None):
         self.paths = organizer.partitions
         self.organizer = organizer
         self.get_next_part(iter_=False)
         self.x_y = self.prep_x_y()
         self.input_dim = self.x_y[0][0].shape[1]
+        if self.organizer.inference is True:
+            assert prophetic_models is not None
+            # masks = self.prep_masks(self.organizer.masks)
+            try:
+                self.prophetic = self.organizer.prophetic_features
+                self.sort_inference_models(prophetic_models)
+                self.curr_models = self.models[0]
+                self.curr_prophetic = self.prophetic[0]
+            except:
+                raise Exception(
+                    "Tried to construct a tfDriver instance for inferencing without identifying\
+                                models or prophetic features. Check input tf_organizer object."
+                )
 
     def get_next_part(self, iter_=True):
         """
@@ -185,11 +213,67 @@ class tfDriver:
         current_number = self.organizer.log[-1]
         self.current_part = new_current
         self.current_part_id = current_number
-        if iter_ == True:
+        if iter_ is True:
             self.x_y = self.prep_x_y()
             self.input_dim = self.x_y[0][0].shape[1]
+            # self.current_mask = self.masks[curr_idx]
+            if (
+                self.organizer.inference is True
+            ):  # When making predictions, iterate on models and preprocessed prophetic features
+                self.curr_models = self.models[curr_idx]
+                self.curr_prophetic = self.prophetic[curr_idx]
+
         print("Getting next partition", "\n\n", self.organizer.log[-1], new_current)
         # return new_current,current_number ### vestigial - no longer used
+
+    ### Depreciated - this is done beforehand
+    # def prep_masks(self, paths: tuple):
+    #     out = []
+    #     for pth in paths:
+    #         df = pd.read_csv(pth, header=0, index_col=0)
+    #         np_mask = df.to_numpy()
+    #         out.append(np_mask)
+    #     return tuple(out)
+    ### Depreciated
+    def load_prophetic_hypermodels_and_x(self) -> (tf.keras.models.Model, pd.DataFrame):
+        """
+        Load current model and prophetic features
+
+        model (compiled), and pd.DataFrame (index=instance, column=features)
+        """
+        assert self.organizer.inference is True
+        model_paths = self.curr_models
+        feat_path = self.curr_prophetic
+        models = []
+        for path in model_paths:
+            model = tf.keras.models.load_model(path)
+            models.append(model)
+        feat = pd.read_feather(feat_path).transpose()
+        return models, feat
+
+    def sort_inference_models(self, allmodels):
+        """
+        pass all model paths (list of string paths from glob()) as an argument
+        """
+        assert self.organizer.inference is True
+        # assert self.allmodels
+        # all_models = self.allmodels
+        model_info = [
+            self.organizer.get_partition_info(m)[0].split("hpset")[0] for m in allmodels
+        ]
+        from collections import OrderedDict
+
+        output = []
+        sort = OrderedDict()
+        for id, pa in zip(model_info, allmodels):
+            if id in sort.keys():
+                sort[id].append(pa)
+            else:
+                sort[id] = [pa]
+        for id_, paths in sort.items():
+            output.append(tuple(paths))
+        self.models = output
+        # return output
 
     def prep_x_y(self):
         """
@@ -222,15 +306,15 @@ class tfDriver:
         model = Sequential()
         # model.add(Input(shape=input_dimension))
         hp_n_1 = hp.Int(
-            "nodes_1", min_value=256, max_value=2496, step=64
+            "nodes_1", min_value=256, max_value=1024, step=16
         )  # 48 states possible
         hp_n_2 = hp.Int(
-            "nodes_2", min_value=128, max_value=968, step=24
+            "nodes_2", min_value=16, max_value=64, step=4
         )  # 48 states possible
-        hp_n_3 = hp.Int("nodes_3", min_value=8, max_value=256, step=8)
+        # hp_n_3 = hp.Int("nodes_3", min_value=8, max_value=256, step=8) ##DEV
         hp_noise = hp.Float("gaus_noise", min_value=0.005, max_value=0.08, step=0.005)
         hp_d_1 = hp.Float("dropout1", min_value=0.0, max_value=0.65)
-        hp_d_2 = hp.Float("dropout2", min_value=0.0, max_value=0.65)
+        # hp_d_2 = hp.Float("dropout2", min_value=0.0, max_value=0.65) ##DEV
         # hp_a_1 = hp.Choice('act1',values=['relu','selu','softmax','tanh','gelu'])
         # hp_a_2 = hp.Choice('act2',values=['relu','selu','softmax','tanh','gelu'])
         # hp_a_3 = hp.Choice('act3',values=['relu','selu','softmax','tanh','gelu'])
@@ -266,14 +350,14 @@ class tfDriver:
                 # kernel_regularizer=tf.keras.regularizers.l1_l2(l1=1e-5,l2=1e-4)
             )
         )
-        model.add(Dropout(hp_d_2))
-        model.add(
-            Dense(
-                hp_n_3,
-                # activation=hp_a_3,
-                activation="relu",
-            )
-        )
+        # model.add(Dropout(hp_d_2))
+        # model.add(
+        #     Dense(
+        #         hp_n_3,
+        #         # activation=hp_a_3,
+        #         activation="relu",
+        #     )
+        # )
         model.add(Dense(1, activation="linear"))
         # hp_lr = hp.Choice("learning_rate", values=[1e-2, 1e-3, 1e-4, 1e-5, 1e-6])
         # opt = tf.keras.optimizers.Adam(learning_rate=1e-4)
@@ -630,8 +714,11 @@ def save_model(model: Sequential):
 
 
 def get_hps(hps: kt.HyperParameters()):
-    nodes_list = [hps.get("nodes_1"), hps.get("nodes_2"), hps.get("nodes_3")]
-    dropout_list = [hps.get("dropout1"), hps.get("dropout2")]
+    # nodes_list = [hps.get("nodes_1"), hps.get("nodes_2"), hps.get("nodes_3")] ## 2 HLs
+    # dropout_list = [hps.get("dropout1"), hps.get("dropout2")]## 2 HLs
+    nodes_list = [hps.get("nodes_1"), hps.get("nodes_2")]  ## 1 HLs
+    dropout_list = [hps.get("dropout1")]  ## 1 HLs
+
     # act_list = [hps.get("act1"), hps.get("act2"), hps.get("act3")]
     node_str = "_".join([f + "n" for f in map(str, nodes_list)])
     dropout_str = "_".join([f + "d" for f in map(str, dropout_list)])
@@ -648,9 +735,10 @@ def hypermodel_search(
     tuner_objective="val_mean_absolute_error",
     deep_objective="val_mean_absolute_error",
     epoch_depth=200,
-    num_hypermodels=5,
+    num_hypermodels=3,
     cpu_testing=False,  # TEST
 ):
+    project = Project()
     """
     Driver for hypermodel searching.
 
@@ -695,17 +783,19 @@ def hypermodel_search(
     date__ = experiment  # Should not be a slash before or after
     tforg = tf_organizer(
         name="mdl_srch_" + experiment,
-        partition_dir=PART_,
+        partition_dir=f"{project.partitions}/real",  # noslash needed
         validation=True,
     )  # Need to name a subfolder for the partitions and add it here.
 
     drive = tfDriver(tforg)
-    json_buffer_path = OUTPUT_ + date__  # There is already a slash after output
-    out_dir_path = OUTPUT_ + date__ + "/out/"  # Both slashes for out needed here
+    json_buffer_path = (
+        f"{project.output}/{date__}/"  # There is already a slash after output
+    )
+    out_dir_path = f"{project.output}/{date__}/out/"  # Both slashes for out needed here
     os.makedirs(json_buffer_path, exist_ok=True)
     os.makedirs(out_dir_path, exist_ok=True)
     logfile = open(
-        json_buffer_path + "/logfile.txt", "w"
+        f"{json_buffer_path}logfile.txt", "w"
     )  # Directorys should be covered in above os.makedirs() call
     # splits = {}
     # csvs = glob(tforg.part_dir.rsplit("/", 1)[0] + "/*csv")
@@ -729,7 +819,7 @@ def hypermodel_search(
             tuner = kt.tuners.Hyperband(
                 drive.regression_model,
                 objective=kt.Objective(tuner_objective, "min"),
-                max_epochs=120,
+                max_epochs=100,
                 factor=3,
                 # distribution_strategy=tf.distribute.MirroredStrategy(),
                 # distribution_strategy=tf.distribute.MirroredStrategy(gpus),
@@ -773,7 +863,7 @@ def hypermodel_search(
                 )
         stop_early = EarlyStopping(monitor=tuner_objective, patience=10)
         stop_nan = TerminateOnNaN()
-        tensorboard = TensorBoard(log_dir=out_dir_path + name_, histogram_freq=2)
+        tensorboard = TensorBoard(log_dir=out_dir_path + name_, histogram_freq=1)
         tuner.search(
             xtr,
             ytr,
@@ -871,8 +961,9 @@ def hypermodel_search(
                     "mae_result": {str(i + 1) + "hp_" + name_: mae_result},
                     "train_loss": {str(i + 1) + "hp_" + name_: train_h},
                     "val_loss": {str(i + 1) + "hp_" + name_: val_h},
-                    "test_correlation": {},
-                    "val_correlation": {},
+                    # "test_correlation": {},
+                    # "val_correlation": {},
+                    "regression_stats": {},
                 }
                 if model_type == "classification":
                     tforg.results[name_]["class_metrics"] = {}
@@ -900,21 +991,22 @@ def hypermodel_search(
                     tforg.results[name_][k][str(i + 1) + "hp_" + name_] = v
             # plot_results(outdir=out_dir_path,expkey=name_+'_'+str(i)+'hps_valtest',train=(yval.ravel(),yval_p),test=(yte.ravel(),yte_p))
             if model_type == "regression":
-                test_lin_met = plot_results(
+                reg_lin_met = plot_results(
                     outdir=out_dir_path,
                     expkey=name_ + "test" + "_hp" + str(i),
                     train=(ytr.ravel(), ytr_p),
+                    val=(yval.ravel(), yval_p),
                     test=(yte.ravel(), yte_p),
                 )
-                val_lin_met = plot_results(
-                    outdir=out_dir_path,
-                    expkey=name_ + "val" + "_hp" + str(i),
-                    train=(ytr.ravel(), ytr_p),
-                    test=(yval.ravel(), yval_p),
-                )
+                # val_lin_met = plot_results(
+                #     outdir=out_dir_path,
+                #     expkey=name_ + "val" + "_hp" + str(i),
+                #     train=(ytr.ravel(), ytr_p),
+                #     test=(yval.ravel(), yval_p),
+                # )
                 #### Linear regression metrics - slope, intercept, then R2 ####
-                tforg.results[name_]["test_correlation"][i + 1] = test_lin_met
-                tforg.results[name_]["val_correlation"][i + 1] = val_lin_met
+                tforg.results[name_]["regression_stats"][i + 1] = reg_lin_met
+                # tforg.results[name_]["val_correlation"][i + 1] = val_lin_met
             elif model_type == "classification":
                 fp = history.history["false_pos"]
                 fn = history.history["false_neg"]
@@ -942,12 +1034,12 @@ def hypermodel_search(
         print("Completed partition " + str(__k) + "\n\n")
         drive.get_next_part()
 
-    with open(json_buffer_path + "final_complete_log" + date__ + ".json", "w") as g:
+    with open(f"{json_buffer_path}final_complete_log{date__}.json", "w") as g:
         g.write(json.dumps(tforg.results))
 
 
-if __name__ == "__main__":
-    import sys
+# if __name__ == "__main__":
+#     import sys
 
-    experiment = sys.argv[1]
-    hypermodel_search(experiment=experiment)
+#     experiment = sys.argv[1]
+#     hypermodel_search(experiment=experiment)
