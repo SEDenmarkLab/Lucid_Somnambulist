@@ -82,7 +82,7 @@ def hypermodel_inference(
     #     real, rand = sub_desc
     output_buffer = []
 
-    from somn.workflows.firstgen_calc_sub import main as calc_sub
+    from somn.workflows.calculate import main as calc_sub
 
     sub_masks = load_substrate_masks()
     total_requests, requested_pairs = prep_requests()
@@ -249,7 +249,7 @@ def assemble_desc_for_inference_mols(
     #         "Something went wrong with calculating substrate descriptors for new molecules - check inputs"
     #     )
     ### Now we're ready to calculate RDF features
-    from somn.workflows.firstgen_calc_sub import calculate_prophetic
+    from somn.workflows.calculate import calculate_prophetic
     import molli as ml
     import json
 
@@ -285,12 +285,6 @@ def assemble_desc_for_inference_mols(
     )
     # from somn.calculate.preprocess import new_mask_random_feature_arrays
     return prophetic_features
-
-
-def process_raw_predictions(raw_pred: pd.DataFrame, requests: pd.DataFrame):
-    """
-    Pass the raw predictions and requests dataframes from hypermodel_inference to process them.
-    """
 
 
 if __name__ == "__main__":

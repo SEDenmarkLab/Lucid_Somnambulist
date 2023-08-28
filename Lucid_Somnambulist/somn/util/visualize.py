@@ -489,6 +489,7 @@ def plot_preds(query="", prediction_experiment="", requestor=""):
 
 
 if __name__ == "__main__":
+    ######## DEV ONLY ############
     project = Project.reload(how="cc3d1f3a3d9211eebdbe18c04d0a4970")
     # for t in ["heatmap", "violin", "3d"]:
     #     visualize_predictions(

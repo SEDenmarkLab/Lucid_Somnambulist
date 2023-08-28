@@ -2,7 +2,7 @@ import os
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import molli as ml
-from somn.workflows.firstgen_calc_sub import main as calc_sub
+from somn.workflows.calculate import main as calc_sub
 from somn.calculate import preprocess
 from somn.build.assemble import (
     # load_calculated_substrate_descriptors,
