@@ -30,9 +30,7 @@ def main(args=None):
     Inference pipeline wrapper with argument handling.
 
     """
-    parser = ArgumentParser(
-        usage=f"Specify -proj [projectID] -mdl [modelset ID] -exp [prediction ID]"
-    )
+    parser = ArgumentParser(usage=f"Specify [projectID] [modelset ID] [prediction ID]")
     parser.add_argument(
         "proj",
         help="Project ID (uuid string) where pretrained models are stored",

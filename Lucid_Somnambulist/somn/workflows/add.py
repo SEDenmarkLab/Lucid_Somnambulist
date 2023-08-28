@@ -54,7 +54,10 @@ def add_workflow(project: Project, prediction_experiment: str, parser_args=None)
         "-ser",
         help="Optional serialize argument, pass -ser t",
     )
-    args = parser.parse_args(parser_args)
+    if parser_args == None:
+        args = parser.parse_args(argv[1:])
+    else:
+        args = parser.parse_args(parser_args)
     ###                     Check serialization and instantiate parser              ###
     if (
         args.ser
