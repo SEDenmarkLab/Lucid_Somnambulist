@@ -137,12 +137,12 @@ def main(
                 tr, va = preprocess.random_splits(
                     temp, validation=False, n_splits=1, fold=7
                 )
-            #### DEV
-            if 65 < i < 73:  # Actually run these
-                pass
-            else:
-                continue  # Skip others
-            #### DEV
+            # #### DEV
+            # if 65 < i < 73:  # Actually run these
+            #     pass
+            # else:
+            #     continue  # Skip others
+            # #### DEV
             partition_pipeline_val(
                 name_,
                 tr,
