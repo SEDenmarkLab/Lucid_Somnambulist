@@ -24,7 +24,8 @@ def main(
     val_schema="",
     vt=None,
     mask_substrates=True,
-    rand=False,
+    rand=None,
+    real=None,
     serialize_rand=False,
 ):
     """
@@ -99,8 +100,9 @@ def main(
                 te,
                 project,
                 vt=vt,
-                sub_mask=sub_mask,
                 rand=rand,
+                real=real,
+                sub_mask=sub_mask,
                 serialize_rand=serialize_rand,
             )
             # ### DEBUG
@@ -150,8 +152,9 @@ def main(
                 te,
                 project,
                 vt=vt,
-                sub_mask=sub_mask,
                 rand=rand,
+                real=real,
+                sub_mask=sub_mask,
                 serialize_rand=serialize_rand,
             )
             #### DEBUG
@@ -160,18 +163,22 @@ def main(
 
 
 def partition_pipeline_noval(
-    name_, tr, te, vt=None, rand=True, sub_mask=False, serialize_rand=False
+    name_, tr, te, vt=None, rand=None, real=None, sub_mask=False, serialize_rand=False
 ):
     """
     Partition pipeline, but for models with no validation set
     """
-    x_tr = assemble_descriptors_from_handles(tr.index.tolist(), rand, sub_mask=sub_mask)
-    x_te = assemble_descriptors_from_handles(te.index.tolist(), rand, sub_mask=sub_mask)
+    x_tr = assemble_descriptors_from_handles(
+        tr.index.tolist(), desc=rand, sub_mask=sub_mask
+    )
+    x_te = assemble_descriptors_from_handles(
+        te.index.tolist(), desc=rand, sub_mask=sub_mask
+    )
     x_tr_real = assemble_descriptors_from_handles(
-        tr.index.tolist(), sub_am_dict, sub_br_dict, sub_mask=sub_mask
+        tr.index.tolist(), desc=real, sub_mask=sub_mask
     )
     x_te_real = assemble_descriptors_from_handles(
-        te.index.tolist(), sub_am_dict, sub_br_dict, sub_mask=sub_mask
+        te.index.tolist(), desc=real, sub_mask=sub_mask
     )
     (
         (x_tr_, x_te_),
@@ -377,6 +384,7 @@ if __name__ == "__main__":
 
     # Checking project status to make sure sub descriptors are calculated
     sub_desc = get_precalc_sub_desc()
+    # print("DEV", type(sub_desc), sub_desc[0])
     if sub_desc == False:  # Need to calculate
         real, rand = calc_sub(
             project, optional_load="maxdiff_catalyst", substrate_pre=("corr", 0.90)
@@ -384,6 +392,7 @@ if __name__ == "__main__":
         sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
     else:
         sub_am_dict, sub_br_dict, rand = sub_desc
+        real = (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc)
 
     # sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
     # print(rand)
@@ -407,5 +416,6 @@ if __name__ == "__main__":
         vt=0,
         mask_substrates=True,
         rand=rand,
+        real=real,
         serialize_rand=False,
     )  ## Correlation cutoff is under development: should not be implemented here.
