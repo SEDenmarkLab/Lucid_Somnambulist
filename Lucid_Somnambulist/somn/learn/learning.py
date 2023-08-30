@@ -769,12 +769,12 @@ def hypermodel_search(
 
     """
     if cpu_testing == False:
-        config = tf.compat.v1.ConfigProto()
+        config = tf.compat.v1.ConfigProto(device_count={"GPU": 0}) ## DEV - trying to specify a specific GPU. 
         config.gpu_options.allow_growth = True
         session = tf.compat.v1.Session(config=config)
-    elif cpu_testing == True:  # TEST
-        config = tf.compat.v1.ConfigProto(device_count={"GPU": 0})
-        session = tf.compat.v1.Session(config=config)
+    # elif cpu_testing == True:  # TEST - this was not the goal here. CPU is not going to be useful for this. 
+    #     config = tf.compat.v1.ConfigProto(device_count={"GPU": 0})
+    #     session = tf.compat.v1.Session(config=config)
     # import sys
     # exp = sys.argv[1]
     assert isinstance(experiment, str)
