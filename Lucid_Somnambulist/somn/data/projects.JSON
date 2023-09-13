@@ -10,5 +10,11 @@
         "timestamp": "2023-08-28",
         "unique": "419a0d00462211eead4c18c04d0a4970",
         "identifier": "toml_full"
+    },
+    "f39f297851bb11ee882718c04d0a4970": {
+        "path": "somn_scratch/f39f297851bb11ee882718c04d0a4970/",
+        "timestamp": "2023-09-12",
+        "unique": "f39f297851bb11ee882718c04d0a4970",
+        "identifier": "partition"
     }
 }

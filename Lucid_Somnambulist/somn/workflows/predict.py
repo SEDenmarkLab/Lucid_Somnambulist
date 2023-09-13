@@ -59,7 +59,7 @@ def main(args=None):
     except:
         raise RuntimeError(
             "Something went wrong with hypermodel inferences - check model experiment ID, and \
-                           if prediction experiment label is unique and new."
+if prediction experiment label is unique and new."
         )
     stamp = str(date.today())
     plot_preds(query="all", prediction_experiment=args.exp, requestor=stamp)

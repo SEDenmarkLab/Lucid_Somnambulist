@@ -42,6 +42,14 @@ def main(
     For substrate masking, the boolean argument is being passed to a few functions down. The assemble_*_descriptors_from_handles function will handle it.
 
     """
+    if 'unique_couplings' in locals(): ## Running in development or a separate script, where a few variables have been created. 
+        pass
+    else: ## Running from CLI - wrapper stores these variables in the project instance
+        unique_couplings = project.unique_couplings
+        combos = project.combos
+        dataset = project.dataset
+
+
     assert bool(
         set([val_schema])
         & set(["to_vi", "vi_to", "random", "vo_to", "to_vo", "noval_to", "to_noval"])
@@ -167,6 +175,7 @@ def partition_pipeline_noval(
 ):
     """
     Partition pipeline, but for models with no validation set
+    DEV - DEPRECIATED/NEEDS SOME DEVELOPMENT
     """
     x_tr = assemble_descriptors_from_handles(
         tr.index.tolist(), desc=rand, sub_mask=sub_mask
@@ -351,6 +360,51 @@ def get_precalc_sub_desc():
         return sub_am_dict, sub_br_dict, rand
     else:
         return False
+
+
+def normal_partition_prep(project: Project):
+    # project = Project() ## DEBUG
+    (
+        amines,
+        bromides,
+        dataset,
+        handles,
+        unique_couplings,
+        a_prop,
+        br_prop,
+        base_desc,
+        solv_desc,
+        cat_desc,
+    ) = preprocess.load_data(optional_load="maxdiff_catalyst")
+
+    # Checking project status to make sure sub descriptors are calculated
+    sub_desc = get_precalc_sub_desc()
+    # print("DEV", type(sub_desc), sub_desc[0])
+    if sub_desc == False:  # Need to calculate
+        real, rand = calc_sub(
+            project, optional_load="maxdiff_catalyst", substrate_pre=("corr", 0.90)
+        )
+        sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
+    else:
+        sub_am_dict, sub_br_dict, rand = sub_desc
+        real = (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc)
+
+    # sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
+    # print(rand)
+    # Val have out of sample reactants
+    # combos = preprocess.get_all_combos(unique_couplings)
+    combos = deepcopy(
+        unique_couplings
+    )  # This will significantly cut down on the number of partitions
+    import os
+
+    # print(pd.DataFrame(combos).to_string())
+    outdir = deepcopy(f"{project.partitions}/")
+    os.makedirs(outdir + "real/", exist_ok=True)
+    os.makedirs(outdir + "rand/", exist_ok=True)
+    realout = outdir + "real/"
+    randout = outdir + "rand/"
+    return outdir, combos, unique_couplings, real, rand  # DEV HERE
 
 
 if __name__ == "__main__":
