@@ -552,10 +552,17 @@ def preprocess_prophetic_features(
     partition_dir = f"{project.partitions}/real"
     from somn.learn.learning import tf_organizer
 
-    os.makedirs(
-        f"{project.partitions}/prophetic_{prediction_experiment}/", exist_ok=False
-    )
-
+    try:
+        os.makedirs(
+            f"{project.partitions}/prophetic_{prediction_experiment}/", exist_ok=False
+        )
+    except:
+        from pathlib import Path
+        from warnings import warn
+        assert Path(f"{project.partitions}/prophetic_{prediction_experiment}/").exists()
+        warn(f"Looks like prophetic features were already calculated for project {project.unique} and experiment {prediction_experiment}, so \
+this calculation step will overwrite those files. If requesting many compounds, consider developing alternate instantiation of prophetic tf_organizer instance \
+in somn.calculate.preprocess.preprocess_prophetic_features().")
     organ = tf_organizer(
         name="prophetic_pre",
         partition_dir=partition_dir,

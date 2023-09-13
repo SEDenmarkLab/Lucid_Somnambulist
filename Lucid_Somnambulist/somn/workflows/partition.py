@@ -24,7 +24,8 @@ def main(
     val_schema="",
     vt=None,
     mask_substrates=True,
-    rand=False,
+    rand=None,
+    real=None,
     serialize_rand=False,
 ):
     """
@@ -41,6 +42,14 @@ def main(
     For substrate masking, the boolean argument is being passed to a few functions down. The assemble_*_descriptors_from_handles function will handle it.
 
     """
+    if 'unique_couplings' in locals(): ## Running in development or a separate script, where a few variables have been created. 
+        pass
+    else: ## Running from CLI - wrapper stores these variables in the project instance
+        unique_couplings = project.unique_couplings
+        combos = project.combos
+        dataset = project.dataset
+
+
     assert bool(
         set([val_schema])
         & set(["to_vi", "vi_to", "random", "vo_to", "to_vo", "noval_to", "to_noval"])
@@ -99,8 +108,9 @@ def main(
                 te,
                 project,
                 vt=vt,
-                sub_mask=sub_mask,
                 rand=rand,
+                real=real,
+                sub_mask=sub_mask,
                 serialize_rand=serialize_rand,
             )
             # ### DEBUG
@@ -137,12 +147,12 @@ def main(
                 tr, va = preprocess.random_splits(
                     temp, validation=False, n_splits=1, fold=7
                 )
-            #### DEV
-            if 65 < i < 73:  # Actually run these
-                pass
-            else:
-                continue  # Skip others
-            #### DEV
+            # #### DEV
+            # if 65 < i < 73:  # Actually run these
+            #     pass
+            # else:
+            #     continue  # Skip others
+            # #### DEV
             partition_pipeline_val(
                 name_,
                 tr,
@@ -150,8 +160,9 @@ def main(
                 te,
                 project,
                 vt=vt,
-                sub_mask=sub_mask,
                 rand=rand,
+                real=real,
+                sub_mask=sub_mask,
                 serialize_rand=serialize_rand,
             )
             #### DEBUG
@@ -160,18 +171,23 @@ def main(
 
 
 def partition_pipeline_noval(
-    name_, tr, te, vt=None, rand=True, sub_mask=False, serialize_rand=False
+    name_, tr, te, vt=None, rand=None, real=None, sub_mask=False, serialize_rand=False
 ):
     """
     Partition pipeline, but for models with no validation set
+    DEV - DEPRECIATED/NEEDS SOME DEVELOPMENT
     """
-    x_tr = assemble_descriptors_from_handles(tr.index.tolist(), rand, sub_mask=sub_mask)
-    x_te = assemble_descriptors_from_handles(te.index.tolist(), rand, sub_mask=sub_mask)
+    x_tr = assemble_descriptors_from_handles(
+        tr.index.tolist(), desc=rand, sub_mask=sub_mask
+    )
+    x_te = assemble_descriptors_from_handles(
+        te.index.tolist(), desc=rand, sub_mask=sub_mask
+    )
     x_tr_real = assemble_descriptors_from_handles(
-        tr.index.tolist(), sub_am_dict, sub_br_dict, sub_mask=sub_mask
+        tr.index.tolist(), desc=real, sub_mask=sub_mask
     )
     x_te_real = assemble_descriptors_from_handles(
-        te.index.tolist(), sub_am_dict, sub_br_dict, sub_mask=sub_mask
+        te.index.tolist(), desc=real, sub_mask=sub_mask
     )
     (
         (x_tr_, x_te_),
@@ -346,6 +362,51 @@ def get_precalc_sub_desc():
         return False
 
 
+def normal_partition_prep(project: Project):
+    # project = Project() ## DEBUG
+    (
+        amines,
+        bromides,
+        dataset,
+        handles,
+        unique_couplings,
+        a_prop,
+        br_prop,
+        base_desc,
+        solv_desc,
+        cat_desc,
+    ) = preprocess.load_data(optional_load="maxdiff_catalyst")
+
+    # Checking project status to make sure sub descriptors are calculated
+    sub_desc = get_precalc_sub_desc()
+    # print("DEV", type(sub_desc), sub_desc[0])
+    if sub_desc == False:  # Need to calculate
+        real, rand = calc_sub(
+            project, optional_load="maxdiff_catalyst", substrate_pre=("corr", 0.90)
+        )
+        sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
+    else:
+        sub_am_dict, sub_br_dict, rand = sub_desc
+        real = (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc)
+
+    # sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
+    # print(rand)
+    # Val have out of sample reactants
+    # combos = preprocess.get_all_combos(unique_couplings)
+    combos = deepcopy(
+        unique_couplings
+    )  # This will significantly cut down on the number of partitions
+    import os
+
+    # print(pd.DataFrame(combos).to_string())
+    outdir = deepcopy(f"{project.partitions}/")
+    os.makedirs(outdir + "real/", exist_ok=True)
+    os.makedirs(outdir + "rand/", exist_ok=True)
+    realout = outdir + "real/"
+    randout = outdir + "rand/"
+    return outdir, combos, unique_couplings, real, rand  # DEV HERE
+
+
 if __name__ == "__main__":
     from sys import argv
 
@@ -377,6 +438,7 @@ if __name__ == "__main__":
 
     # Checking project status to make sure sub descriptors are calculated
     sub_desc = get_precalc_sub_desc()
+    # print("DEV", type(sub_desc), sub_desc[0])
     if sub_desc == False:  # Need to calculate
         real, rand = calc_sub(
             project, optional_load="maxdiff_catalyst", substrate_pre=("corr", 0.90)
@@ -384,6 +446,7 @@ if __name__ == "__main__":
         sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
     else:
         sub_am_dict, sub_br_dict, rand = sub_desc
+        real = (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc)
 
     # sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
     # print(rand)
@@ -407,5 +470,6 @@ if __name__ == "__main__":
         vt=0,
         mask_substrates=True,
         rand=rand,
+        real=real,
         serialize_rand=False,
     )  ## Correlation cutoff is under development: should not be implemented here.

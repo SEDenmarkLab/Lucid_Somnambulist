@@ -1,120 +1,20 @@
 {
-    "262673223a6711eeae3d18c04d0a4970": {
-        "path": "somn_scratch/262673223a6711eeae3d18c04d0a4970/",
-        "timestamp": "2023-08-14",
-        "unique": "262673223a6711eeae3d18c04d0a4970"
-    },
-    "3aa386dc3a6711eea32118c04d0a4970": {
-        "path": "somn_scratch/3aa386dc3a6711eea32118c04d0a4970/",
-        "timestamp": "2023-08-14",
-        "unique": "3aa386dc3a6711eea32118c04d0a4970"
-    },
-    "4c93837e3a6711eeb75a18c04d0a4970": {
-        "path": "somn_scratch/4c93837e3a6711eeb75a18c04d0a4970/",
-        "timestamp": "2023-08-14",
-        "unique": "4c93837e3a6711eeb75a18c04d0a4970"
-    },
-    "4ebd3a0a3a6711ee91ff18c04d0a4970": {
-        "path": "somn_scratch/4ebd3a0a3a6711ee91ff18c04d0a4970/",
-        "timestamp": "2023-08-14",
-        "unique": "4ebd3a0a3a6711ee91ff18c04d0a4970"
-    },
-    "c16370623a6f11ee9be718c04d0a4970": {
-        "path": "somn_scratch/c16370623a6f11ee9be718c04d0a4970/",
-        "timestamp": "2023-08-14",
-        "unique": "c16370623a6f11ee9be718c04d0a4970",
-        "identifier": "USR_001_TEST01"
-    },
-    "65dd99003a7111eeb01918c04d0a4970": {
-        "path": "somn_scratch/65dd99003a7111eeb01918c04d0a4970/",
-        "timestamp": "2023-08-14",
-        "unique": "65dd99003a7111eeb01918c04d0a4970",
-        "identifier": "testing01"
-    },
-    "8b6d37a23a7111ee9d8b18c04d0a4970": {
-        "path": "somn_scratch/8b6d37a23a7111ee9d8b18c04d0a4970/",
-        "timestamp": "2023-08-14",
-        "unique": "8b6d37a23a7111ee9d8b18c04d0a4970"
-    },
-    "ab12bd8e3a7111eebe6318c04d0a4970": {
-        "path": "somn_scratch/ab12bd8e3a7111eebe6318c04d0a4970/",
-        "timestamp": "2023-08-14",
-        "unique": "ab12bd8e3a7111eebe6318c04d0a4970"
-    },
-    "c38439ec3a7111ee89d918c04d0a4970": {
-        "path": "somn_scratch/c38439ec3a7111ee89d918c04d0a4970/",
-        "timestamp": "2023-08-14",
-        "unique": "c38439ec3a7111ee89d918c04d0a4970"
-    },
-    "b5df66823a7511ee8cb118c04d0a4970": {
-        "path": "somn_scratch/b5df66823a7511ee8cb118c04d0a4970/",
-        "timestamp": "2023-08-14",
-        "unique": "b5df66823a7511ee8cb118c04d0a4970",
-        "identifier": "testingsub"
-    },
-    "e30765603a7511ee8a6918c04d0a4970": {
-        "path": "somn_scratch/e30765603a7511ee8a6918c04d0a4970/",
-        "timestamp": "2023-08-14",
-        "unique": "e30765603a7511ee8a6918c04d0a4970",
-        "identifier": "testingsub"
-    },
-    "116990d63a7611ee9f2d18c04d0a4970": {
-        "path": "somn_scratch/116990d63a7611ee9f2d18c04d0a4970/",
-        "timestamp": "2023-08-14",
-        "unique": "116990d63a7611ee9f2d18c04d0a4970",
-        "identifier": "testingsub"
-    },
-    "edd55fb23d5711eea33d18c04d0a4970": {
-        "path": "SOMN_DEV/edd55fb23d5711eea33d18c04d0a4970/",
-        "timestamp": "2023-08-17",
-        "unique": "edd55fb23d5711eea33d18c04d0a4970",
-        "identifier": "DEV"
-    },
-    "fc782baa3d9111ee80a118c04d0a4970": {
-        "path": "somn_scratch/fc782baa3d9111ee80a118c04d0a4970/",
-        "timestamp": "2023-08-18",
-        "unique": "fc782baa3d9111ee80a118c04d0a4970",
-        "identifier": "testing_partitions"
-    },
-    "1090293a3d9211eeb6c018c04d0a4970": {
-        "path": "somn_scratch/1090293a3d9211eeb6c018c04d0a4970/",
-        "timestamp": "2023-08-18",
-        "unique": "1090293a3d9211eeb6c018c04d0a4970",
-        "identifier": "testing_partitions"
-    },
-    "509d48be3d9211eeb9bd18c04d0a4970": {
-        "path": "somn_scratch/509d48be3d9211eeb9bd18c04d0a4970/",
-        "timestamp": "2023-08-18",
-        "unique": "509d48be3d9211eeb9bd18c04d0a4970",
-        "identifier": "testing_partitions"
-    },
     "cc3d1f3a3d9211eebdbe18c04d0a4970": {
         "path": "somn_scratch/cc3d1f3a3d9211eebdbe18c04d0a4970/",
         "timestamp": "2023-08-18",
         "unique": "cc3d1f3a3d9211eebdbe18c04d0a4970",
-        "identifier": "testing_partitions"
+        "identifier": "dev_project"
     },
-    "bc09d9b63fe311eeb9fc18c04d0a4970": {
-        "path": "somn_scratch/bc09d9b63fe311eeb9fc18c04d0a4970/",
-        "timestamp": "2023-08-21",
-        "unique": "bc09d9b63fe311eeb9fc18c04d0a4970",
-        "identifier": "vt_mask"
+    "419a0d00462211eead4c18c04d0a4970": {
+        "path": "somn_scratch/419a0d00462211eead4c18c04d0a4970/",
+        "timestamp": "2023-08-28",
+        "unique": "419a0d00462211eead4c18c04d0a4970",
+        "identifier": "toml_full"
     },
-    "2cf082ac407e11eeac8618c04d0a4970": {
-        "path": "somn_scratch/2cf082ac407e11eeac8618c04d0a4970/",
-        "timestamp": "2023-08-21",
-        "unique": "2cf082ac407e11eeac8618c04d0a4970",
-        "identifier": "testing_partition_changes"
-    },
-    "48daebfe40a311eeba1e18c04d0a4970": {
-        "path": "somn_scratch/48daebfe40a311eeba1e18c04d0a4970/",
-        "timestamp": "2023-08-21",
-        "unique": "48daebfe40a311eeba1e18c04d0a4970",
-        "identifier": "corr_0.90_shape_test"
-    },
-    "a3d2e63040a611eea75618c04d0a4970": {
-        "path": "somn_scratch/a3d2e63040a611eea75618c04d0a4970/",
-        "timestamp": "2023-08-21",
-        "unique": "a3d2e63040a611eea75618c04d0a4970"
+    "f39f297851bb11ee882718c04d0a4970": {
+        "path": "somn_scratch/f39f297851bb11ee882718c04d0a4970/",
+        "timestamp": "2023-09-12",
+        "unique": "f39f297851bb11ee882718c04d0a4970",
+        "identifier": "partition"
     }
 }

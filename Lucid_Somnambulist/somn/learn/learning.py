@@ -2,6 +2,14 @@ from glob import glob
 import os
 import pandas as pd
 import tensorflow as tf
+
+########### DEV ############
+# tf.compat.v1.disable_eager_execution()  ## Trying to fix speed + memory issues DEV
+### Note - the v1 compat option above forces keras-tuner tuner object to call a method get_updates() which doesn't exist
+### with the TF2 current Adam optimizer. Maybe using the legacy version will fix it...but this seems not ideal.
+import gc  ## Trying to fix speed + memory issues DEV
+
+########### DEV ############
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Input, GaussianNoise
 from keras.optimizers import Adam, Adadelta
@@ -368,11 +376,14 @@ class tfDriver:
         )
         # opt = tf.keras.optimizers.Adadelta(learning_rate=lr_schedule)
         # opt = tf.keras.optimizers.Adagrad(learning_rate=1e-4)
-        opt = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
+        opt = tf.keras.optimizers.Adam(
+            learning_rate=lr_schedule
+        )  ## DEV added legacy - apparently needs it?
         model.compile(
             optimizer=opt,
             loss="mse",
             metrics=["mean_absolute_error", "mean_squared_error"],
+            run_eagerly=False,
         )
         return model
 
@@ -728,6 +739,19 @@ def get_hps(hps: kt.HyperParameters()):
     return out
 
 
+def check_for_completed(drive: tfDriver):
+    """
+    Check if restarting a job. If so, proceed to the point where the last job left off.
+    """
+    out_dir_path = drive.model_out_path
+    models = glob(f"{out_dir_path}*hpset*.h5")
+    names = list(set([k.split("out/")[1].split("hpset")[0] for k in models]))
+    completed = [
+        str(f) for f in drive.organizer.partIDs if str(f) in names
+    ]  # partIDs are integers, checking if they are done
+    return completed, len(completed)
+
+
 def hypermodel_search(
     experiment,
     max_val_cutoff=20,
@@ -769,12 +793,12 @@ def hypermodel_search(
 
     """
     if cpu_testing == False:
-        config = tf.compat.v1.ConfigProto()
+        config = tf.compat.v1.ConfigProto(device_count={"GPU": 0}) ## DEV - trying to specify a specific GPU. 
         config.gpu_options.allow_growth = True
         session = tf.compat.v1.Session(config=config)
-    elif cpu_testing == True:  # TEST
-        config = tf.compat.v1.ConfigProto(device_count={"GPU": 0})
-        session = tf.compat.v1.Session(config=config)
+    # elif cpu_testing == True:  # TEST - this was not the goal here. CPU is not going to be useful for this. 
+    #     config = tf.compat.v1.ConfigProto(device_count={"GPU": 0})
+    #     session = tf.compat.v1.Session(config=config)
     # import sys
     # exp = sys.argv[1]
     assert isinstance(experiment, str)
@@ -792,11 +816,10 @@ def hypermodel_search(
         f"{project.output}/{date__}/"  # There is already a slash after output
     )
     out_dir_path = f"{project.output}/{date__}/out/"  # Both slashes for out needed here
+    drive.model_out_path = out_dir_path
     os.makedirs(json_buffer_path, exist_ok=True)
     os.makedirs(out_dir_path, exist_ok=True)
-    logfile = open(
-        f"{json_buffer_path}logfile.txt", "w"
-    )  # Directorys should be covered in above os.makedirs() call
+    # Directorys should be covered in above os.makedirs() call
     # splits = {}
     # csvs = glob(tforg.part_dir.rsplit("/", 1)[0] + "/*csv")
     # for f in csvs:
@@ -809,9 +832,25 @@ def hypermodel_search(
     # ### Restart; skipping already done partitions ####
     # # for i in range(6):
     # #     drive.get_next_part()
+    completed, iter_ = check_for_completed(drive)
+    if len(completed) > 0:  # Restarting - don't overwrite old file.
+        import uuid
+
+        logfile = open(f"{json_buffer_path}logfile{uuid.uuid1().hex}.txt", "w")
+        print(
+            f"WARNING  -  looks like model training was restarted, and {iter_} number of partitions were completed previously \
+out of {len(drive.organizer.partitions)}. Attempting to detect which are complete and skip them. Completed partitions are\
+{completed}"
+        )
+    else:  # First time.
+        logfile = open(f"{json_buffer_path}logfile.txt", "w")
 
     for __k in range(len(drive.organizer.partitions)):
         name_ = str(drive.current_part_id)
+        if name_ in completed:
+            drive.get_next_part()
+            print(f"RESTART - SKIPPING PARTITION {name_}")
+            continue
         if model_type == "regression":
             xtr, xval, xte, ytr, yval, yte = [
                 f[0] for f in drive.x_y
@@ -858,8 +897,8 @@ def hypermodel_search(
             except:
                 raise Exception(
                     "Must pass properly formulated classification data. The y-data shape does not match the implemented classifier model\n \
-                The y data must be a vector with 5 columns corresponding to zero yield and yield quartiles. This can be prepared using\n \
-                the utility function somn.calculate.preprocess.prep_mc_labels"
+The y data must be a vector with 5 columns corresponding to zero yield and yield quartiles. This can be prepared using\n \
+the utility function somn.calculate.preprocess.prep_mc_labels"
                 )
         stop_early = EarlyStopping(monitor=tuner_objective, patience=10)
         stop_nan = TerminateOnNaN()
@@ -1028,14 +1067,33 @@ def hypermodel_search(
                 tforg.results[name_]["class_metrics"][
                     f"{i+1}_test_kldiv"
                 ] = tf.keras.metrics.kullback_leibler_divergence(yte, yte_p)
+            ### DEV CLEANUP ###
+            del hypermodel
+            ### Apparently, keras is notorious for leaving remnants in memory. gc.collect() is supposed to help.
+            gc.collect()
+            ###################
         buffer_log = json.dumps(tforg.results[name_])
         logfile.write(name_ + "," + str(__k) + buffer_log + "\n")
         logfile.flush()
         print("Completed partition " + str(__k) + "\n\n")
-        drive.get_next_part()
+        with open(f"{json_buffer_path}tforg_results_buffer.json", "r") as p:
+            results = json.load(p)
+        results.update(tforg.results)
+        with open(
+            f"{json_buffer_path}tforg_results_buffer.json", "w"
+        ) as j:  # Should just overwrite
+            json.dump(results, j)
+        tforg.results = {}
+        ### Let's see if not carrying the tforg.results through the whole process is worthwhile.
+        ### DEV CLEANUP ###
+        del tuner
+        gc.collect()
+        ###################
+        tf.keras.backend.clear_session()  # Cleanup - this is supposed to help lower memory leaks on iterations.
+        drive.get_next_part()  # Iterate to next partition
 
-    with open(f"{json_buffer_path}final_complete_log{date__}.json", "w") as g:
-        g.write(json.dumps(tforg.results))
+    # with open(f"{json_buffer_path}final_complete_log{date__}.json", "w") as g:
+    #     g.write(json.dumps(tforg.results))
 
 
 # if __name__ == "__main__":

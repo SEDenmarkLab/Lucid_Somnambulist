@@ -26,7 +26,7 @@ This work has a dependency on code developed within the Denmark Laboratories, wh
 This code was developed with miniconda as a package manager, and it is strongly recommended to use that. An export of the environment is provided, and this can be installed with the following command:
   
  ```bash
- conda env create -f /path/to/package/Lucid_Somnambulist/somn_environment.yml
+ conda env create --name somn --file somn.yml
  ```
 
 Then, activate the environment:
@@ -35,24 +35,25 @@ Then, activate the environment:
 conda activate somn
 ```
 
- After creating this environment, install this cloned repository locally:
+ Next, install molli_firstgen using pip:
+
+- Download molli_firstgen, branch 0.2.3 [https://github.com/SEDenmarkLab/molli_firstgen.git].
+- Install using pip into the somn environment following installation instructions.
+
+Finally, download and install this package by running the following command in the top-level directory (/path/to/package/Lucid_Somnambulist/):
  
  ```bash
- pip install /path/to/package/Lucid_Somnambulist/Lucid_Somnambulist
+ pip install .
  ```
  
- Finally, there is a dependency on SEDenmarkLab/molli-firstgen. Install that package following its instructions into the environment.
- 
- A test will be implemented in a future commit, for now, please test an import:
+ Test an import:
  
   ```bash
  conda activate somn
  
  python -c "import somn"
  ```
- 
- The output should be hardware-dependent tensorflow messages marked "I" or "W". Depending on the presence and type of GPUs or drivers installed on your machine, these messages can change. Note: if an error (marked "E") is present, try to resolve it following tensorflow installation guidelines (more can be found at their documentation, linked above). 
- 
+  
  # Getting Started
  (Under development)
   
