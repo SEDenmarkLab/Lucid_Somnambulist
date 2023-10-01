@@ -169,7 +169,12 @@ def retrieve_bromide_rdf_descriptors(
         rdf_df.name = mol.name
         ### Get reference atoms
         labels = [f.symbol for f in mol.atoms]
-        br_atom = mol.get_atoms_by_symbol(symbol="Br")[0]
+        try:
+            br_atom = mol.get_atoms_by_symbol(symbol="Br")[0]
+        except:
+            raise Exception(
+                f"Looks like Br RDF was called on a non-bromide, structure {mol.name}"
+            )
         br_idx = mol.atoms.index(br_atom)
         conn = mol.get_connected_atoms(br_atom)
         if len(conn) != 1:
