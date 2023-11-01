@@ -793,10 +793,12 @@ def hypermodel_search(
 
     """
     if cpu_testing == False:
-        config = tf.compat.v1.ConfigProto(device_count={"GPU": 0}) ## DEV - trying to specify a specific GPU. 
+        config = tf.compat.v1.ConfigProto(
+            device_count={"GPU": 0}
+        )  ## DEV - trying to specify a specific GPU.
         config.gpu_options.allow_growth = True
         session = tf.compat.v1.Session(config=config)
-    # elif cpu_testing == True:  # TEST - this was not the goal here. CPU is not going to be useful for this. 
+    # elif cpu_testing == True:  # TEST - this was not the goal here. CPU is not going to be useful for this.
     #     config = tf.compat.v1.ConfigProto(device_count={"GPU": 0})
     #     session = tf.compat.v1.Session(config=config)
     # import sys
@@ -842,8 +844,10 @@ def hypermodel_search(
 out of {len(drive.organizer.partitions)}. Attempting to detect which are complete and skip them. Completed partitions are\
 {completed}"
         )
-    else:  # First time.
+    else:  # First time. Load logfile and start results buffer.
         logfile = open(f"{json_buffer_path}logfile.txt", "w")
+        with open(f"{json_buffer_path}tforg_results_buffer.json", "w") as k:
+            k.write("{}")
 
     for __k in range(len(drive.organizer.partitions)):
         name_ = str(drive.current_part_id)

@@ -34,7 +34,9 @@ def _run_predictions(args):
     from somn.workflows.predict import main as predict
 
     predict(args=opts)
-    print(f"Finished generating predictions for project {opts[0]}, model set {opts[1]}, called {opts[2]}.")
+    print(
+        f"Finished generating predictions for project {opts[0]}, model set {opts[1]}, called {opts[2]}."
+    )
 
 
 def _train_models(args):
@@ -43,24 +45,27 @@ def _train_models(args):
     """
     opts = args.options
     from somn.workflows.learn import main as learn
+
     try:
         learn(args=opts)
     except:
-        raise Warning(f"Looks like {opts} in the learning workfow led to an error. Check if job trained any partitions, \
+        raise Warning(
+            f"Looks like {opts} in the learning workfow led to an error. Check if job trained any partitions, \
 and if it did, then try re-starting the job with the same input arguments (known memory leak in Keras backend can cause this) \
-Otherwise, check input arguments to ensure that a valid project ID was passed.")
+Otherwise, check input arguments to ensure that a valid project ID was passed."
+        )
 
 
 def _generate_partitions(args):
     """
-    Wrapper that generates partitions 
+    Wrapper that generates partitions
 
     DEV - checked for "last" and "new" operation.
     """
     opts = args.options
     ## DEV
     # print(f"DEV {opts}")
-    ## 
+    ##
     from somn.workflows.partition import main as partition, get_precalc_sub_desc
     from somn.workflows.calculate import main as calc_sub
     from somn.workflows.calculate import preprocess
@@ -112,18 +117,18 @@ def _generate_partitions(args):
     sub_desc = get_precalc_sub_desc()
     if sub_desc == False:  # Need to calculate
         real, rand = calc_sub(
-            project, optional_load="maxdiff_catalyst", substrate_pre=("corr", 0.90)
+            project, optional_load="maxdiff_catalyst", substrate_pre=("corr", 0.95)
         )
         sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
-    else: # Already calculated descriptors, just fetching them
+    else:  # Already calculated descriptors, just fetching them
         sub_am_dict, sub_br_dict, rand = sub_desc
         real = (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc)
     combos = deepcopy(
         unique_couplings
     )  # This is a guide for building the partitions out - really, any set of combinations can be specified.
-    #The amine_bromide individual elements in this list will direct out-of-sample partitioning (if relevant in val_schema).
-    #Any specific set of out-of-sample partitions can be designed and introduced here. This *could* be an optional input from
-    #the user (e.g. a csv file with a list of items in it).
+    # The amine_bromide individual elements in this list will direct out-of-sample partitioning (if relevant in val_schema).
+    # Any specific set of out-of-sample partitions can be designed and introduced here. This *could* be an optional input from
+    # the user (e.g. a csv file with a list of items in it).
     import os
 
     # print(pd.DataFrame(combos).to_string())
@@ -144,7 +149,9 @@ def _generate_partitions(args):
         real=real,
         serialize_rand=False,
     )
-    print(f"Finished calculating partitions for {project.unique}, stored at {project.partitions}.")
+    print(
+        f"Finished calculating partitions for {project.unique}, stored at {project.partitions}."
+    )
 
 
 def _calculate_parse_options(args):
@@ -203,7 +210,7 @@ def main():
     )
     args = parser.parse_args()
     # print(args)
-    if args.operation == "predict": ## Make predictions
+    if args.operation == "predict":  ## Make predictions
         try:
             _run_predictions(args)
         except:
@@ -213,7 +220,7 @@ Check that a project ID, model set ID, and a new identifier are present (in that
             )
     elif args.operation == "help":
         print(helpblock)
-    elif args.operation == "learn": ## Train models
+    elif args.operation == "learn":  ## Train models
         try:
             _train_models(args)
         except:
@@ -221,7 +228,7 @@ Check that a project ID, model set ID, and a new identifier are present (in that
                 f"Looks like handling arguments for model training failed with {args.options}. \
 Ensure that a project ID and a new, unique model set ID are being passed (in that order)."
             )
-    elif args.operation == "partition": ## Generate partitions
+    elif args.operation == "partition":  ## Generate partitions
         try:
             _generate_partitions(args)
         except:
