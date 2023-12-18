@@ -186,8 +186,33 @@ Here is a simple summary/guide:
 {use_msg}"""
 
 
+splash = f"""
+                                      
+                                               
+           ____    ___     ___ ___     ___     
+          /',__\  / __`\ /' __` __`\ /' _ `\   
+         /\__, `\/\ \L\ \/\ \/\ \/\ \/\ \/\ \  
+         \/\____/\ \____/\ \_\ \_\ \_\ \_\ \_\ 
+          \/___/  \/___/  \/_/\/_/\/_/\/_/\/_/ 
+
+
+               ___  ___  _ __ ___  _ __   
+              / __|/ _ \| '_ ` _ \| '_ \  
+              \__ \ (_) | | | | | | | | | 
+              |___/\___/|_| |_| |_|_| |_| 
+                                               
+
+         (C) 2023 by N. Ian Rinehart, Ph.D. in the 
+         laboratories of Prof. Scott E. Denmark at
+         the University of Illinois Urbana-Champaign
+        in collaboration with F. Hoffmann-La Roche AG
+
+        
+"""
+
 def main():
     # print("DEV - module")
+    print(splash)
     parser = ArgumentParser(usage=use_msg)
     parser.add_argument(
         nargs="?",

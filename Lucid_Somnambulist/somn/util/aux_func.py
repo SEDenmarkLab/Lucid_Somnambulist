@@ -63,7 +63,7 @@ import tensorflow as tf
 
 class CancelOut(Layer):
     """
-    CancelOut layer, keras implementation.
+    CancelOut layer, keras implementation. This is not implemented, and is under development. 
 
     #### THIS IS NOT ORIGINAL WORK, see reference: https://github.com/unnir/CancelOut
     #### Layer designed for "top" of NN stack, right after input, and has constant weights which are trainable. Those can then be used

@@ -98,6 +98,19 @@ def load_cat_desc(test=False, embedding=False):
     if test:
         print(CATDESC)
 
+def load_reactant_smiles():
+    """
+    Load substrate dictionary (key = string name, value = SMILES string) of all reactants
+    that are known to the models (as in, show up in their train/val/test partitions)
+    """
+    # global ASMI,BSMI
+    smi_am = pkg_resources.resource_filename(__name__, "amine_smiles.json")
+    smi_br = pkg_resources.resource_filename(__name__, "bromide_smiles.json")
+    with open(smi_am, "r") as j:
+        ASMI = json.load(j)
+    with open(smi_br, "r") as l:
+        BSMI = json.load(l)
+    return ASMI,BSMI
 
 ###
 ### Debugging - this is to test global variables (which aren't directly accessible by interpreter, but this function call is)

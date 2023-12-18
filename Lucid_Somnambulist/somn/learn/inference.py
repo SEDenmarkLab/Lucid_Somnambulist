@@ -180,7 +180,7 @@ def hypermodel_inference(
 
 def prep_requests():
     """
-    Get requested predictions
+    Get requested predictions after performing some basic checks.
 
     Returns a DataFrame and a list of requested pairs (i.e. [amine_bromide,])
     """
@@ -206,13 +206,45 @@ def prep_requests():
                 )
         tot.append(df)
     total_requests = pd.concat(tot, axis=0)
-    total_requests.to_csv(f"{Project().scratch}/all_requests.csv", header=True)
+    ### CHECKING USER INPUT NAMES FOR ERROR-INDUCING ISSUES ###
+    from somn.data import load_reactant_smiles
+    known_amines,known_bromides = load_reactant_smiles()
+    for k,h in zip((known_amines,known_bromides),("nuc_name","el_name")):
+        name_check = lambda x: x if x not in k.keys() else "pr-"+x #Define explicit check if compound is known
+        p = [f.replace("_","-") for f in total_requests[h]] #Explicitly replace all underscores to prevent error later
+        fixed = pd.Series(data=list(map(name_check,p)),name=h) #Apply name check
+        total_requests[h]=fixed #Replace request data with "fixed" values
+    #Overwrite end of compound name with iterable if there are repeats within requests
+    req_am = total_requests["nuc_name"]
+    req_br = total_requests["el_name"]
+    am_check = req_am.duplicated()
+    br_check = req_br.duplicated()
+    fix_am = []
+    fix_br = []
+    check=0
+    for i,(am,br) in enumerate(zip(req_am,req_br)): 
+        checked = False
+        if am_check[i] == True:
+            fix_am.append(am+f"-{check}")
+            checked = True
+        if am_check[i] == False: fix_am.append(am)
+        if br_check[i] == True:
+            fix_br.append(br+f"-{check}")
+            checked = True
+        if br_check[i] == False: fix_br.append(br)
+        if checked == True: check +=1
+    # Swap out names with changed repeats
+    total_requests["nuc_name"]=fix_am
+    total_requests["el_name"]=fix_br
+    ### CHANGE END ###
+    total_requests.to_csv(f"{Project().scratch}/all_requests.csv", header=True) #These are pre-screened for compatibility
     req_pairs = []
     for row in total_requests.iterrows():
         data = row[1].values
         pair = f"{data[3]}_{data[4]}"
         req_pairs.append(pair)
     # print(",".join(req_pairs))
+    print(total_requests)
 
     return total_requests, req_pairs
 
