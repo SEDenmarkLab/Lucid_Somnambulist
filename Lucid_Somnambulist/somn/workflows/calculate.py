@@ -12,6 +12,7 @@ from somn.build.assemble import (
     # assemble_random_descriptors_from_handles,
     make_randomized_features,
     get_labels,
+    vectorize_substrate_desc
 )
 
 # ====================================================================
@@ -24,23 +25,54 @@ data.load_sub_mols()
 data.load_all_desc()
 import warnings
 import molli as ml
-# from somn.util.project import Project
+from somn.util.project import Project
 
-def calculate_substrate_descriptors(fpath):
+def calculate_substrate_descriptors(fpath,concurrent=2,nprocs=2):
     """
     CLI function to calculate substrate descriptors for input molecules.
     Should run without using a project. 
     """
+    from somn.calculate.substrate import calculate_prophetic
+    from itertools import product
+    project = Project()
     try:
-        amines,am_atomprops,bromides,br_atomprops,chlorides,cl_atomprops = calculate_substrate_geoms_and_props(fpath)
-        
+        results = calculate_substrate_geoms_and_props(fpath,concurrent=concurrent,nprocs=nprocs)
+        print("Successfully calculated geometries and atom properties.")
     except:
         raise Exception("Calculating substrate geometries and atop properties failed.")
+    # amines: ml.Collection
+    # filtered_amines = ml.Collection(name="amines",molecules=[f for f in amines.molecules if f.name in am_atomprops.keys()])
+    for react_type,(geom,ap) in results.items():
+        vector_sub_desc = {}
+        filt_geom = []
+        failed_ap = []
+        for mol in geom:
+            if mol.name in ap.keys():
+                mol.embed_conformers(*[mol.geom],mode="a")
+                filt_geom.append(mol)
+            else:
+                failed_ap.append(mol.name)
+        desc = calculate_prophetic(inc=0.75,geometries=ml.Collection(name="filt",molecules=filt_geom),atomproperties=ap,react_type=react_type)
+        for name in desc.keys():
+            sub_descriptor_vector = vectorize_substrate_desc(desc,name,feat_mask=None)
+            vector_sub_desc[name] = sub_descriptor_vector
+        ex_df = next(iter(desc.values()))
+        cols = ex_df.columns
+        rows = ex_df.index
+        desc_labels = [f"{f[0]}_{f[1]}" for f in list(product(tuple(cols),tuple(rows)))]
+        output = pd.DataFrame.from_dict(data = vector_sub_desc,orient='index',columns=desc_labels)
+        output.to_csv(f"{react_type}_RDF_descriptors.csv")
+    if len(failed_ap) > 0: w = f"Note: the following molecules had geometries calculated, but not atomic properties: {','.join(failed_ap)}"
+    else: w = ""
+    print(f"Successfully processed geoms and atom properties. Look in the same directory that the 'calculate' operation was executed from.{w}")
 
 
 
 
-def calculate_substrate_geoms_and_props(fpath):
+
+
+
+def calculate_substrate_geoms_and_props(fpath,concurrent=2,nprocs=2):
     """
 
     """
@@ -48,56 +80,63 @@ def calculate_substrate_geoms_and_props(fpath):
     from somn.build.parsing import InputParser
     from pathlib import Path
     import json
-    parse = InputParser(serialize=True,path_to_write="./somn_calculate_outputs/")
+    parse = InputParser(serialize=False,path_to_write="./somn_calculate_outputs/")
     # project = Project()
     assert ".csv" == Path(fpath).suffix
     req_am,am_smi,req_br,br_smi,req_cl,cl_smi = scrape_substrate_csv(fpath)
     ### Take care of amines
-    amines_pre,smiles_am = parse.get_mol_from_smiles(user_input = am_smi,recursive_mode=True,names=req_am)
-    amines,err_0 = parse.preopt_geom(amines_pre,update=60)
-    if len(err_0) > 0: raise warnings.warn("Looks like some amines did not generate 3D geometries or preoptimize correctly. Check inputs.")
-    amines.to_zip(parse.path_to_write+"amines_preopt_geom.zip")
-    amine_input_packet = PropheticInput.from_col(amines,am_smi,roles = ["nuc" for f in am_smi],parser=parse)
-    ### Calculating atom properties
-    am_atomprops,am_errs = amine_input_packet.atomprop_pipeline()
-    if len(am_errs) > 0:
-        warnings.warn(
-            f"Looks like {len(am_errs)} amines failed at the atomproperty calculation step - this singlepoint calc usually fails because \
-            the input structure is not valid. Check that backed up structure in the working directory {parse.path_to_write}"
-        )
-    with open(f"{parse.path_to_write}/amine_ap_buffer.json", "w") as k:
-        json.dump(am_atomprops, k)
+    amines_pre,_ = parse.get_mol_from_smiles(user_input = am_smi,recursive_mode=True,names=req_am)
+    output = {}
+    if len(amines_pre.molecules) > 0:
+        amines,err_0 = parse.preopt_geom(amines_pre,update=60)
+        if len(err_0) > 0: raise warnings.warn("Looks like some amines did not generate 3D geometries or preoptimize correctly. Check inputs.")
+        amines.to_zip(parse.path_to_write+"amines_preopt_geom.zip")
+        amine_input_packet = PropheticInput.from_col(amines,am_smi,["nuc" for f in am_smi],parser=parse)
+        ### Calculating atom properties
+        am_atomprops,am_errs = amine_input_packet.atomprop_pipeline(confs=False,concurrent=concurrent,nprocs=nprocs)
+        if len(am_errs) > 0:
+            warnings.warn(
+                f"Looks like {len(am_errs)} amines failed at the atomproperty calculation step - this singlepoint calc usually fails because \
+                the input structure is not valid. Check that backed up structure in the working directory {parse.path_to_write}"
+            )
+        with open(f"{parse.path_to_write}/amine_ap_buffer.json", "w") as k:
+            json.dump(am_atomprops, k)
+        output['N']=(amines,am_atomprops)
     ### Take care of bromides
     bromides_pre,_ = parse.get_mol_from_smiles(user_input = br_smi,recursive_mode=True,names=req_br)
-    bromides,err_1 = parse.preopt_geom(bromides_pre,update=60)
-    if len(err_1) > 0: raise warnings.warn("Looks like some bromides did not generate 3D geometries or preoptimize correctly. Check inputs.")
-    bromides.to_zip(parse.path_to_write+"bromides_preopt_geom.zip")
-    bromide_input_packet = PropheticInput.from_col(bromides,br_smi,roles = ["el" for f in br_smi],parser=parse)
-    ### Calculating atom properties
-    br_atomprops,br_errs = bromide_input_packet.atomprop_pipeline()
-    if len(am_errs) > 0:
-        warnings.warn(
-            f"Looks like {len(br_errs)} bromides failed at the atomproperty calculation step - this singlepoint calc usually fails because \
-            the input structure is not valid. Check that backed up structure in the working directory {parse.path_to_write}"
-        )
-    with open(f"{parse.path_to_write}/bromide_ap_buffer.json", "w") as k:
-        json.dump(br_atomprops, k)
+    if len(bromides_pre.molecules) > 0:
+        bromides,err_1 = parse.preopt_geom(bromides_pre,update=60)
+        if len(err_1) > 0: raise warnings.warn("Looks like some bromides did not generate 3D geometries or preoptimize correctly. Check inputs.")
+        bromides.to_zip(parse.path_to_write+"bromides_preopt_geom.zip")
+        bromide_input_packet = PropheticInput.from_col(bromides,br_smi,["el" for f in br_smi],parser=parse)
+        ### Calculating atom properties
+        br_atomprops,br_errs = bromide_input_packet.atomprop_pipeline(confs=False,concurrent=concurrent,nprocs=nprocs)
+        if len(am_errs) > 0:
+            warnings.warn(
+                f"Looks like {len(br_errs)} bromides failed at the atomproperty calculation step - this singlepoint calc usually fails because \
+                the input structure is not valid. Check that backed up structure in the working directory {parse.path_to_write}"
+            )
+        with open(f"{parse.path_to_write}/bromide_ap_buffer.json", "w") as k:
+            json.dump(br_atomprops, k)
+        output['Br']=(bromides,br_atomprops)
     ### Take care of chlorides
     chlorides_pre,_ = parse.get_mol_from_smiles(user_input = cl_smi,recursive_mode=True,names=req_cl)
-    chlorides,err_2 = parse.preopt_geom(chlorides_pre,update=60)
-    if len(err_2) > 0: raise warnings.warn("Looks like some chlorides did not generate 3D geometries or preoptimize correctly. Check inputs.")
-    chlorides.to_zip(parse.path_to_write+"chlorides_preopt_geom.zip")
-    chloride_input_packet = PropheticInput.from_col(chlorides,cl_smi,roles = ["el" for f in cl_smi],parser=parse)
-    ### Calculating atom properties
-    cl_atomprops,cl_errs = chloride_input_packet.atomprop_pipeline()
-    if len(am_errs) > 0:
-        warnings.warn(
-            f"Looks like {len(cl_errs)} chlorides failed at the atomproperty calculation step - this singlepoint calc usually fails because \
-            the input structure is not valid. Check that backed up structure in the working directory {parse.path_to_write}"
-        )
-    with open(f"{parse.path_to_write}/chloride_ap_buffer.json", "w") as k:
-        json.dump(cl_atomprops, k)
-    return amines,am_atomprops,bromides,br_atomprops,chlorides,cl_atomprops
+    if len(chlorides_pre.molecules) > 0:
+        chlorides,err_2 = parse.preopt_geom(chlorides_pre,update=60)
+        if len(err_2) > 0: raise warnings.warn("Looks like some chlorides did not generate 3D geometries or preoptimize correctly. Check inputs.")
+        chlorides.to_zip(parse.path_to_write+"chlorides_preopt_geom.zip")
+        chloride_input_packet = PropheticInput.from_col(chlorides,cl_smi,["el" for f in cl_smi],parser=parse)
+        ### Calculating atom properties
+        cl_atomprops,cl_errs = chloride_input_packet.atomprop_pipeline(confs=False,concurrent=concurrent,nprocs=nprocs)
+        if len(am_errs) > 0:
+            warnings.warn(
+                f"Looks like {len(cl_errs)} chlorides failed at the atomproperty calculation step - this singlepoint calc usually fails because \
+                the input structure is not valid. Check that backed up structure in the working directory {parse.path_to_write}"
+            )
+        with open(f"{parse.path_to_write}/chloride_ap_buffer.json", "w") as k:
+            json.dump(cl_atomprops, k)
+        output['Cl']=(chlorides,cl_atomprops)
+    return output
     
 
 def scrape_substrate_csv(fpath):
@@ -110,6 +149,20 @@ def scrape_substrate_csv(fpath):
     try:
         assert isinstance(df, pd.DataFrame)
         assert len(df.columns) == 2
+        name_check = df.index.duplicated()
+        fix_names = []
+        check = 0
+        for i,name in enumerate(df.index):
+            checked = False
+            dupe = name_check[i]
+            if dupe == False:
+                fix_names.append(name.replace("_","-"))
+            if dupe == True:
+                fix_names.append(name.replace("_","-")+f"-{check}")
+                checked = True
+            if checked == True:
+                check+=1
+        df.index = fix_names
         req_am,req_br,req_cl,am_smi,br_smi,cl_smi = ([] for i in range(6))
         for row in df.iterrows():
             if row[1][1] in ["N","n"]:

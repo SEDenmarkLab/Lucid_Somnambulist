@@ -18,20 +18,20 @@ from somn.calculate.RDF import (
 
 
 def calculate_prophetic(
-    inc=0.75, geometries=ml.Collection, atomproperties=dict, react_type=""
+    inc=0.75, geometries:ml.Collection=None, atomproperties:dict=None, react_type=""
 ):
     """
     Vanilla substrate descriptor retrieval
     """
-    if react_type == "am":
+    if react_type == "N":
         sub_dict = retrieve_amine_rdf_descriptors(
             geometries, atomproperties, increment=inc
         )
-    elif react_type == "br":
+    elif react_type == "Br":
         sub_dict = retrieve_bromide_rdf_descriptors(
             geometries, atomproperties, increment=inc
         )
-    elif react_type == "cl":
+    elif react_type == "Cl":
         sub_dict = retrieve_chloride_rdf_descriptors(
             geometries, atomproperties, increment=inc
         )
@@ -280,35 +280,60 @@ class PropheticInput:
         with open(str(self.parser.path_to_write) + "/newstruc_roles.json", "w") as k:
             json.dump(self.roles_d, k)
 
-    def atomprop_pipeline(self):
+    def atomprop_pipeline(self,confs=True,concurrent=2,nprocs=2):
         """
         Calculate atom properties for descriptor calculation, and add to JSON files.
         """
-
-        concur = ml.Concurrent(
-            self.conformers,
-            backup_dir=str(Project().scratch) + "/atomprops/",
-            logfile=str(Project().scratch) + "/atomprops.log",
-            timeout=6000,
-            concurrent=2,
-        )
-        xtb = ml.XTBDriver(
-            name="atomprops",
-            scratch_dir=str(Project().scratch) + "/xtb_scratch/",
-            nprocs=2,
-        )
-        atomprops = concur(xtb.conformer_atom_props)()
-        # print(atomprops[0])
-        # raise Exception("DEBUG")
-        # print(atomprops[0][0])
-        atomprop_out = {}
-        failures = []
-        for confap, name in zip(atomprops, self.conformers.mol_index):
+        if confs == True:
+            concur = ml.Concurrent(
+                self.conformers,
+                backup_dir=str(Project().scratch) + "/atomprops/",
+                logfile=str(Project().scratch) + "/atomprops.log",
+                timeout=6000,
+                concurrent=concurrent,
+            )
+            xtb = ml.XTBDriver(
+                name="atomprops",
+                scratch_dir=str(Project().scratch) + "/xtb_scratch/",
+                nprocs=nprocs,
+            )
+            atomprops = concur(xtb.conformer_atom_props)()
+            atomprop_out = {}
+            failures = []
+            names = self.conformers.mol_index
+            # for confap, name in zip(atomprops, self.conformers.mol_index):
+            #     if isinstance(confap[0], dict):
+            #         atomprop_out[name] = confap
+            #     else:
+            #         failures.append(name)
+        elif confs == False:
+            concur = ml.Concurrent(
+                self.struc,
+                backup_dir=str(Project().scratch) + "/atomprops/",
+                logfile=str(Project().scratch) + "/atomprops.log",
+                timeout=6000,
+                concurrent=concurrent,
+            )
+            xtb = ml.XTBDriver(
+                name="atomprops",
+                scratch_dir=str(Project().scratch) + "/xtb_scratch/",
+                nprocs=nprocs,
+            )
+            atomprops = concur(xtb.molecule_atom_props)()
+            atomprop_out = {}
+            failures = []
+            names = self.struc.mol_index
+        for confap, name in zip(atomprops, names):
             if isinstance(confap[0], dict):
                 atomprop_out[name] = confap
             else:
                 failures.append(name)
+        # print(atomprops[0])
+        # raise Exception("DEBUG")
+        # print(atomprops[0][0])
         self.atomprops = atomprop_out
+        del concur
+        del xtb
         return atomprop_out, failures
 
     def sort_and_write_outputs(self):

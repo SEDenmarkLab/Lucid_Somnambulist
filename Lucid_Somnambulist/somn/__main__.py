@@ -163,14 +163,30 @@ def _calculate_descriptors(args):
     from somn.util.project import Project
     from somn.workflows.calculate import calculate_substrate_descriptors
     p = Project() #Local directory tree will be generated
+    p.save()
     opts = args.options
     try:
         assert Path(opts[0]).exists()
         requests = opts[0]
-        calculate_substrate_descriptors(requests)
+        if len(opts) == 3:
+            concurrent = int(opts[1])
+            nprocs = int(opts[2])
+        elif len(opts) == 1:
+            concurrent = 2
+            nprocs = 2
+        else:
+            raise Exception("Looks like the improper number of arguments was passed to the calculate operation. \
+                            Please check your arguments: somn calculate [path_to_csv] [optional: concurrent jobs] \
+                            [optional: nprocs per job]")
+        calculate_substrate_descriptors(requests,concurrent=concurrent,nprocs=nprocs)
     except:
         raise Exception(
-            f"Check the input file for descriptor calculations: {opts[0]}."
+            f"Check input to descriptor calculation request - it seems something went wrong. Some suggestions: \
+            Check command arguments: Pass a file path to requested molecules, then the number of concurrent \
+            calculations to run, followed by the number of processors that can be spared for each concurrent job. \
+            Check the input file: should contain 3 columns, with each row corresponding to a molecule, and containing \
+            a unique name, a SMILES string, and the type of reactant ('N', 'Br', or 'Cl'). Filepath passed was :\
+            {opts[0]}."
         )
 
 def _add_parse_options(args):
