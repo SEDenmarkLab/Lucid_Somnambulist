@@ -32,4 +32,4 @@ from .preprocess import (
     preprocess_maxdiff,
 )
 
-from .geom import PropheticInput
+from .substrate import PropheticInput

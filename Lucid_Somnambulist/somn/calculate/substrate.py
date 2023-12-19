@@ -6,7 +6,36 @@ from attrs import define, field
 from somn.data import ACOL, BCOL, ASMI, BSMI, AMINES, BROMIDES
 import pandas as pd
 from somn.util.project import Project
+from somn.calculate.RDF import (
+    retrieve_amine_rdf_descriptors,
+    retrieve_bromide_rdf_descriptors,
+    retrieve_chloride_rdf_descriptors,
+)
 
+
+
+
+
+
+def calculate_prophetic(
+    inc=0.75, geometries=ml.Collection, atomproperties=dict, react_type=""
+):
+    """
+    Vanilla substrate descriptor retrieval
+    """
+    if react_type == "am":
+        sub_dict = retrieve_amine_rdf_descriptors(
+            geometries, atomproperties, increment=inc
+        )
+    elif react_type == "br":
+        sub_dict = retrieve_bromide_rdf_descriptors(
+            geometries, atomproperties, increment=inc
+        )
+    elif react_type == "cl":
+        sub_dict = retrieve_chloride_rdf_descriptors(
+            geometries, atomproperties, increment=inc
+        )
+    return sub_dict
 
 @define
 class PropheticInput:

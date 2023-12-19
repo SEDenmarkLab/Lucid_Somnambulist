@@ -154,12 +154,24 @@ def _generate_partitions(args):
     )
 
 
-def _calculate_parse_options(args):
+def _calculate_descriptors(args):
     """
-    parse options
+    Calculate substrate descriptors for an input file.
     """
-    ...
-
+    from somn.calculate.substrate import calculate_prophetic
+    from pathlib import Path
+    from somn.util.project import Project
+    from somn.workflows.calculate import calculate_substrate_descriptors
+    p = Project() #Local directory tree will be generated
+    opts = args.options
+    try:
+        assert Path(opts[0]).exists()
+        requests = opts[0]
+        calculate_substrate_descriptors(requests)
+    except:
+        raise Exception(
+            f"Check the input file for descriptor calculations: {opts[0]}."
+        )
 
 def _add_parse_options(args):
     """
@@ -261,7 +273,16 @@ Ensure that a project ID and a new, unique model set ID are being passed (in tha
                 f"Looks like handling the partition arguments {args.options} led to an error. \
 Ensure that project ID is provided, or specify 'new'."
             )
-    elif args.operation in ["add", "calculate", "visualize"]:
+    elif args.operation == "calculate":
+        try:
+            _calculate_descriptors(args)
+        except:
+            raise Warning(
+                f"Looks like handling the 'calculate' arguments {args.options} led to an error. \
+Ensure that a valid path to reactants is provided."
+            )
+
+    elif args.operation in ["add", "visualize"]:
         raise Exception(
             f"DEV - {args.operation} implementation through CLI is under development"
         )
