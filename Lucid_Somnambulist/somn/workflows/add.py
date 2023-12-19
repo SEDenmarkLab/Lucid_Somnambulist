@@ -11,7 +11,7 @@ from pathlib import Path
 from somn.build import parsing
 
 # from somn.workflows import STRUC_
-from somn.calculate.geom import PropheticInput
+from somn.calculate.substrate import PropheticInput
 import warnings
 from somn.util.project import Project
 
@@ -98,7 +98,7 @@ def add_workflow(project: Project, prediction_experiment: str, parser_args=None)
                 multismi_inp, recursive_mode=True
             )
         elif Path(args.fmt[1]).suffix == ".csv":
-            pre, smiles_d, roles = parse.scrape_smiles_csv(args.fmt[1])
+            pre, smiles_d, roles = parse.scrape_requests_csv(args.fmt[1])
             # print("DEBUG", pre.mol_index)
             collection, err = parse.prep_collection(pre, update=20)
         else:

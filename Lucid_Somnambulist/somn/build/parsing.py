@@ -240,7 +240,7 @@ class InputParser:
         return preopt, errs_h.extend(errs_pre)
 
 
-    def scrape_smiles_csv(self, fpath):
+    def scrape_requests_csv(self, fpath):
         """
         Scrapes smiles strings out of a csv file
 
@@ -280,6 +280,7 @@ class InputParser:
             raise Exception(
                 "Input requests .csv file not formatted correctly - need 3 or 5 columns, see function scrape_smiles_csv in InputParser"
             )
+
 
     def scrape_biovia_smi_file(self, fpath):
         """
