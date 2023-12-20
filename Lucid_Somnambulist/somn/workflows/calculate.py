@@ -327,33 +327,3 @@ def main(
     return ((sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc), rand)
 
 
-# if __name__ == "__main__":
-#     # (
-#     #     (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc),
-#     #     rand,
-#     # ) #Format of output
-#     from sys import argv
-
-#     if argv[1] == "new":
-#         assert len(argv) >= 3
-#         project = Project()
-#         project.save(identifier=argv[2])
-#     else:
-#         try:
-#             project = Project.reload(how=argv[1])
-#         except:
-#             raise Exception(
-#                 "Must pass valid identifier or 'last' to load project. Can say 'new' and give an identifier"
-#             )
-
-#     desc_out = main(
-#         project, substrate_pre=("corr", 0.97), optional_load="experimental_catalyst"
-#     )
-#     ### DEBUG
-#     # import pandas as pd
-
-#     # print(desc_out[0][0]) #Visualize entries
-#     ### DEBUG
-#     pickle.dump(
-#         desc_out, open(f"{project.descriptors}/real_rand_descriptor_buffer.p", "wb")
-#     )

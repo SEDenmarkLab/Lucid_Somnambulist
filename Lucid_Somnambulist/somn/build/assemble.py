@@ -405,36 +405,3 @@ def load_calculated_substrate_descriptors():
         sub_br_dict = pickle.load(q)
     return ((sub_am_dict, sub_br_dict), rand)
 
-
-# ### DEV
-# if __name__ == "__main__":
-#     """
-#     Testing/development
-#     """
-#     from somn.util.project import Project
-
-#     project = Project.reload(how="last")
-#     # project.save(identifier="DEV")
-#     from somn.workflows.firstgen_calc_sub import main as calc_sub
-
-#     ((sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc), rand) = calc_sub(
-#         project=project, substrate_pre=("corr", 0.90)
-#     )
-#     # print(sub_br_dict["2015"])
-#     mask = pd.read_csv(
-#         f"{project.descriptors}/bromide_mask.csv", header=0, index_col=0
-#     )  # Series with boolean mask
-#     # print(mask["0"])
-#     # k = vectorize_substrate_desc(sub_br_dict, "2015", feat_mask=None)
-#     p = vectorize_substrate_desc(sub_br_dict, "2015", feat_mask=mask["0"].to_numpy())
-#     q = vectorize_substrate_desc(sub_br_dict, "2015", feat_mask=mask["0"])
-#     m = vectorize_substrate_desc(sub_br_dict, "2015", feat_mask=mask)
-#     # print(mask.index)
-#     # print("masked: ", len(p))
-#     # print("unmasked: ", len(k))
-#     # print(type(p))
-#     ## Ordering of vector of features matches vector ordering for boolean mask. Hand-checked here.
-#     # print([f for f in sub_br_dict["2015"].transpose().itertuples(index=False)])
-#     # print(list(zip(p, [f for f in mask.index.to_list() if mask["0"][f]])))
-#     # print(sub_br_dict["2015"])
-#     # print(mask.to_string())

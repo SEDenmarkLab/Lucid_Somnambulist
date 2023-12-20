@@ -178,17 +178,17 @@ def _calculate_descriptors(args):
             nprocs = 2
         else:
             raise Exception("Looks like the improper number of arguments was passed to the calculate operation. \
-                            Please check your arguments: somn calculate [path_to_csv] [optional: concurrent jobs] \
-                            [optional: nprocs per job]")
+Please check your arguments: somn calculate [path_to_csv] [optional: concurrent jobs] \
+[optional: nprocs per job]")
         calculate_substrate_descriptors(requests,concurrent=concurrent,nprocs=nprocs)
     except:
         raise Exception(
             f"Check input to descriptor calculation request - it seems something went wrong. Some suggestions: \
-            Check command arguments: Pass a file path to requested molecules, then the number of concurrent \
-            calculations to run, followed by the number of processors that can be spared for each concurrent job. \
-            Check the input file: should contain 3 columns, with each row corresponding to a molecule, and containing \
-            a unique name, a SMILES string, and the type of reactant ('N', 'Br', or 'Cl'). Filepath passed was :\
-            {opts[0]}."
+Check command arguments: Pass a file path to requested molecules, then the number of concurrent \
+calculations to run, followed by the number of processors that can be spared for each concurrent job. \
+Check the input file: should contain 3 columns, with each row corresponding to a molecule, and containing \
+a unique name, a SMILES string, and the type of reactant ('N', 'Br', or 'Cl'). Filepath passed was :\
+{opts[0]}."
         )
 
 def _add_(args):
@@ -300,7 +300,7 @@ Ensure that a valid path to reactants is provided."
         p = Project()
         p.save(identifier="initialization")
         ## Look for and load projects.JSON & pre-trained models
-        if "models" in args:
+        if "models" in args.options:
             from pathlib import Path
             import subprocess
             import os
@@ -308,7 +308,9 @@ Ensure that a valid path to reactants is provided."
             if Path('./somn-project.tar.gz').exists():
                 assert Path('./projects.JSON').exists()
                 ## EXTRACT MODELS INTO SOMN SCRATCH DIRECTORY 
+                print("\n\nExtracting pre-trained models...\n\n")
                 subprocess.run(['tar','-xf','somn-project.tar.gz','-C','somn_scratch/'])
+                print("\n\nModels successfully extracted! Now updating package with their location...\n\n")
                 ## LOCATE INSTALL PATH FOR DATA MODULE & UPDATE projects.JSON
                 data_module_path = os.path.dirname(somn.data.__file__)
                 with open(f"./projects.JSON",'r') as k:
@@ -317,12 +319,14 @@ Ensure that a valid path to reactants is provided."
                     proj = json.load(g)
                 proj.update(upd)
                 with open(f"{data_module_path}/projects.JSON",'w') as p:
-                    json.dump(proj)
+                    json.dump(proj,p)
+                print("somn package has been installed with pre-trained models. Please look in the somn_scratch directory \
+to find the project 'IID-Models-2023', and look in the 'scratch' subdirectory for an example prediction request input file.")
             else:
                 import warnings
                 warnings.warn("It looks like no pre-trained models were supplied; skipping initialization step. \
-                            if this is an error, please check documentation and ensure that all files are in \
-                            the somn home directory (at the same level as the somn initialize command is run)")
+if this is an error, please check documentation and ensure that all files are in \
+the somn home directory (at the same level as the somn initialize command is run)")
     elif args.operation in ["add", "visualize"]:
         raise Exception(
             f"DEV - {args.operation} implementation through CLI is under development"
