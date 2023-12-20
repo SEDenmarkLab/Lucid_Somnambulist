@@ -35,6 +35,9 @@ def calculate_prophetic(
         sub_dict = retrieve_chloride_rdf_descriptors(
             geometries, atomproperties, increment=inc
         )
+    else:
+        raise Exception(f"Looks like {react_type} was passed as a reactant type, which is not \
+recognized. Check input file.")
     return sub_dict
 
 @define

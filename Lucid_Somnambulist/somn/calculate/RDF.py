@@ -93,8 +93,8 @@ def retrieve_chloride_rdf_descriptors(
             # print(a, b, c, d)
             orth_out = get_orthogonal_plane(coords, cl_idx, ipso_idx, a, b, c, leftref)
             if orth_out == None:  ### DEBUG
-                print(mol.atoms, coords)
-                print(f"Mol plane was {a},{b},{c},{d}")
+                # print(mol.atoms, coords)
+                # print(f"Mol plane was {a},{b},{c},{d}")
                 raise Exception(
                     f"Cannot find orthogonal plane direction for molecule {mol.name}, molecule number {col.molecules.index(mol)} in collection"
                 )
@@ -138,7 +138,7 @@ def retrieve_chloride_rdf_descriptors(
             desc_df[prop] = pd.concat([pd.Series(f) for f in avg_array], axis=0)
         desc_df.index = ["slice_" + str(f + 1) for f in range(20)]
         mol_rdfs[mol.name] = desc_df
-    print("all done")
+    # print("all done")
     return mol_rdfs
 
 
@@ -607,9 +607,9 @@ def get_orthogonal_plane(coords: np.array, ref_1, ref_2, a, b, c, leftref):
         h = np.dot(vc, p1)
         return e, f, g, h
     else:
-        print(f"Not finding direction for molecule; dot output is {np.dot(vc,p4)}")
-        print(f"Cl is at {p1}, ipso is at {p2}, left reference is at {p4}")
-        print(f"Plane is {vc}, molecular plane is {v2}, and halogen bond is {v1}")
+        # print(f"Not finding direction for molecule; dot output is {np.dot(vc,p4)}")
+        # print(f"Cl is at {p1}, ipso is at {p2}, left reference is at {p4}")
+        # print(f"Plane is {vc}, molecular plane is {v2}, and halogen bond is {v1}")
         return None
 
 
@@ -684,7 +684,8 @@ def get_left_reference(mol: Chem.rdchem.Mol, ipso_idx, br_idx):
         elif ortho_het[0][2] == ortho_het[1][2]:
             leftref = ortho_het[0][1]  # arbitrary if they are the same
     else:
-        print("Error! Could not find bromide left reference after all conditions")
+        pass
+        # print("Error! Could not find bromide left reference after all conditions")
     return leftref
 
 
@@ -705,7 +706,7 @@ def get_ortho_meta_symbols(mol: Chem.rdchem.Mol, aryl_ref):
     ar_atm = get_aromatic_atoms(mol)  # all aryl atoms
     # print(ar_atm,aryl_ref)
     if aryl_ref not in ar_atm:
-        print("weird")
+        # print("weird")
         return None  # This is weird; error here if this happens
     het_ar_atm = []  # list of tuples describing heteroarene heteroatoms, empty if none
     for atm in ar_atm:  # Loop over aromatic atoms to find heteroaromatic atoms

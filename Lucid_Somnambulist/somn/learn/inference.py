@@ -244,7 +244,7 @@ def prep_requests():
         pair = f"{data[3]}_{data[4]}"
         req_pairs.append(pair)
     # print(",".join(req_pairs))
-    print(total_requests)
+    # print(total_requests)
 
     return total_requests, req_pairs
 
@@ -288,25 +288,25 @@ This may cause an error if new molecules are requested now which were not calcul
     #         "Something went wrong with calculating substrate descriptors for new molecules - check inputs"
     #     )
     ### Now we're ready to calculate RDF features
-    from somn.workflows.calculate import calculate_prophetic
+    from somn.calculate.substrate import calculate_prophetic
     import molli as ml
     import json
 
     prophetic_amine_col = ml.Collection.from_zip(
-        f"{project.structures}/{prediction_experiment}/prophetic_amines.zip"
+        f"{project.structures}/{prediction_experiment}/prophetic_nucleophile.zip"
     )
     prophetic_bromide_col = ml.Collection.from_zip(
-        f"{project.structures}/{prediction_experiment}/prophetic_bromides.zip"
+        f"{project.structures}/{prediction_experiment}/prophetic_electrophile.zip"
     )
     p_ap = json.load(
         open(f"{project.structures}/{prediction_experiment}/newmol_ap_buffer.json")
     )
 
     p_a_desc = calculate_prophetic(
-        inc=0.75, geometries=prophetic_amine_col, atomproperties=p_ap, react_type="am"
+        inc=0.75, geometries=prophetic_amine_col, atomproperties=p_ap, react_type="N"
     )
     p_b_desc = calculate_prophetic(
-        inc=0.75, geometries=prophetic_bromide_col, atomproperties=p_ap, react_type="br"
+        inc=0.75, geometries=prophetic_bromide_col, atomproperties=p_ap, react_type="Br"
     )
     ### Now we're ready to assemble features
     am, br, ca, so, ba = desc
@@ -324,112 +324,3 @@ This may cause an error if new molecules are requested now which were not calcul
     # from somn.calculate.preprocess import new_mask_random_feature_arrays
     return prophetic_features
 
-
-if __name__ == "__main__":
-    project = Project.reload(how="cc3d1f3a3d9211eebdbe18c04d0a4970")
-
-    ####################### DEV PREDICTIONS #################################
-    import shutil
-
-    try:
-        shutil.rmtree(f"{project.structures}/testing_pred01/")
-        shutil.rmtree(f"{project.partitions}/prophetic_testing_pred01/")
-    except:
-        pass
-    # raise Exception("DEBUG")
-    ###########
-
-    raw_predictions, requests = hypermodel_inference(
-        project=project,
-        model_experiment="testing_search04",
-        prediction_experiment="testing_pred01",
-    )
-    import pickle
-
-    with open("DEVOPS_PKL_PRED.p", "wb") as g:
-        pickle.dump((raw_predictions, requests), g)
-    ####################### DEV PREDICTION VISUALIZATION ###################################
-    # import pickle
-
-    # with open("DEVOPS_PKL_PRED.p", "wb") as g:
-    #     output = pickle.load(g)
-
-
-# ##################################################################################
-
-# # Developing a quick function to sort different hypermodels by their partition
-
-
-#     model_experiment = "testing_search04"
-#     prediction_experiment = "testing_pred01"
-
-#     k = tf_organizer(name="dev")
-#     all_models = sorted(list(glob(f"{project.output}/{model_experiment}/out/*.h5")))
-#     model_info = [k.get_partition_info(m)[0].split("hpset")[0] for m in all_models]
-
-#     def sort_models(all_models, organ: tf_organizer):
-#         model_info = [
-#             organ.get_partition_info(m)[0].split("hpset")[0] for m in all_models
-#         ]
-#         from collections import OrderedDict
-
-#         output = []
-#         sort = OrderedDict()
-#         for id, pa in zip(model_info, all_models):
-#             if id in sort.keys():
-#                 sort[id].append(pa)
-#             else:
-#                 sort[id] = [pa]
-#         for id_, paths in sort.items():
-#             output.append(tuple(paths))
-#         return output
-
-#     test = sort_models(all_models, k)
-#     print(test)
-# ##################################################################################
-# tot, requested_pairs = prep_requests()
-
-# # raise Exception("DEBUG")
-
-# organ = tf_organizer(
-#     name="testing", partition_dir=f"{project.partitions}/real", inference=True
-# )
-# masks = load_substrate_masks()
-
-# # (
-# #     amines,
-# #     bromides,
-# #     dataset,
-# #     handles,
-# #     unique_couplings,
-# #     a_prop,
-# #     br_prop,
-# #     base_desc,
-# #     solv_desc,
-# #     cat_desc,
-# # ) = load_data(optional_load="maxdiff_catalyst")
-# # print(type(cat_desc))
-# # sub_desc = get_precalc_sub_desc()
-# # if sub_desc == False:  # Need to calculate
-# #     raise Exception(
-# #         "Tried to load descriptors for inference, but could not locate pre-calcualted descriptors. This could lead to problems with predictions; check input project."
-# #     )
-# # else:
-# #     sub_am_dict, sub_br_dict, rand = sub_desc
-# ### Make sure we calculate with the same preprocessing (maxdiff and correlated features)
-# from somn.workflows.firstgen_calc_sub import main as calc_sub
-
-# real, rand = calc_sub(
-#     project, substrate_pre=("corr", 0.90), optional_load="maxdiff_catalyst"
-# )
-# pred_str = ",".join(requested_pairs)
-# assemble_desc_for_inference_mols(
-#     project=project,
-#     requests=f"{project.scratch}/all_requests.csv",
-#     # organizer=organ,
-#     sub_masks=masks,
-#     desc=real,
-#     prediction_experiment="testing-03",
-#     pred_str=pred_str,
-# )
-############################# DEV END ############################################
