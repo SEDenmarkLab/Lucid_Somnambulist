@@ -242,10 +242,10 @@ class PropheticInput:
             assert len(self.conformers.molecules) == 1
             if self.role == "el":
                 BCOL.add(self.conformers[0])
-                BCOL.to_zip(str(self.parser.path_to_write) + "/newtotal_bromide.zip")
+                BCOL.to_zip(str(self.parser.path_to_write) + "/newtotal_electrophile.zip")
             elif self.role == "nuc":
                 ACOL.add(self.conformers[0])
-                ACOL.to_zip(str(self.parser.path_to_write) + "/newtotal_amine.zip")
+                ACOL.to_zip(str(self.parser.path_to_write) + "/newtotal_nucleophile.zip")
         elif (
             self.state == "multi"
         ):  # Many molecules going in; should work for el or nuc
@@ -266,14 +266,14 @@ class PropheticInput:
                     if nb == False:
                         nb = True
             if na == True:
-                ACOL.to_zip(str(self.parser.path_to_write) + "/newtotal_amine.zip")
+                ACOL.to_zip(str(self.parser.path_to_write) + "/newtotal_nucleophile.zip")
                 ml.Collection(name="proph_am", molecules=am_str).to_zip(
-                    str(self.parser.path_to_write) + "/prophetic_amines.zip"
+                    str(self.parser.path_to_write) + "/prophetic_nucleophile.zip"
                 )
             if nb == True:
-                BCOL.to_zip(str(self.parser.path_to_write) + "/newtotal_bromide.zip")
+                BCOL.to_zip(str(self.parser.path_to_write) + "/newtotal_electrophile.zip")
                 ml.Collection(name="proph_br", molecules=br_str).to_zip(
-                    str(self.parser.path_to_write) + "/prophetic_bromides.zip"
+                    str(self.parser.path_to_write) + "/prophetic_electrophile.zip"
                 )
         ## Save things - these are backups
         self.conformers.to_zip(str(self.parser.path_to_write) + "/newstruc_geoms.zip")
@@ -355,7 +355,6 @@ class PropheticInput:
         ):  # Many molecules going in; should work for el or nuc
             nuc_ap_temp = {}
             el_ap_temp = {}
-            ### DEBUG - this doesn't work
             for (
                 mol
             ) in (
