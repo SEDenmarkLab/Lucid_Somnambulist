@@ -300,6 +300,7 @@ Ensure that a valid path to reactants is provided."
         p = Project()
         p.save(identifier="initialization")
         ## Look for and load projects.JSON & pre-trained models
+
         if "models" in args.options:
             from pathlib import Path
             import subprocess

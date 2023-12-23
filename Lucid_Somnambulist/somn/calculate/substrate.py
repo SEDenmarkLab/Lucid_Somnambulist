@@ -358,7 +358,6 @@ class PropheticInput:
         ):  # Many molecules going in; should work for el or nuc
             nuc_ap_temp = {}
             el_ap_temp = {}
-            ### DEBUG - this doesn't work
             for (
                 mol
             ) in (
