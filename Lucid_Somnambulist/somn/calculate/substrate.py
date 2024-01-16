@@ -269,14 +269,14 @@ class PropheticInput:
                     if nb == False:
                         nb = True
             if na == True:
-                ACOL.to_zip(str(self.parser.path_to_write) + "/newtotal_amine.zip")
-                ml.Collection(name="proph_am", molecules=am_str).to_zip(
-                    str(self.parser.path_to_write) + "/prophetic_amines.zip"
+                ACOL.to_zip(str(self.parser.path_to_write) + "/newtotal_nucleophile.zip")
+                ml.Collection(name="proph_nuc", molecules=am_str).to_zip(
+                    str(self.parser.path_to_write) + "/prophetic_nucleophile.zip"
                 )
             if nb == True:
-                BCOL.to_zip(str(self.parser.path_to_write) + "/newtotal_bromide.zip")
-                ml.Collection(name="proph_br", molecules=br_str).to_zip(
-                    str(self.parser.path_to_write) + "/prophetic_bromides.zip"
+                BCOL.to_zip(str(self.parser.path_to_write) + "/newtotal_electrophile.zip")
+                ml.Collection(name="proph_el", molecules=br_str).to_zip(
+                    str(self.parser.path_to_write) + "/prophetic_electrophile.zip"
                 )
         ## Save things - these are backups
         self.conformers.to_zip(str(self.parser.path_to_write) + "/newstruc_geoms.zip")
@@ -363,7 +363,7 @@ class PropheticInput:
                 mol
             ) in (
                 self.conformers
-            ):  # Collection with conformers calculated, but not iterating over conformers
+            ):  # Collections of conformers calculated being sorted into "el" and "nuc"
                 molrole = self.roles_d[mol.name]
                 if molrole == "nuc":
                     nuc_ap_temp[mol.name] = self.atomprops[mol.name]

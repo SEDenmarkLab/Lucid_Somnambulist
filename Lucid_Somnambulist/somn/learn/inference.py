@@ -28,7 +28,7 @@ def hypermodel_inference(
     optional_load="maxdiff_catalyst",
     substrate_pre=("corr", 0.90),
     vt=0,
-    # real=True,
+    all_predictions=False
 ):
     """
     project must contain (1) partitions, and (2) pre-trained hypermodels.
@@ -81,24 +81,40 @@ def hypermodel_inference(
     # else:
     #     real, rand = sub_desc
     output_buffer = []
-
     from somn.workflows.calculate import main as calc_sub
-
-    sub_masks = load_substrate_masks()
-    total_requests, requested_pairs = prep_requests()
+    if all_predictions == False:
+        total_requests, requested_pairs = prep_requests()
+    elif all_predictions == True:
+        requested_pairs = _generate_full_space()
+        total_requests=None
+    else:
+        raise Exception("Function hypermodel_inference received an invalid argument for the all_predictions keyword. This \
+should be False under normal circumstances, and True for specific development applications (i.e. getting all possible predictions)")
     real, rand = calc_sub(
         project, substrate_pre=substrate_pre, optional_load=optional_load
     )
     pred_str = ",".join(requested_pairs)
+    sub_masks = load_substrate_masks()
     ### Building prophetic feature array with matching substrate and other preprocessing
-    prophetic_raw = assemble_desc_for_inference_mols(
-        project=project,
-        requests=f"{project.scratch}/all_requests.csv",
-        sub_masks=sub_masks,
-        desc=real,
-        prediction_experiment=prediction_experiment,
-        pred_str=pred_str,
-    )
+    if all_predictions == False:
+        prophetic_raw = assemble_desc_for_inference_mols(
+            project=project,
+            requests=f"{project.scratch}/all_requests.csv",
+            sub_masks=sub_masks,
+            desc=real,
+            prediction_experiment=prediction_experiment,
+            pred_str=pred_str,
+        )
+    elif all_predictions == True:
+        prophetic_raw = assemble_descriptors_from_handles(pred_str,
+                                                          desc=real,
+                                                          sub_mask=sub_masks)
+        prophetic_raw.reset_index(drop=True).to_feather(
+            f"{project.descriptors}/prophetic_{prediction_experiment}.feather"
+        )
+    else:
+        raise Exception("Function hypermodel_inference received an invalid argument for the all_predictions keyword. This \
+should be False under normal circumstances, and True for specific development applications (i.e. getting all possible predictions)")
     prophetic_fp = f"{project.descriptors}/prophetic_{prediction_experiment}.feather"
     try:
         import pathlib
@@ -248,6 +264,19 @@ def prep_requests():
 
     return total_requests, req_pairs
 
+def _generate_full_space():
+    """
+    For testing purposes - create all combinations of each reactant and generate descriptors to make predictions for
+    the whole space.
+
+    FOR DEV PURPOSES/TESTING ONLY
+    """
+    from itertools import product
+    import numpy as np
+    from somn.data import load_reactant_smiles
+    known_amines,known_bromides = load_reactant_smiles()
+    combinations = [f"{f[0]}_{f[1]}" for f in product(known_amines.keys(),known_bromides.keys())]
+    return combinations
 
 def assemble_desc_for_inference_mols(
     project: Project,
@@ -323,4 +352,3 @@ This may cause an error if new molecules are requested now which were not calcul
     )
     # from somn.calculate.preprocess import new_mask_random_feature_arrays
     return prophetic_features
-

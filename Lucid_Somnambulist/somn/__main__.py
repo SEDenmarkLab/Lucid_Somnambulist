@@ -119,7 +119,7 @@ def _generate_partitions(args):
     sub_desc = get_precalc_sub_desc()
     if sub_desc == False:  # Need to calculate
         real, rand = calc_sub(
-            project, optional_load="maxdiff_catalyst", substrate_pre=("corr", 0.95)
+            project, optional_load="maxdiff_catalyst", substrate_pre=("corr", 0.90)
         )
         sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
     else:  # Already calculated descriptors, just fetching them

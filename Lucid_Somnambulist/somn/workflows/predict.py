@@ -45,7 +45,6 @@ def main(args=None):
         help="This is a NEW label that will be used to identify this set of predictions.",
     )
     args = parser.parse_args(args=args)
-    print("DEV", args)
     try:
         project = Project.reload(how=args.proj)
     except:
@@ -55,6 +54,7 @@ def main(args=None):
             project=project,
             model_experiment=args.mdl,
             prediction_experiment=args.exp,
+            all_predictions=False
         )
     except:
         raise RuntimeError(

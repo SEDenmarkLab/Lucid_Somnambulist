@@ -25,6 +25,84 @@ vdw_dict["I"] = 1.95
 
 symbols_for_rdf = ["C", "N", "S", "O", "F"]
 
+def select_ref_atom(chlorides,bromides):
+    """
+    Choose reference atom from lists of bromides and chlorides in molecule.
+    Br and Cl, choose Br
+    Multiple Brs and Cls, pick one Br
+    Cl only, choose cl
+    Neither present, raise exception
+    """
+    if len(chlorides) == 0 and len(bromides) == 0:
+        raise Exception("Electrophiles passed which do not have Br or Cl present. \
+Check inputs to ensure that (hetero)aryl bromides and chlorides are being requested.")
+    elif len(chlorides) == 0 and len(bromides) > 0:
+        if len(bromides) > 1:
+            Warning.warn("Multiple bromides identified, selecting one arbitrarily.")
+        return bromides[0]
+    elif len(chlorides) > 0 and len(bromides) == 0:
+        if len(chlorides) > 1:
+            Warning.warn("Multiple chlorides identified, selecting one arbitrarily.")
+        return chlorides[0]
+    elif len(chlorides) > 0 and len(bromides) > 0:
+        Warning.warn("Multiple halides identified, selecting a bromine atom arbitrarily.")
+        return bromides[0]
+
+def calculate_electrophile_rdf_descriptors(col: ml.Collection = None,
+                              apd: dict = None,
+                              increment: float = 0.75, 
+                              radial_scale: int = 0,
+                              slices: int = 10,
+                              ref_atom = None,
+                              ):
+    """
+    Generalized RDF descriptor calculation - handles Cl or Br. 
+    """
+    failures = []
+    molecule_rdfs = {}
+    for mol in col:
+        # rdf_template = pd.DataFrame(index=["sphere_" + str(i) for i in range(slices)])
+        # rdf_df.name = mol.name
+        chlorides = mol.get_atoms_by_symbol(symbol="Cl")
+        bromides = mol.get_atoms_by_symbol(symbol="Br")
+        if ref_atom==None:
+            reference = select_ref_atom(chlorides,bromides)
+        else:
+            try:
+                assert isinstance(ref_atom,ml.dtypes.Atom)
+                reference = ref_atom
+            except:
+                try:
+                    reference = mol.atoms[int(ref_atom)]
+                except:
+                    Warning.warn("Calculating RDF descriptors failed because a ref_atom \
+argument was passed which was neither an atom class nor an atom index. None is a valid case, \
+and will result in a guess of the reference halide atom (Br > Cl).")
+                    failures.append(mol.name)
+                    continue
+        ## MAKING SURE REFERENCE ATOM SELECTION WORKED ##
+        try:
+            assert isinstance(reference, ml.dtypes.Atom)
+        except:
+            Warning.warn("Cannot identify reference atom - failed to calculate RDF")
+            if mol.name not in failures:
+                failures.append(mol.name)
+            continue
+        conn = list(mol.get_connected_atoms(reference))
+        try:
+            assert len(conn) == 1
+        except:
+            if mol.name not in failures:
+                failures.append(mol.name)
+            continue           
+        ipso_atom = conn[0]
+
+
+
+                
+
+
+
 
 def retrieve_chloride_rdf_descriptors(
     col, apd, increment: float = 1.5, radial_scale: int = 0
@@ -49,8 +127,8 @@ def retrieve_chloride_rdf_descriptors(
     for mol in col:
         # atom_props = apd[mol.name]
         # print(apd.keys())
-        rdf_df = pd.DataFrame(index=["sphere_" + str(i) for i in range(10)])
-        rdf_df.name = mol.name
+        # rdf_df = pd.DataFrame(index=["sphere_" + str(i) for i in range(10)])
+        # rdf_df.name = mol.name
         ### Get reference atoms
         labels = [f.symbol for f in mol.atoms]
         cl_atom = mol.get_atoms_by_symbol(symbol="Cl")[0]
@@ -633,6 +711,88 @@ def sort_into_halves(mol: ml.Molecule, conf: ml.dtypes.CartesianGeometry, e, f, 
             oct2.append(i)
     return [oct1, oct2]
 
+def select_left_reference(mol: ml.Molecule,ipso_atom,halide_atom):
+    """
+    select left reference for molecule
+
+    [new version - no RDKit dependency]
+    """
+    ortho_atoms,meta_atoms,tertiary_atoms = get_ortho_meta_symbols(mol,ipso_atom,halide_atom)
+
+
+def evaluate_atom_heirarchy(mol: ml.Molecule,halide:ml.dtypes.Atom,ortho: list,meta: list):
+    """
+    Pass an ortho atom list or meta atom list
+    """
+    from mendeleev import element
+    o_elms = [element(f.symbol) for f in ortho]
+    o_aos = [f.atomic_number for f in o_elms]
+    if o_aos[0] == o_aos[1]: # Not simple; have to look through graph
+        ortho_substitutents,meta_ring_atoms=sort_graph_search_atoms(mol,halide,meta)
+        a,b = [set(mol.get_bonds_with_atom(meta_ring_atoms[f])) for f in range(2)]
+        c,d = [set(mol.get_bonds_with_atom(ortho_substituents[f])) for f in range(2)]
+
+
+
+
+        
+        meta_symbol_sets = [set([g.symbol for g in f]) for f in meta]        
+        m_elms = [[element(f.symbol).atomic_number for f in g] for g in meta]
+        m_avg = [sum(k) for k in m_elms]
+        if m_avg[0] != m_avg[1]: #One side is more branched than the other
+            return ortho[m_avg.index(max(m_avg))] #Side with most branching
+        else: #Ortho substitutions are identical - need to look at meta position
+            m_en = [[element(f.symbol).electronegativity("allen") for f in g] for g in meta]
+            m_en_max = [max(k) for k in m_elms]
+            if m_en_max[0] != m_en_max[1]: #One meta position is more electronegative (e.g., N vs C)
+                return ortho[m_en_max.index(max(m_en_max))]
+
+    else: #Ortho atoms are not both carbon
+        sym = [f.symbol for f in ortho]
+        if "N" in sym: #Highest priority (arbitrary)
+            return ortho[sym.index("N")]
+        if "S" in sym: #Second priority (arbitrary)
+            return ortho[sym.index("S")]
+        if "O" in sym: #Third priority (arbitrary)
+            return ortho[sym.index("O")]
+        else: #If not one of those heteroatoms, use the highest MW (e.g., weird Se heterocycle, etc.)
+            return ortho[o_aos.index(max(o_aos))] #get ortho atom with largest ao if both sides differ
+    
+def sort_graph_search_atoms(mol: ml.Molecule,halide: ml.dtypes.Atom,meta:list):
+    """
+    Takes atoms 2 Manhattan steps from the ipso aryl atom and returns atoms
+    which are an ortho substitutent separately from the meta ring atoms.
+    This is done using distance from the reference atom. 
+    """
+    halide_coords = mol.geom.get_coord(mol.get_atom_idx(halide))
+    distances = [[np.linalg.norm(halide_coords-mol.geom.get_coord(mol.get_atom_idx(f))) for f in m] for m in meta]
+    ## Building dist_arr to have 2 columns: distances, and atoms
+    dist_arr = np.concatenate(np.array([[p for p in zip(np.array(f)[0],np.array(f)[1])] for f in zip(distances,meta)]),axis=0)
+    sorted_dist = dist_arr[dist_arr[:,0].argsort()]
+    meta_ring = sorted_dist[-2:,1].flatten().to_list()
+    ortho_subst = sorted_dist[:2,1].flatten().to_list()
+    return ortho_subst,meta_ring
+
+
+def get_ortho_meta_symbols(mol:ml.Molecule,ipso: ml.dtypes.Atom,halide: ml.dtypes.Atom):
+    """
+    molli-based molecular graph walk through (hetero)aryl ring system to get symbols of 
+    ortho and meta ring atoms. These are also returned with branching of carbons.
+    """
+    ortho_atoms = [f for f in mol.get_connected_atoms(ipso) if f != halide]
+    meta_atoms = []
+    for orth in ortho_atoms:
+        meta_candidates = [f for f in mol.get_connected_atoms(orth) if f!=ipso]
+        meta_atoms.append(meta_candidates)
+    tertiary = []
+    for meta in meta_atoms:
+        tert = [[f for f in mol.get_connected_atoms(g) if f not in ortho_atoms] for g in meta]
+        # if not tert:
+        #     tertiary.append([None])
+        tertiary.append(tert)
+    return ortho_atoms,meta_atoms,tertiary
+        
+    
 
 def get_left_reference(mol: Chem.rdchem.Mol, ipso_idx, br_idx):
     """
@@ -640,7 +800,7 @@ def get_left_reference(mol: Chem.rdchem.Mol, ipso_idx, br_idx):
     """
     ipso_reference = mol.GetAtomWithIdx(ipso_idx)
     br_ref = mol.GetAtomWithIdx(br_idx)
-    ortho_het, meta_het = get_ortho_meta_symbols(mol, ipso_idx)
+    ortho_het, meta_het = _get_ortho_meta_symbols(mol, ipso_idx)
     # print(ortho_het,meta_het)
     if len(ortho_het) == 0:  # no ortho heteroatoms
         less_sub = get_less_substituted_ortho(mol, ipso_idx)
@@ -689,7 +849,7 @@ def get_left_reference(mol: Chem.rdchem.Mol, ipso_idx, br_idx):
     return leftref
 
 
-def get_ortho_meta_symbols(mol: Chem.rdchem.Mol, aryl_ref):
+def _get_ortho_meta_symbols(mol: Chem.rdchem.Mol, aryl_ref):
     """
     Finds out if and what heteroatoms are in the ortho-positions of aniline-type amines
     Returns list of ortho heteroatoms and then meta heteroatoms
@@ -707,7 +867,7 @@ def get_ortho_meta_symbols(mol: Chem.rdchem.Mol, aryl_ref):
     # print(ar_atm,aryl_ref)
     if aryl_ref not in ar_atm:
         # print("weird")
-        return None  # This is weird; error here if this happens
+        return None  # This is weird; error here if this happens RDKIT BREAKS HERE - NON-ARYL HETEROARENES
     het_ar_atm = []  # list of tuples describing heteroarene heteroatoms, empty if none
     for atm in ar_atm:  # Loop over aromatic atoms to find heteroaromatic atoms
         symb = mol.GetAtomWithIdx(atm).GetSymbol()
@@ -731,7 +891,7 @@ def get_ortho_meta_symbols(mol: Chem.rdchem.Mol, aryl_ref):
                     tuple([f for f in test_val_2] + [pt.GetAtomicNumber(test_val_2[0])])
                 )
     # print(ortho_het,meta_het)
-    return ortho_het, meta_het
+    return ortho_het, meta_het #Should find ortho heteroatoms and meta heteroatoms based on aromaticity, BUT will fail generally for fused systems and ones that RDKit doesn't recognize as aromatic
 
 
 def get_aromatic_atoms(mol: Chem.rdchem.Mol):
@@ -754,6 +914,7 @@ def get_less_substituted_ortho(mol: Chem.rdchem.Mol, atomidx):
 
     This is used to define left/right halves of molecule for RDF
 
+    DEFINITELY will fail/not work generally for all molecules. 
     """
 
     atomref = mol.GetAtomWithIdx(atomidx)
