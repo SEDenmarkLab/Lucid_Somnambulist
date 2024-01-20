@@ -329,9 +329,12 @@ class PropheticInput:
             failures = []
             names = self.struc.mol_index
         for confap, name in zip(atomprops, names):
-            if isinstance(confap[0], dict):
-                atomprop_out[name] = confap
-            else:
+            try:
+                if isinstance(confap[0], dict):
+                    atomprop_out[name] = confap
+                else:
+                    failures.append(name)
+            except TypeError:
                 failures.append(name)
         # print(atomprops[0])
         # raise Exception("DEBUG")
