@@ -1,24 +1,25 @@
-import molli as ml
 import json
+
+import molli as ml
+import pandas as pd
 from attrs import define, field
 
-# from somn.workflows import SCRATCH_, STRUC_, DESC_
-from somn.data import ACOL, BCOL, ASMI, BSMI, AMINES, BROMIDES
-import pandas as pd
-from somn.util.project import Project
 from somn.calculate.RDF import (
     retrieve_amine_rdf_descriptors,
     retrieve_bromide_rdf_descriptors,
     retrieve_chloride_rdf_descriptors,
 )
 
-
-
-
+# from somn.workflows import SCRATCH_, STRUC_, DESC_
+from somn.data import ACOL, AMINES, ASMI, BCOL, BROMIDES, BSMI
+from somn.util.project import Project
 
 
 def calculate_prophetic(
-    inc=0.75, geometries:ml.Collection=None, atomproperties:dict=None, react_type=""
+    inc=0.75,
+    geometries: ml.Collection = None,
+    atomproperties: dict = None,
+    react_type="",
 ):
     """
     Vanilla substrate descriptor retrieval
@@ -36,6 +37,7 @@ def calculate_prophetic(
             geometries, atomproperties, increment=inc
         )
     return sub_dict
+
 
 @define
 class PropheticInput:
@@ -83,7 +85,7 @@ class PropheticInput:
                 self.roles_d[k] = j
         else:
             raise Exception(
-                f"Prophetic structure input must be single structure or multiple - check input types"
+                "Prophetic structure input must be single structure or multiple - check input types"
             )
         ### Check smiles against database
         inv_am = {v: k for k, v in ASMI.items()}
@@ -118,9 +120,7 @@ class PropheticInput:
             if len(self.known) == 0:  # Makes this easy later.
                 self.known = False
             else:
-                raise Warning(
-                    f"Structures already in database were requested: {self.known}"
-                )
+                Warning(f"Structures already in database were requested: {self.known}")
             self.struc = ml.Collection(name="pruned_precalc", molecules=pruned_struc)
 
     def conformer_pipeline(self):
@@ -224,12 +224,9 @@ class PropheticInput:
                 failures.append(col[key])
             elif val == True:
                 pass
-        if (
-            len(failures) > 0
-        ):  # If molecules failed, warn the user. Put this in a log or something later. DEV
-            raise Warning(
-                f"Molecules failed conformer search: {[f.name for f in failures]}"
-            )
+        if len(failures) > 0:
+            # If molecules failed, warn the user. Put this in a log or something later. DEV
+            Warning(f"Molecules failed conformer search: {[f.name for f in failures]}")
         self.failures = failures
         if len(self.failures) > 0:
             towrite = ml.Collection(name="failed", molecules=self.failures)
@@ -242,10 +239,14 @@ class PropheticInput:
             assert len(self.conformers.molecules) == 1
             if self.role == "el":
                 BCOL.add(self.conformers[0])
-                BCOL.to_zip(str(self.parser.path_to_write) + "/newtotal_electrophile.zip")
+                BCOL.to_zip(
+                    str(self.parser.path_to_write) + "/newtotal_electrophile.zip"
+                )
             elif self.role == "nuc":
                 ACOL.add(self.conformers[0])
-                ACOL.to_zip(str(self.parser.path_to_write) + "/newtotal_nucleophile.zip")
+                ACOL.to_zip(
+                    str(self.parser.path_to_write) + "/newtotal_nucleophile.zip"
+                )
         elif (
             self.state == "multi"
         ):  # Many molecules going in; should work for el or nuc
@@ -266,12 +267,16 @@ class PropheticInput:
                     if nb == False:
                         nb = True
             if na == True:
-                ACOL.to_zip(str(self.parser.path_to_write) + "/newtotal_nucleophile.zip")
+                ACOL.to_zip(
+                    str(self.parser.path_to_write) + "/newtotal_nucleophile.zip"
+                )
                 ml.Collection(name="proph_am", molecules=am_str).to_zip(
                     str(self.parser.path_to_write) + "/prophetic_nucleophile.zip"
                 )
             if nb == True:
-                BCOL.to_zip(str(self.parser.path_to_write) + "/newtotal_electrophile.zip")
+                BCOL.to_zip(
+                    str(self.parser.path_to_write) + "/newtotal_electrophile.zip"
+                )
                 ml.Collection(name="proph_br", molecules=br_str).to_zip(
                     str(self.parser.path_to_write) + "/prophetic_electrophile.zip"
                 )
@@ -280,7 +285,7 @@ class PropheticInput:
         with open(str(self.parser.path_to_write) + "/newstruc_roles.json", "w") as k:
             json.dump(self.roles_d, k)
 
-    def atomprop_pipeline(self,confs=True,concurrent=2,nprocs=2):
+    def atomprop_pipeline(self, confs=True, concurrent=2, nprocs=2):
         """
         Calculate atom properties for descriptor calculation, and add to JSON files.
         """
@@ -355,11 +360,7 @@ class PropheticInput:
         ):  # Many molecules going in; should work for el or nuc
             nuc_ap_temp = {}
             el_ap_temp = {}
-            for (
-                mol
-            ) in (
-                self.conformers
-            ):  # Collection with conformers calculated, but not iterating over conformers
+            for mol in self.conformers:  # Collection with conformers calculated, but not iterating over conformers
                 molrole = self.roles_d[mol.name]
                 if molrole == "nuc":
                     nuc_ap_temp[mol.name] = self.atomprops[mol.name]
