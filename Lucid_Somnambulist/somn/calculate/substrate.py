@@ -1,7 +1,6 @@
 import json
 
 import molli as ml
-import pandas as pd
 from attrs import define, field
 
 from somn.calculate.RDF import (
@@ -11,7 +10,7 @@ from somn.calculate.RDF import (
 )
 
 # from somn.workflows import SCRATCH_, STRUC_, DESC_
-from somn.data import ACOL, AMINES, ASMI, BCOL, BROMIDES, BSMI
+from somn.data import ACOL, ASMI, BCOL, BSMI
 from somn.util.project import Project
 
 
@@ -134,11 +133,11 @@ class PropheticInput:
                 "Have not defined conformer pipeline mode, check input (or use code as intended)"
             )
         if (
-            self.state == "single" and self.known == False
+            self.state == "single" and self.known is False
         ):  # Single molecule; must be list to make col
             col = ml.Collection(name="molecule", molecules=[self.struc])
         elif self.state == "multi":
-            if self.known == False:
+            if self.known is False:
                 col = self.struc
             elif isinstance(self.known, list):
                 col = ml.Collection(
@@ -178,7 +177,7 @@ class PropheticInput:
                 tracking[col.molecules[i].name] = False
         # print(buffer)
         if len(buffer) == 0:
-            raise Exception(f"Error calculating conformers - search step failed")
+            raise Exception("Error calculating conformers - search step failed")
         col2 = ml.Collection(
             name="searched", molecules=buffer
         )  # These have undergone a conformer search.
@@ -208,21 +207,21 @@ class PropheticInput:
                 buffer2.append(k)
             else:  # Failed - make sure it is set to False in tracking dictionary
                 if (
-                    tracking[col2.molecules[j].name] == True
+                    tracking[col2.molecules[j].name] is True
                 ):  # If it worked before, but failed here, set it to False.
                     tracking[col2.molecules[j].name] = False
                 else:
                     pass  # Already set to False, can skip.
         if len(buffer2) == 0:
-            raise Exception(f"Error calculating conformers - screen step failed")
+            raise Exception("Error calculating conformers - screen step failed")
         col3 = ml.Collection(name="screened", molecules=buffer2)
         assert len(buffer2) > 0
         self.conformers = col3
         failures = []
         for key, val in tracking.items():
-            if val == False:
+            if val is False:
                 failures.append(col[key])
-            elif val == True:
+            elif val is True:
                 pass
         if len(failures) > 0:
             # If molecules failed, warn the user. Put this in a log or something later. DEV
@@ -259,21 +258,21 @@ class PropheticInput:
                 if molrole == "nuc":
                     ACOL.add(mol)
                     am_str.append(mol)
-                    if na == False:
+                    if na is False:
                         na = True
                 elif molrole == "el":
                     BCOL.add(mol)
                     br_str.append(mol)
-                    if nb == False:
+                    if nb is False:
                         nb = True
-            if na == True:
+            if na is True:
                 ACOL.to_zip(
                     str(self.parser.path_to_write) + "/newtotal_nucleophile.zip"
                 )
                 ml.Collection(name="proph_am", molecules=am_str).to_zip(
                     str(self.parser.path_to_write) + "/prophetic_nucleophile.zip"
                 )
-            if nb == True:
+            if nb is True:
                 BCOL.to_zip(
                     str(self.parser.path_to_write) + "/newtotal_electrophile.zip"
                 )
@@ -289,7 +288,7 @@ class PropheticInput:
         """
         Calculate atom properties for descriptor calculation, and add to JSON files.
         """
-        if confs == True:
+        if confs is True:
             concur = ml.Concurrent(
                 self.conformers,
                 backup_dir=str(Project().scratch) + "/atomprops/",
@@ -311,7 +310,7 @@ class PropheticInput:
             #         atomprop_out[name] = confap
             #     else:
             #         failures.append(name)
-        elif confs == False:
+        elif confs is False:
             concur = ml.Concurrent(
                 self.struc,
                 backup_dir=str(Project().scratch) + "/atomprops/",
