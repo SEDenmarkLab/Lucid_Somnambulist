@@ -579,7 +579,7 @@ in somn.calculate.preprocess.preprocess_prophetic_features().")
         mask2 = (
             pd.read_csv(m2, header=0, index_col=0)["0"].values > vt
         )  # variances; should be turned into boolean
-        print("DEBUG: ",mask1.shape,mask2.shape,features.shape)
+        # print("DEBUG: ",mask1.shape,mask2.shape,features.shape)
         temp1 = mask_prophetic_features(features, mask1, scale=False)
         last = mask_prophetic_features(temp1, mask2, scale=True)
         last.transpose().reset_index(drop=True).to_feather(

@@ -715,6 +715,8 @@ def model_inference(model, X, inference_x: (np.array)):
 def save_model(model: Sequential):
     """
     Take trained model and save it and its weights
+
+    Depreciated - now use .keras file
     """
     model_json = model.to_json()
     os.mkdirs("json_out/", exist_ok=True)
@@ -744,7 +746,7 @@ def check_for_completed(drive: tfDriver):
     Check if restarting a job. If so, proceed to the point where the last job left off.
     """
     out_dir_path = drive.model_out_path
-    models = glob(f"{out_dir_path}*hpset*.h5")
+    models = glob(f"{out_dir_path}*hpset*.keras")
     names = list(set([k.split("out/")[1].split("hpset")[0] for k in models]))
     completed = [
         str(f) for f in drive.organizer.partIDs if str(f) in names
@@ -970,9 +972,8 @@ the utility function somn.calculate.preprocess.prep_mc_labels"
                     "Must pass model type to hypermodel search function as regression or classification"
                 )
             hypermodel.save(
-                out_dir_path + name_ + "hpset" + str(i) + "_" + get_hps(hps) + ".h5",
+                out_dir_path + name_ + "hpset" + str(i) + "_" + get_hps(hps) + ".keras",
                 overwrite=False,
-                save_format="h5",
             )
             #### Not tested yet - for later development ####
             # if (

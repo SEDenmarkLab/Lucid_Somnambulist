@@ -140,7 +140,7 @@ should be False under normal circumstances, and True for specific development ap
     # prophetic_organizer.models = sorted(
     #     list(glob(f"{project.output}/{model_experiment}/out/*.h5"))
     # )
-    all_models = sorted(list(glob(f"{project.output}/{model_experiment}/out/*.h5")))
+    all_models = sorted(list(glob(f"{project.output}/{model_experiment}/out/*.keras")))
     prophetic_driver = tfDriver(
         organizer=prophetic_organizer, prophetic_models=all_models
     )
