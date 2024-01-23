@@ -18,7 +18,22 @@ from somn.workflows.partition import (
     fetch_precalc_sub_desc,
     get_precalc_sub_desc,
 )
+from pathlib import Path
 
+def write_preds_to_buffer(project: Project,raw_predictions,prediction_index,prediction_experiment):
+    """
+    dump predictions to output buffer in case job fails partway through
+    """
+# pd.Series(predictions.ravel(), index=pred_idx)
+    write_path = f"{project.scratch}/{prediction_experiment}_prediction_buffer.csv"
+    if Path(write_path).exists():
+        buffer = pd.read_csv(write_path,header=None)
+        update = pd.Series(data=raw_predictions.ravel(),index=prediction_index)
+        updated_buffer = pd.concat((buffer,update),axis=0)
+        updated_buffer.to_csv(write_path,header=None)
+    else:
+        buffer = pd.Series(data=raw_predictions.ravel(),index=prediction_index)
+        buffer.to_csv(write_path,header=None)
 
 def hypermodel_inference(
     project: Project,
@@ -86,6 +101,9 @@ def hypermodel_inference(
         total_requests, requested_pairs = prep_requests()
     elif all_predictions == True:
         requested_pairs = _generate_full_space()
+        ##DEV##
+        # requested_pairs= ['4_22','13_13','1_20','6_28']
+        ##DEV##
         total_requests=None
     else:
         raise Exception("Function hypermodel_inference received an invalid argument for the all_predictions keyword. This \
@@ -122,20 +140,20 @@ should be False under normal circumstances, and True for specific development ap
         assert pathlib.Path(prophetic_fp).exists()
     except:
         raise Exception(
-            f"Warning, the filepath {prophetic_fp} is not real - something went wrong with \
-                        generation of the prophetic feature array. Check project directory for \
-                        {project.unique}"
+f"The filepath {prophetic_fp} is not real - something went wrong with \
+generation of the prophetic feature array. Check project directory for \
+{project.unique}"
         )
     ### Raw feature arrays are assembled. Now, partition-specific preprocessing is needed.
     from somn.calculate.preprocess import preprocess_prophetic_features
-
+    print("""Assembling features for requested predictions.""")
     prophetic_organizer = preprocess_prophetic_features(
         project=project,
         features=prophetic_raw.transpose(),
         prediction_experiment=prediction_experiment,
         vt=vt,
     )
-
+    print("""Features for predictions have been processed...getting predictions now.""")
     # model_info = [prophetic_organizer.get_partition_info(m)[0] for m in all_models]
     # prophetic_organizer.models = sorted(
     #     list(glob(f"{project.output}/{model_experiment}/out/*.h5"))
@@ -156,14 +174,15 @@ should be False under normal circumstances, and True for specific development ap
     ### Iterate over tuple of models (multiple hyperparameter sets can be handled per partition), and
     ### concatenate predictions for those with the predictions from multiple models from the next partition
     ### (and so on).
-    for i, (model_, feat_) in enumerate(
+    import gc
+    for i, (model_set, feat_set) in enumerate(
         zip(prophetic_driver.models, prophetic_organizer.prophetic_features)
     ):
         # print(
         #     f"DEVELOPMENT - working on partition {i}\nmodel_ is {model_}\ndriver model is {prophetic_driver.curr_models}"
         # )
-        assert model_ == prophetic_driver.curr_models
-        assert feat_ == prophetic_driver.curr_prophetic
+        assert model_set == prophetic_driver.curr_models
+        assert feat_set == prophetic_driver.curr_prophetic
         from tensorflow import keras
         from keras.models import Model
 
@@ -181,7 +200,17 @@ should be False under normal circumstances, and True for specific development ap
             predictions = model.predict(feat.values)
             # print("DEV", predictions.shape)
             output_buffer.append(pd.Series(predictions.ravel(), index=pred_idx))
-        prophetic_driver.get_next_part()
+            write_preds_to_buffer(project,predictions,pred_idx,prediction_experiment)
+        del models,feat,predictions,
+        gc.collect()
+        check_done = prophetic_driver.get_next_part()
+        tf.keras.backend.clear_session()
+        if check_done == 0:
+            break
+        elif check_done == None:
+            pass
+        else:
+            raise Exception("Error with prophetic driver instance - check that partitions and models in project passed to hypermodel_inference are complete")
     # print("DEVELOPMENT - final output buffer", output_buffer)
     # print("DEVELOPMENT - first output buffer", output_buffer[0], output_buffer[0].shape)
     concat = pd.concat(output_buffer, axis=1)
@@ -208,8 +237,8 @@ def prep_requests():
     df = pd.read_csv(files[0], header=0, index_col=None)
     if len(df.columns) < 2:
         raise Exception(
-            "Must pass SMILES and role for each reactant! Request input file (in gproject.scratch)\
-                        Shoult have format (col0):SMILES,(col1):role (nuc or el),(col2, optional):mol_name"
+"Must pass SMILES and role for each reactant! Request input file (in gproject.scratch)\
+Shoult have format (col0):SMILES,(col1):role (nuc or el),(col2, optional):mol_name"
         )
     tot = []
     for i, file in enumerate(files):
@@ -217,8 +246,8 @@ def prep_requests():
             df = pd.read_csv(files[0], header=0, index_col=None)
             if len(df.columns) < 2:
                 raise Exception(
-                    "Must pass SMILES and role for each reactant! Request input file (in gproject.scratch)\
-                                Shoult have format (col0):SMILES,(col1):role (nuc or el),(col2, optional):mol_name"
+"Must pass SMILES and role for each reactant! Request input file (in gproject.scratch)\
+Shoult have format (col0):SMILES,(col1):role (nuc or el),(col2, optional):mol_name"
                 )
         tot.append(df)
     total_requests = pd.concat(tot, axis=0)

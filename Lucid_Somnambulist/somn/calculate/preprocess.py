@@ -601,7 +601,7 @@ def mask_prophetic_features(features: pd.DataFrame, mask: np.ndarray, scale=True
     NOTE: columns are features
     """
     assert isinstance(features, pd.DataFrame)
-    print("DEBUG",len(mask), features.shape[1])
+    # print("DEBUG",len(mask), features.shape[1])
     assert len(mask) == features.shape[1]
 
     ### Mask features

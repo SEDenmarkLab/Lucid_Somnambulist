@@ -208,7 +208,7 @@ class tfDriver:
             curr_idx = 0
         elif self.organizer.log[-1] == self.organizer.partIDs[-1]:
             ## Condition is done; no more partitions, but this will prevent failure
-            return None
+            return 0
         else:
             current = self.organizer.log[
                 -1
@@ -228,9 +228,13 @@ class tfDriver:
             if (
                 self.organizer.inference is True
             ):  # When making predictions, iterate on models and preprocessed prophetic features
-                self.curr_models = self.models[curr_idx]
-                self.curr_prophetic = self.prophetic[curr_idx]
-
+                try:
+                    self.curr_models = self.models[curr_idx]
+                    self.curr_prophetic = self.prophetic[curr_idx]
+                except IndexError:
+                    from warnings import warn
+                    warn("Looks like prediction workflow ran out of pre-trained models before exhausting all partitions. Stopping now.")
+                    return 0 #Do not have models for ALL of the partitions; the earlier check can fail.
         print("Getting next partition", "\n\n", self.organizer.log[-1], new_current)
         # return new_current,current_number ### vestigial - no longer used
 
@@ -243,7 +247,7 @@ class tfDriver:
     #         out.append(np_mask)
     #     return tuple(out)
     ### Depreciated
-    def load_prophetic_hypermodels_and_x(self) -> (tf.keras.models.Model, pd.DataFrame):
+    def load_prophetic_hypermodels_and_x(self) -> ([tf.keras.models.Model], [pd.DataFrame]):
         """
         Load current model and prophetic features
 
