@@ -208,7 +208,7 @@ class tfDriver:
             curr_idx = 0
         elif self.organizer.log[-1] == self.organizer.partIDs[-1]:
             ## Condition is done; no more partitions, but this will prevent failure
-            return None
+            return 0
         else:
             current = self.organizer.log[
                 -1
@@ -228,9 +228,13 @@ class tfDriver:
             if (
                 self.organizer.inference is True
             ):  # When making predictions, iterate on models and preprocessed prophetic features
-                self.curr_models = self.models[curr_idx]
-                self.curr_prophetic = self.prophetic[curr_idx]
-
+                try:
+                    self.curr_models = self.models[curr_idx]
+                    self.curr_prophetic = self.prophetic[curr_idx]
+                except IndexError:
+                    from warnings import warn
+                    warn("Looks like prediction workflow ran out of pre-trained models before exhausting all partitions. Stopping now.")
+                    return 0 #Do not have models for ALL of the partitions; the earlier check can fail.
         print("Getting next partition", "\n\n", self.organizer.log[-1], new_current)
         # return new_current,current_number ### vestigial - no longer used
 
@@ -243,7 +247,7 @@ class tfDriver:
     #         out.append(np_mask)
     #     return tuple(out)
     ### Depreciated
-    def load_prophetic_hypermodels_and_x(self) -> (tf.keras.models.Model, pd.DataFrame):
+    def load_prophetic_hypermodels_and_x(self) -> ([tf.keras.models.Model], [pd.DataFrame]):
         """
         Load current model and prophetic features
 
@@ -715,6 +719,8 @@ def model_inference(model, X, inference_x: (np.array)):
 def save_model(model: Sequential):
     """
     Take trained model and save it and its weights
+
+    Depreciated - now use .keras file
     """
     model_json = model.to_json()
     os.mkdirs("json_out/", exist_ok=True)
@@ -744,7 +750,7 @@ def check_for_completed(drive: tfDriver):
     Check if restarting a job. If so, proceed to the point where the last job left off.
     """
     out_dir_path = drive.model_out_path
-    models = glob(f"{out_dir_path}*hpset*.h5")
+    models = glob(f"{out_dir_path}*hpset*.keras")
     names = list(set([k.split("out/")[1].split("hpset")[0] for k in models]))
     completed = [
         str(f) for f in drive.organizer.partIDs if str(f) in names
@@ -970,9 +976,8 @@ the utility function somn.calculate.preprocess.prep_mc_labels"
                     "Must pass model type to hypermodel search function as regression or classification"
                 )
             hypermodel.save(
-                out_dir_path + name_ + "hpset" + str(i) + "_" + get_hps(hps) + ".h5",
+                out_dir_path + name_ + "hpset" + str(i) + "_" + get_hps(hps) + ".keras",
                 overwrite=False,
-                save_format="h5",
             )
             #### Not tested yet - for later development ####
             # if (

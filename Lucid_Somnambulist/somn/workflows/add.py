@@ -86,7 +86,7 @@ def add_workflow(project: Project, prediction_experiment: str, parser_args=None)
         try:
             pre, smiles_d = parse.get_mol_from_smiles(args.fmt[1])
         except:
-            raise Warning(
+            raise Exception(
                 "Something went wrong with openbabel smiles parsing - check input/output"
             )
         collection, err = parse.preopt_geom(pre)

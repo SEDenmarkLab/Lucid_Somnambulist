@@ -15,46 +15,6 @@ from matplotlib.colors import ListedColormap
 import os
 
 
-#### Depreciated
-# def plot_results(outdir: str, expkey: str, train: (np.array), test: (np.array)):
-#     """
-#     Plot model predicted vs observed as an image.
-#     """
-#     observed, predicted = test
-#     # print(observed,predicted)
-#     traino, trainp = train
-#     fig = plt.figure()
-#     ax1 = fig.add_subplot(1, 2, 1)
-#     ax1.set_aspect(1)
-#     plt.xlim([0, 100])
-#     plt.ylim([0, 100])
-#     plt.plot(traino, trainp, "ko")
-#     plt.title("Train")
-#     plt.ylabel("Predicted")
-#     plt.xlabel("Observed")
-#     plt.text(90, 3, str(mean_absolute_error(traino, trainp)))
-#     k, b, r, p, _ = linregress(traino, trainp)
-#     plt.plot([0, 100], [0 * k + b, 100 * k + b], alpha=0.65)
-#     plt.text(
-#         75.0, 7.0, f"$ R^2 = {r**2:0.4f} $ \n $ k = {k:0.3f} $ \n $ p = {p:1.3e} $"
-#     )
-#     ax2 = fig.add_subplot(1, 2, 2)
-#     ax2.set_aspect(1)
-#     plt.xlim([0, 100])
-#     plt.ylim([0, 100])
-#     plt.plot(observed, predicted, "rp")
-#     plt.title("Test")
-#     plt.xlabel("Observed")
-#     plt.ylabel("Predicted")
-#     plt.text(90, 3, str(mean_absolute_error(observed, predicted)))
-#     k, b, r, p, _ = linregress(observed, predicted)
-#     plt.plot([0, 100], [0 * k + b, 100 * k + b], alpha=0.60)
-#     plt.text(
-#         75.0, 7.0, f"$ R^2 = {r**2:0.4f} $ \n $ k = {k:0.3f} $ \n $ p = {p:1.3e} $"
-#     )
-#     plt.savefig(outdir + expkey + ".png")
-#     return k,b,r**2
-#### Depreciated
 
 
 def plot_results(
@@ -96,7 +56,7 @@ def plot_results(
         robust=True,
     )
     g.set(xlim=(-5, 110), ylim=(-5, 110))
-    print(g.axes)
+    # print(g.axes)
     for ax in g.axes.flatten():
         ax.set_xticks([0, 20, 40, 60, 80, 100])
         ax.set_yticks([20, 40, 60, 80, 100])
@@ -129,8 +89,8 @@ def get_cond_label(x_: int, pos):
 
 def get_cat_label(x_, pos):
     # print(x_,pos)
-    if type(pos) == None:
-        print("error")
+    # if type(pos) == None:
+        # print("error")
     y_ = np.arange(1, 22)
     y_ = np.delete(y_, 14)
     y_ = y_.tolist()
@@ -488,11 +448,3 @@ def plot_preds(query="", prediction_experiment="", requestor=""):
             )
 
 
-if __name__ == "__main__":
-    ######## DEV ONLY ############
-    project = Project.reload(how="cc3d1f3a3d9211eebdbe18c04d0a4970")
-    # for t in ["heatmap", "violin", "3d"]:
-    #     visualize_predictions(
-    #         "dioxazinane_testBr01", "testing_pred01", plot_value="average", plot_type=t
-    #     )
-    plot_preds(query="all", prediction_experiment="testing_pred01", requestor="carrie")

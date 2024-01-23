@@ -345,9 +345,9 @@ def platewise_splits(
             temp, int(np.rint(len(temp) / val_split))
         )  # handles sampled randomly from train&val list of handles (temp)
         tr_h = [f for f in temp if f not in va_h]
-        print(
-            "check :", [f for f in tr_h if f in va_h or f in te_h]
-        )  # data leakage test
+        # print(
+        #     "check :", [f for f in tr_h if f in va_h or f in te_h]
+        # )  # data leakage test
         mask_list = [tr_h, va_h, te_h]
         if save_mask == False:
             out = tuple([data_df.loc[msk, :] for msk in mask_list])
@@ -579,6 +579,7 @@ in somn.calculate.preprocess.preprocess_prophetic_features().")
         mask2 = (
             pd.read_csv(m2, header=0, index_col=0)["0"].values > vt
         )  # variances; should be turned into boolean
+        # print("DEBUG: ",mask1.shape,mask2.shape,features.shape)
         temp1 = mask_prophetic_features(features, mask1, scale=False)
         last = mask_prophetic_features(temp1, mask2, scale=True)
         last.transpose().reset_index(drop=True).to_feather(
@@ -782,5 +783,5 @@ def preprocess_maxdiff(input: pd.DataFrame, concat_grid_desc=True, threshold=0.8
         output = _maxdiff_then_scale(feat_copy, threshold=threshold)
     elif concat_grid_desc == False:
         output = diff_then_scale(feat_copy, threshold=threshold)
-    print("Maxdiff output: ", output.shape)
+    # print("Maxdiff output: ", output.shape)
     return output

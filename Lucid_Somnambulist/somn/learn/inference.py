@@ -18,7 +18,22 @@ from somn.workflows.partition import (
     fetch_precalc_sub_desc,
     get_precalc_sub_desc,
 )
+from pathlib import Path
 
+def write_preds_to_buffer(project: Project,raw_predictions,prediction_index,prediction_experiment):
+    """
+    dump predictions to output buffer in case job fails partway through
+    """
+# pd.Series(predictions.ravel(), index=pred_idx)
+    write_path = f"{project.scratch}/{prediction_experiment}_prediction_buffer.csv"
+    if Path(write_path).exists():
+        buffer = pd.read_csv(write_path,header=None)
+        update = pd.Series(data=raw_predictions.ravel(),index=prediction_index)
+        updated_buffer = pd.concat((buffer,update),axis=0)
+        updated_buffer.to_csv(write_path,header=None)
+    else:
+        buffer = pd.Series(data=raw_predictions.ravel(),index=prediction_index)
+        buffer.to_csv(write_path,header=None)
 
 def hypermodel_inference(
     project: Project,
@@ -28,7 +43,7 @@ def hypermodel_inference(
     optional_load="maxdiff_catalyst",
     substrate_pre=("corr", 0.90),
     vt=0,
-    # real=True,
+    all_predictions=False
 ):
     """
     project must contain (1) partitions, and (2) pre-trained hypermodels.
@@ -81,24 +96,43 @@ def hypermodel_inference(
     # else:
     #     real, rand = sub_desc
     output_buffer = []
-
     from somn.workflows.calculate import main as calc_sub
-
-    sub_masks = load_substrate_masks()
-    total_requests, requested_pairs = prep_requests()
+    if all_predictions == False:
+        total_requests, requested_pairs = prep_requests()
+    elif all_predictions == True:
+        requested_pairs = _generate_full_space()
+        ##DEV##
+        # requested_pairs= ['4_22','13_13','1_20','6_28']
+        ##DEV##
+        total_requests=None
+    else:
+        raise Exception("Function hypermodel_inference received an invalid argument for the all_predictions keyword. This \
+should be False under normal circumstances, and True for specific development applications (i.e. getting all possible predictions)")
     real, rand = calc_sub(
         project, substrate_pre=substrate_pre, optional_load=optional_load
     )
     pred_str = ",".join(requested_pairs)
+    sub_masks = load_substrate_masks()
     ### Building prophetic feature array with matching substrate and other preprocessing
-    prophetic_raw = assemble_desc_for_inference_mols(
-        project=project,
-        requests=f"{project.scratch}/all_requests.csv",
-        sub_masks=sub_masks,
-        desc=real,
-        prediction_experiment=prediction_experiment,
-        pred_str=pred_str,
-    )
+    if all_predictions == False:
+        prophetic_raw = assemble_desc_for_inference_mols(
+            project=project,
+            requests=f"{project.scratch}/all_requests.csv",
+            sub_masks=sub_masks,
+            desc=real,
+            prediction_experiment=prediction_experiment,
+            pred_str=pred_str,
+        )
+    elif all_predictions == True:
+        prophetic_raw = assemble_descriptors_from_handles(pred_str,
+                                                          desc=real,
+                                                          sub_mask=sub_masks)
+        prophetic_raw.reset_index(drop=True).to_feather(
+            f"{project.descriptors}/prophetic_{prediction_experiment}.feather"
+        )
+    else:
+        raise Exception("Function hypermodel_inference received an invalid argument for the all_predictions keyword. This \
+should be False under normal circumstances, and True for specific development applications (i.e. getting all possible predictions)")
     prophetic_fp = f"{project.descriptors}/prophetic_{prediction_experiment}.feather"
     try:
         import pathlib
@@ -106,25 +140,25 @@ def hypermodel_inference(
         assert pathlib.Path(prophetic_fp).exists()
     except:
         raise Exception(
-            f"Warning, the filepath {prophetic_fp} is not real - something went wrong with \
-                        generation of the prophetic feature array. Check project directory for \
-                        {project.unique}"
+f"The filepath {prophetic_fp} is not real - something went wrong with \
+generation of the prophetic feature array. Check project directory for \
+{project.unique}"
         )
     ### Raw feature arrays are assembled. Now, partition-specific preprocessing is needed.
     from somn.calculate.preprocess import preprocess_prophetic_features
-
+    print("""Assembling features for requested predictions.""")
     prophetic_organizer = preprocess_prophetic_features(
         project=project,
         features=prophetic_raw.transpose(),
         prediction_experiment=prediction_experiment,
         vt=vt,
     )
-
+    print("""Features for predictions have been processed...getting predictions now.""")
     # model_info = [prophetic_organizer.get_partition_info(m)[0] for m in all_models]
     # prophetic_organizer.models = sorted(
     #     list(glob(f"{project.output}/{model_experiment}/out/*.h5"))
     # )
-    all_models = sorted(list(glob(f"{project.output}/{model_experiment}/out/*.h5")))
+    all_models = sorted(list(glob(f"{project.output}/{model_experiment}/out/*.keras")))
     prophetic_driver = tfDriver(
         organizer=prophetic_organizer, prophetic_models=all_models
     )
@@ -140,14 +174,15 @@ def hypermodel_inference(
     ### Iterate over tuple of models (multiple hyperparameter sets can be handled per partition), and
     ### concatenate predictions for those with the predictions from multiple models from the next partition
     ### (and so on).
-    for i, (model_, feat_) in enumerate(
+    import gc
+    for i, (model_set, feat_set) in enumerate(
         zip(prophetic_driver.models, prophetic_organizer.prophetic_features)
     ):
         # print(
         #     f"DEVELOPMENT - working on partition {i}\nmodel_ is {model_}\ndriver model is {prophetic_driver.curr_models}"
         # )
-        assert model_ == prophetic_driver.curr_models
-        assert feat_ == prophetic_driver.curr_prophetic
+        assert model_set == prophetic_driver.curr_models
+        assert feat_set == prophetic_driver.curr_prophetic
         from tensorflow import keras
         from keras.models import Model
 
@@ -165,7 +200,17 @@ def hypermodel_inference(
             predictions = model.predict(feat.values)
             # print("DEV", predictions.shape)
             output_buffer.append(pd.Series(predictions.ravel(), index=pred_idx))
-        prophetic_driver.get_next_part()
+            write_preds_to_buffer(project,predictions,pred_idx,prediction_experiment)
+        del models,feat,predictions,
+        gc.collect()
+        check_done = prophetic_driver.get_next_part()
+        tf.keras.backend.clear_session()
+        if check_done == 0:
+            break
+        elif check_done == None:
+            pass
+        else:
+            raise Exception("Error with prophetic driver instance - check that partitions and models in project passed to hypermodel_inference are complete")
     # print("DEVELOPMENT - final output buffer", output_buffer)
     # print("DEVELOPMENT - first output buffer", output_buffer[0], output_buffer[0].shape)
     concat = pd.concat(output_buffer, axis=1)
@@ -192,8 +237,8 @@ def prep_requests():
     df = pd.read_csv(files[0], header=0, index_col=None)
     if len(df.columns) < 2:
         raise Exception(
-            "Must pass SMILES and role for each reactant! Request input file (in gproject.scratch)\
-                        Shoult have format (col0):SMILES,(col1):role (nuc or el),(col2, optional):mol_name"
+"Must pass SMILES and role for each reactant! Request input file (in gproject.scratch)\
+Shoult have format (col0):SMILES,(col1):role (nuc or el),(col2, optional):mol_name"
         )
     tot = []
     for i, file in enumerate(files):
@@ -201,8 +246,8 @@ def prep_requests():
             df = pd.read_csv(files[0], header=0, index_col=None)
             if len(df.columns) < 2:
                 raise Exception(
-                    "Must pass SMILES and role for each reactant! Request input file (in gproject.scratch)\
-                                Shoult have format (col0):SMILES,(col1):role (nuc or el),(col2, optional):mol_name"
+"Must pass SMILES and role for each reactant! Request input file (in gproject.scratch)\
+Shoult have format (col0):SMILES,(col1):role (nuc or el),(col2, optional):mol_name"
                 )
         tot.append(df)
     total_requests = pd.concat(tot, axis=0)
@@ -244,10 +289,23 @@ def prep_requests():
         pair = f"{data[3]}_{data[4]}"
         req_pairs.append(pair)
     # print(",".join(req_pairs))
-    print(total_requests)
+    # print(total_requests)
 
     return total_requests, req_pairs
 
+def _generate_full_space():
+    """
+    For testing purposes - create all combinations of each reactant and generate descriptors to make predictions for
+    the whole space.
+
+    FOR DEV PURPOSES/TESTING ONLY
+    """
+    from itertools import product
+    import numpy as np
+    from somn.data import load_reactant_smiles
+    known_amines,known_bromides = load_reactant_smiles()
+    combinations = [f"{f[0]}_{f[1]}" for f in product(known_amines.keys(),known_bromides.keys())]
+    return combinations
 
 def assemble_desc_for_inference_mols(
     project: Project,
@@ -288,25 +346,25 @@ This may cause an error if new molecules are requested now which were not calcul
     #         "Something went wrong with calculating substrate descriptors for new molecules - check inputs"
     #     )
     ### Now we're ready to calculate RDF features
-    from somn.workflows.calculate import calculate_prophetic
+    from somn.calculate.substrate import calculate_prophetic
     import molli as ml
     import json
 
     prophetic_amine_col = ml.Collection.from_zip(
-        f"{project.structures}/{prediction_experiment}/prophetic_amines.zip"
+        f"{project.structures}/{prediction_experiment}/prophetic_nucleophile.zip"
     )
     prophetic_bromide_col = ml.Collection.from_zip(
-        f"{project.structures}/{prediction_experiment}/prophetic_bromides.zip"
+        f"{project.structures}/{prediction_experiment}/prophetic_electrophile.zip"
     )
     p_ap = json.load(
         open(f"{project.structures}/{prediction_experiment}/newmol_ap_buffer.json")
     )
 
     p_a_desc = calculate_prophetic(
-        inc=0.75, geometries=prophetic_amine_col, atomproperties=p_ap, react_type="am"
+        inc=0.75, geometries=prophetic_amine_col, atomproperties=p_ap, react_type="N"
     )
     p_b_desc = calculate_prophetic(
-        inc=0.75, geometries=prophetic_bromide_col, atomproperties=p_ap, react_type="br"
+        inc=0.75, geometries=prophetic_bromide_col, atomproperties=p_ap, react_type="Br"
     )
     ### Now we're ready to assemble features
     am, br, ca, so, ba = desc
@@ -323,113 +381,3 @@ This may cause an error if new molecules are requested now which were not calcul
     )
     # from somn.calculate.preprocess import new_mask_random_feature_arrays
     return prophetic_features
-
-
-if __name__ == "__main__":
-    project = Project.reload(how="cc3d1f3a3d9211eebdbe18c04d0a4970")
-
-    ####################### DEV PREDICTIONS #################################
-    import shutil
-
-    try:
-        shutil.rmtree(f"{project.structures}/testing_pred01/")
-        shutil.rmtree(f"{project.partitions}/prophetic_testing_pred01/")
-    except:
-        pass
-    # raise Exception("DEBUG")
-    ###########
-
-    raw_predictions, requests = hypermodel_inference(
-        project=project,
-        model_experiment="testing_search04",
-        prediction_experiment="testing_pred01",
-    )
-    import pickle
-
-    with open("DEVOPS_PKL_PRED.p", "wb") as g:
-        pickle.dump((raw_predictions, requests), g)
-    ####################### DEV PREDICTION VISUALIZATION ###################################
-    # import pickle
-
-    # with open("DEVOPS_PKL_PRED.p", "wb") as g:
-    #     output = pickle.load(g)
-
-
-# ##################################################################################
-
-# # Developing a quick function to sort different hypermodels by their partition
-
-
-#     model_experiment = "testing_search04"
-#     prediction_experiment = "testing_pred01"
-
-#     k = tf_organizer(name="dev")
-#     all_models = sorted(list(glob(f"{project.output}/{model_experiment}/out/*.h5")))
-#     model_info = [k.get_partition_info(m)[0].split("hpset")[0] for m in all_models]
-
-#     def sort_models(all_models, organ: tf_organizer):
-#         model_info = [
-#             organ.get_partition_info(m)[0].split("hpset")[0] for m in all_models
-#         ]
-#         from collections import OrderedDict
-
-#         output = []
-#         sort = OrderedDict()
-#         for id, pa in zip(model_info, all_models):
-#             if id in sort.keys():
-#                 sort[id].append(pa)
-#             else:
-#                 sort[id] = [pa]
-#         for id_, paths in sort.items():
-#             output.append(tuple(paths))
-#         return output
-
-#     test = sort_models(all_models, k)
-#     print(test)
-# ##################################################################################
-# tot, requested_pairs = prep_requests()
-
-# # raise Exception("DEBUG")
-
-# organ = tf_organizer(
-#     name="testing", partition_dir=f"{project.partitions}/real", inference=True
-# )
-# masks = load_substrate_masks()
-
-# # (
-# #     amines,
-# #     bromides,
-# #     dataset,
-# #     handles,
-# #     unique_couplings,
-# #     a_prop,
-# #     br_prop,
-# #     base_desc,
-# #     solv_desc,
-# #     cat_desc,
-# # ) = load_data(optional_load="maxdiff_catalyst")
-# # print(type(cat_desc))
-# # sub_desc = get_precalc_sub_desc()
-# # if sub_desc == False:  # Need to calculate
-# #     raise Exception(
-# #         "Tried to load descriptors for inference, but could not locate pre-calcualted descriptors. This could lead to problems with predictions; check input project."
-# #     )
-# # else:
-# #     sub_am_dict, sub_br_dict, rand = sub_desc
-# ### Make sure we calculate with the same preprocessing (maxdiff and correlated features)
-# from somn.workflows.firstgen_calc_sub import main as calc_sub
-
-# real, rand = calc_sub(
-#     project, substrate_pre=("corr", 0.90), optional_load="maxdiff_catalyst"
-# )
-# pred_str = ",".join(requested_pairs)
-# assemble_desc_for_inference_mols(
-#     project=project,
-#     requests=f"{project.scratch}/all_requests.csv",
-#     # organizer=organ,
-#     sub_masks=masks,
-#     desc=real,
-#     prediction_experiment="testing-03",
-#     pred_str=pred_str,
-# )
-############################# DEV END ############################################

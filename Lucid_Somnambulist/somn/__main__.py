@@ -1,12 +1,14 @@
 ##Something
 from sys import argv
 from argparse import ArgumentParser
+import somn
 
 use_msg = """
 Welcome to the somn command-line interface. 
 
 [NORMAL USE] To make predictions from pre-trained models, use:
 predict [project ID with pre-trained models] [model set ID of specific pre-trained models]  [new prediction ID]
+
 
 [POWER USER USE] To retrain models, two steps are required: generating a particular set of partitions, then optimizing hyperparameters
 partition-wise. These are separated so that custom preprocessing or features can be incorporated at the partition step,
@@ -17,7 +19,7 @@ To create new partitions, use:
 partition [project ID, new or old project with no partitions] 
 
 To train a new model set on partitions, use:
-learn [project ID with partitions] [new ID for model set]
+learn [project ID with partitions] [new ID for model set] > learn[identifier, e.g. '001'].log 2>&1 & disown 
 """
 
 
@@ -117,7 +119,7 @@ def _generate_partitions(args):
     sub_desc = get_precalc_sub_desc()
     if sub_desc == False:  # Need to calculate
         real, rand = calc_sub(
-            project, optional_load="maxdiff_catalyst", substrate_pre=("corr", 0.95)
+            project, optional_load="maxdiff_catalyst", substrate_pre=("corr", 0.90)
         )
         sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
     else:  # Already calculated descriptors, just fetching them
@@ -176,27 +178,27 @@ def _calculate_descriptors(args):
             nprocs = 2
         else:
             raise Exception("Looks like the improper number of arguments was passed to the calculate operation. \
-                            Please check your arguments: somn calculate [path_to_csv] [optional: concurrent jobs] \
-                            [optional: nprocs per job]")
+Please check your arguments: somn calculate [path_to_csv] [optional: concurrent jobs] \
+[optional: nprocs per job]")
         calculate_substrate_descriptors(requests,concurrent=concurrent,nprocs=nprocs)
     except:
         raise Exception(
             f"Check input to descriptor calculation request - it seems something went wrong. Some suggestions: \
-            Check command arguments: Pass a file path to requested molecules, then the number of concurrent \
-            calculations to run, followed by the number of processors that can be spared for each concurrent job. \
-            Check the input file: should contain 3 columns, with each row corresponding to a molecule, and containing \
-            a unique name, a SMILES string, and the type of reactant ('N', 'Br', or 'Cl'). Filepath passed was :\
-            {opts[0]}."
+Check command arguments: Pass a file path to requested molecules, then the number of concurrent \
+calculations to run, followed by the number of processors that can be spared for each concurrent job. \
+Check the input file: should contain 3 columns, with each row corresponding to a molecule, and containing \
+a unique name, a SMILES string, and the type of reactant ('N', 'Br', or 'Cl'). Filepath passed was :\
+{opts[0]}."
         )
 
-def _add_parse_options(args):
+def _add_(args):
     """
     parse options
     """
     ...
 
 
-def _visualize_parse_options(args):
+def _visualize_(args):
     """
     parse options
     """
@@ -222,13 +224,7 @@ splash = f"""
          /\__, `\/\ \L\ \/\ \/\ \/\ \/\ \/\ \  
          \/\____/\ \____/\ \_\ \_\ \_\ \_\ \_\ 
           \/___/  \/___/  \/_/\/_/\/_/\/_/\/_/ 
-
-
-               ___  ___  _ __ ___  _ __   
-              / __|/ _ \| '_ ` _ \| '_ \  
-              \__ \ (_) | | | | | | | | | 
-              |___/\___/|_| |_| |_|_| |_| 
-                                               
+  
 
          (C) 2023 by N. Ian Rinehart, Ph.D. in the 
          laboratories of Prof. Scott E. Denmark at
@@ -248,8 +244,9 @@ def main():
             "predict",
             "partition",
             "learn",
-            "add",
             "calculate",
+            "initialize",
+            "add",
             "visualize",
             "help",
         ],
@@ -297,7 +294,39 @@ Ensure that project ID is provided, or specify 'new'."
                 f"Looks like handling the 'calculate' arguments {args.options} led to an error. \
 Ensure that a valid path to reactants is provided."
             )
-
+    elif args.operation == "initialize": ## Set up somn_scratch for the first time, test install
+        ## PROJECT CLASS LOADED FOR FIRST TIME - WILL MAKE SOMN_SCRATCH DIRECTORY
+        from somn.util.project import Project
+        p = Project()
+        p.save(identifier="initialization")
+        ## Look for and load projects.JSON & pre-trained models
+        if "models" in args.options:
+            from pathlib import Path
+            import subprocess
+            import os
+            import json
+            if Path('./somn-project.tar.gz').exists():
+                assert Path('./projects.JSON').exists()
+                ## EXTRACT MODELS INTO SOMN SCRATCH DIRECTORY 
+                print("\n\nExtracting pre-trained models...\n\n")
+                subprocess.run(['tar','-xf','somn-project.tar.gz','-C','somn_scratch/'])
+                print("\n\nModels successfully extracted! Now updating package with their location...\n\n")
+                ## LOCATE INSTALL PATH FOR DATA MODULE & UPDATE projects.JSON
+                data_module_path = os.path.dirname(somn.data.__file__)
+                with open(f"./projects.JSON",'r') as k:
+                    upd = json.load(k)
+                with open(f"{data_module_path}/projects.JSON",'r') as g:
+                    proj = json.load(g)
+                proj.update(upd)
+                with open(f"{data_module_path}/projects.JSON",'w') as p:
+                    json.dump(proj,p)
+                print("somn package has been installed with pre-trained models. Please look in the somn_scratch directory \
+to find the project 'IID-Models-2023', and look in the 'scratch' subdirectory for an example prediction request input file.")
+            else:
+                import warnings
+                warnings.warn("It looks like no pre-trained models were supplied; skipping initialization step. \
+if this is an error, please check documentation and ensure that all files are in \
+the somn home directory (at the same level as the somn initialize command is run)")
     elif args.operation in ["add", "visualize"]:
         raise Exception(
             f"DEV - {args.operation} implementation through CLI is under development"

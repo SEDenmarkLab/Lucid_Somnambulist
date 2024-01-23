@@ -33,24 +33,6 @@ def main(args=None):
             "Hypermodel search failed - check output, and try restarting if necessary."
         )
 
-    # try:
-    #     raw_predictions, requests = hypermodel_search(
-    #         project=project,
-    #         model_experiment=args.mdl,
-    #         prediction_experiment=args.exp,
-    #     )
-    # except:
-    #     raise RuntimeError(
-    #         "Something went wrong with hypermodel inferences - check model experiment ID, and \
-    #                        if prediction experiment label is unique and new."
-    #     )
-    # stamp = str(date.today())
-    # plot_preds(query="all", prediction_experiment=args.exp, requestor=stamp)
-    # print(
-    #     f"Finished with predictions - please see {project.output}/{args.exp}_rawpredictions.csv \n \
-    # Processed predictions are in {project.output}/{args.exp}/{stamp}/ "
-    # )
-
 
 if __name__ == "__main__":
     project = Project.reload(how="last")

@@ -11,7 +11,7 @@ from .RDF import (
     get_orthogonal_plane,
     sort_into_halves,
     get_left_reference,
-    get_ortho_meta_symbols,
+    _get_ortho_meta_symbols,
     get_aromatic_atoms,
     get_less_substituted_ortho,
     get_less_substituted_meta,

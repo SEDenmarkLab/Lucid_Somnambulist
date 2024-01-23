@@ -89,7 +89,7 @@ def calculate_substrate_geoms_and_props(fpath,concurrent=2,nprocs=2):
     output = {}
     if len(amines_pre.molecules) > 0:
         amines,err_0 = parse.preopt_geom(amines_pre,update=60)
-        if len(err_0) > 0: raise warnings.warn("Looks like some amines did not generate 3D geometries or preoptimize correctly. Check inputs.")
+        if len(err_0) > 0: warnings.warn("Looks like some amines did not generate 3D geometries or preoptimize correctly. Check inputs.")
         amines.to_zip(parse.path_to_write+"amines_preopt_geom.zip")
         amine_input_packet = PropheticInput.from_col(amines,am_smi,["nuc" for f in am_smi],parser=parse)
         ### Calculating atom properties
@@ -106,7 +106,7 @@ def calculate_substrate_geoms_and_props(fpath,concurrent=2,nprocs=2):
     bromides_pre,_ = parse.get_mol_from_smiles(user_input = br_smi,recursive_mode=True,names=req_br)
     if len(bromides_pre.molecules) > 0:
         bromides,err_1 = parse.preopt_geom(bromides_pre,update=60)
-        if len(err_1) > 0: raise warnings.warn("Looks like some bromides did not generate 3D geometries or preoptimize correctly. Check inputs.")
+        if len(err_1) > 0: warnings.warn("Looks like some bromides did not generate 3D geometries or preoptimize correctly. Check inputs.")
         bromides.to_zip(parse.path_to_write+"bromides_preopt_geom.zip")
         bromide_input_packet = PropheticInput.from_col(bromides,br_smi,["el" for f in br_smi],parser=parse)
         ### Calculating atom properties
@@ -123,7 +123,7 @@ def calculate_substrate_geoms_and_props(fpath,concurrent=2,nprocs=2):
     chlorides_pre,_ = parse.get_mol_from_smiles(user_input = cl_smi,recursive_mode=True,names=req_cl)
     if len(chlorides_pre.molecules) > 0:
         chlorides,err_2 = parse.preopt_geom(chlorides_pre,update=60)
-        if len(err_2) > 0: raise warnings.warn("Looks like some chlorides did not generate 3D geometries or preoptimize correctly. Check inputs.")
+        if len(err_2) > 0: warnings.warn("Looks like some chlorides did not generate 3D geometries or preoptimize correctly. Check inputs.")
         chlorides.to_zip(parse.path_to_write+"chlorides_preopt_geom.zip")
         chloride_input_packet = PropheticInput.from_col(chlorides,cl_smi,["el" for f in cl_smi],parser=parse)
         ### Calculating atom properties
@@ -327,33 +327,3 @@ def main(
     return ((sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc), rand)
 
 
-# if __name__ == "__main__":
-#     # (
-#     #     (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc),
-#     #     rand,
-#     # ) #Format of output
-#     from sys import argv
-
-#     if argv[1] == "new":
-#         assert len(argv) >= 3
-#         project = Project()
-#         project.save(identifier=argv[2])
-#     else:
-#         try:
-#             project = Project.reload(how=argv[1])
-#         except:
-#             raise Exception(
-#                 "Must pass valid identifier or 'last' to load project. Can say 'new' and give an identifier"
-#             )
-
-#     desc_out = main(
-#         project, substrate_pre=("corr", 0.97), optional_load="experimental_catalyst"
-#     )
-#     ### DEBUG
-#     # import pandas as pd
-
-#     # print(desc_out[0][0]) #Visualize entries
-#     ### DEBUG
-#     pickle.dump(
-#         desc_out, open(f"{project.descriptors}/real_rand_descriptor_buffer.p", "wb")
-#     )
