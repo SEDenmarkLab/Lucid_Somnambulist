@@ -293,20 +293,20 @@ This may cause an error if new molecules are requested now which were not calcul
     import json
 
     prophetic_amine_col = ml.Collection.from_zip(
-        f"{project.structures}/{prediction_experiment}/prophetic_nucleophile.zip"
+        f"{project.structures}/{prediction_experiment}/prophetic_amines.zip"
     )
     prophetic_bromide_col = ml.Collection.from_zip(
-        f"{project.structures}/{prediction_experiment}/prophetic_electrophile.zip"
+        f"{project.structures}/{prediction_experiment}/prophetic_bromides.zip"
     )
     p_ap = json.load(
         open(f"{project.structures}/{prediction_experiment}/newmol_ap_buffer.json")
     )
 
     p_a_desc = calculate_prophetic(
-        inc=0.75, geometries=prophetic_amine_col, atomproperties=p_ap, react_type="N"
+        inc=0.75, geometries=prophetic_amine_col, atomproperties=p_ap, react_type="am"
     )
     p_b_desc = calculate_prophetic(
-        inc=0.75, geometries=prophetic_bromide_col, atomproperties=p_ap, react_type="Br"
+        inc=0.75, geometries=prophetic_bromide_col, atomproperties=p_ap, react_type="br"
     )
     ### Now we're ready to assemble features
     am, br, ca, so, ba = desc
