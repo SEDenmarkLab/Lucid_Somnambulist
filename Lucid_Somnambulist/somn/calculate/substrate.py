@@ -238,14 +238,10 @@ class PropheticInput:
             assert len(self.conformers.molecules) == 1
             if self.role == "el":
                 BCOL.add(self.conformers[0])
-                BCOL.to_zip(
-                    str(self.parser.path_to_write) + "/newtotal_electrophile.zip"
-                )
+                BCOL.to_zip(str(self.parser.path_to_write) + "/newtotal_bromide.zip")
             elif self.role == "nuc":
                 ACOL.add(self.conformers[0])
-                ACOL.to_zip(
-                    str(self.parser.path_to_write) + "/newtotal_nucleophile.zip"
-                )
+                ACOL.to_zip(str(self.parser.path_to_write) + "/newtotal_amine.zip")
         elif (
             self.state == "multi"
         ):  # Many molecules going in; should work for el or nuc
@@ -265,19 +261,15 @@ class PropheticInput:
                     br_str.append(mol)
                     if nb is False:
                         nb = True
-            if na is True:
-                ACOL.to_zip(
-                    str(self.parser.path_to_write) + "/newtotal_nucleophile.zip"
-                )
+            if na == True:
+                ACOL.to_zip(str(self.parser.path_to_write) + "/newtotal_amine.zip")
                 ml.Collection(name="proph_am", molecules=am_str).to_zip(
-                    str(self.parser.path_to_write) + "/prophetic_nucleophile.zip"
+                    str(self.parser.path_to_write) + "/prophetic_amines.zip"
                 )
-            if nb is True:
-                BCOL.to_zip(
-                    str(self.parser.path_to_write) + "/newtotal_electrophile.zip"
-                )
+            if nb == True:
+                BCOL.to_zip(str(self.parser.path_to_write) + "/newtotal_bromide.zip")
                 ml.Collection(name="proph_br", molecules=br_str).to_zip(
-                    str(self.parser.path_to_write) + "/prophetic_electrophile.zip"
+                    str(self.parser.path_to_write) + "/prophetic_bromides.zip"
                 )
         ## Save things - these are backups
         self.conformers.to_zip(str(self.parser.path_to_write) + "/newstruc_geoms.zip")
