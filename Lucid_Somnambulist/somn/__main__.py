@@ -51,7 +51,7 @@ def _train_models(args):
     try:
         learn(args=opts)
     except:
-        raise Warning(
+        Warning(
             f"Looks like {opts} in the learning workfow led to an error. Check if job trained any partitions, \
 and if it did, then try re-starting the job with the same input arguments (known memory leak in Keras backend can cause this) \
 Otherwise, check input arguments to ensure that a valid project ID was passed."
@@ -164,7 +164,8 @@ def _calculate_descriptors(args):
     from pathlib import Path
     from somn.util.project import Project
     from somn.workflows.calculate import calculate_substrate_descriptors
-    p = Project() #Local directory tree will be generated
+
+    p = Project()  # Local directory tree will be generated
     p.save()
     opts = args.options
     try:
@@ -177,10 +178,12 @@ def _calculate_descriptors(args):
             concurrent = 2
             nprocs = 2
         else:
-            raise Exception("Looks like the improper number of arguments was passed to the calculate operation. \
+            raise Exception(
+                "Looks like the improper number of arguments was passed to the calculate operation. \
 Please check your arguments: somn calculate [path_to_csv] [optional: concurrent jobs] \
-[optional: nprocs per job]")
-        calculate_substrate_descriptors(requests,concurrent=concurrent,nprocs=nprocs)
+[optional: nprocs per job]"
+            )
+        calculate_substrate_descriptors(requests, concurrent=concurrent, nprocs=nprocs)
     except:
         raise Exception(
             f"Check input to descriptor calculation request - it seems something went wrong. Some suggestions: \
@@ -190,6 +193,7 @@ Check the input file: should contain 3 columns, with each row corresponding to a
 a unique name, a SMILES string, and the type of reactant ('N', 'Br', or 'Cl'). Filepath passed was :\
 {opts[0]}."
         )
+
 
 def _add_(args):
     """
@@ -234,6 +238,7 @@ splash = f"""
         
 """
 
+
 def main():
     # print("DEV - module")
     print(splash)
@@ -264,7 +269,7 @@ def main():
         try:
             _run_predictions(args)
         except:
-            raise Warning(
+            Warning(
                 f"Looks like handling the predict workflow with the arguments: [{args.options}] failed. \
 Check that a project ID, model set ID, and a new identifier are present (in that order)."
             )
@@ -274,7 +279,7 @@ Check that a project ID, model set ID, and a new identifier are present (in that
         try:
             _train_models(args)
         except:
-            raise Warning(
+            Warning(
                 f"Looks like handling arguments for model training failed with {args.options}. \
 Ensure that a project ID and a new, unique model set ID are being passed (in that order)."
             )
@@ -282,7 +287,7 @@ Ensure that a project ID and a new, unique model set ID are being passed (in tha
         try:
             _generate_partitions(args)
         except:
-            raise Warning(
+            Warning(
                 f"Looks like handling the partition arguments {args.options} led to an error. \
 Ensure that project ID is provided, or specify 'new'."
             )
@@ -290,13 +295,16 @@ Ensure that project ID is provided, or specify 'new'."
         try:
             _calculate_descriptors(args)
         except:
-            raise Warning(
+            Warning(
                 f"Looks like handling the 'calculate' arguments {args.options} led to an error. \
 Ensure that a valid path to reactants is provided."
             )
-    elif args.operation == "initialize": ## Set up somn_scratch for the first time, test install
+    elif (
+        args.operation == "initialize"
+    ):  ## Set up somn_scratch for the first time, test install
         ## PROJECT CLASS LOADED FOR FIRST TIME - WILL MAKE SOMN_SCRATCH DIRECTORY
         from somn.util.project import Project
+
         p = Project()
         p.save(identifier="initialization")
         ## Look for and load projects.JSON & pre-trained models
@@ -305,28 +313,38 @@ Ensure that a valid path to reactants is provided."
             import subprocess
             import os
             import json
-            if Path('./somn-project.tar.gz').exists():
-                assert Path('./projects.JSON').exists()
-                ## EXTRACT MODELS INTO SOMN SCRATCH DIRECTORY 
+
+            if Path("./somn-project.tar.gz").exists():
+                assert Path("./projects.JSON").exists()
+                ## EXTRACT MODELS INTO SOMN SCRATCH DIRECTORY
                 print("\n\nExtracting pre-trained models...\n\n")
-                subprocess.run(['tar','-xf','somn-project.tar.gz','-C','somn_scratch/'])
-                print("\n\nModels successfully extracted! Now updating package with their location...\n\n")
+                subprocess.run(
+                    ["tar", "-xf", "somn-project.tar.gz", "-C", "somn_scratch/"]
+                )
+                print(
+                    "\n\nModels successfully extracted! Now updating package with their location...\n\n"
+                )
                 ## LOCATE INSTALL PATH FOR DATA MODULE & UPDATE projects.JSON
                 data_module_path = os.path.dirname(somn.data.__file__)
-                with open(f"./projects.JSON",'r') as k:
+                with open(f"./projects.JSON", "r") as k:
                     upd = json.load(k)
-                with open(f"{data_module_path}/projects.JSON",'r') as g:
+                with open(f"{data_module_path}/projects.JSON", "r") as g:
                     proj = json.load(g)
                 proj.update(upd)
-                with open(f"{data_module_path}/projects.JSON",'w') as p:
-                    json.dump(proj,p)
-                print("somn package has been installed with pre-trained models. Please look in the somn_scratch directory \
-to find the project 'IID-Models-2023', and look in the 'scratch' subdirectory for an example prediction request input file.")
+                with open(f"{data_module_path}/projects.JSON", "w") as p:
+                    json.dump(proj, p)
+                print(
+                    "somn package has been installed with pre-trained models. Please look in the somn_scratch directory \
+to find the project 'IID-Models-2023', and look in the 'scratch' subdirectory for an example prediction request input file."
+                )
             else:
                 import warnings
-                warnings.warn("It looks like no pre-trained models were supplied; skipping initialization step. \
+
+                warnings.warn(
+                    "It looks like no pre-trained models were supplied; skipping initialization step. \
 if this is an error, please check documentation and ensure that all files are in \
-the somn home directory (at the same level as the somn initialize command is run)")
+the somn home directory (at the same level as the somn initialize command is run)"
+                )
     elif args.operation in ["add", "visualize"]:
         raise Exception(
             f"DEV - {args.operation} implementation through CLI is under development"

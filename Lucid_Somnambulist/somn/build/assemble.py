@@ -344,7 +344,7 @@ def randomize_features(feat: np.ndarray):
     applied to assemble a feature array.
 
     """
-    feat_ = feat
+    # feat_ = feat
     rng = np.random.default_rng()
     feats = rng.random(out=feat)
     return feats
@@ -404,4 +404,3 @@ def load_calculated_substrate_descriptors():
     with open(br[0], "rb") as q:
         sub_br_dict = pickle.load(q)
     return ((sub_am_dict, sub_br_dict), rand)
-

@@ -544,7 +544,7 @@ def prep_mc_labels(df, zero_buffer: int = 3):
 
 
 def preprocess_prophetic_features(
-    project: Project, features, prediction_experiment="", vt=0
+    project: Project, features, model_experiment="", prediction_experiment="", vt=0
 ):
     """
     Workflow to recreate preprocessing from model training and apply it to prophetic features
@@ -559,10 +559,13 @@ def preprocess_prophetic_features(
     except:
         from pathlib import Path
         from warnings import warn
+
         assert Path(f"{project.partitions}/prophetic_{prediction_experiment}/").exists()
-        warn(f"Looks like prophetic features were already calculated for project {project.unique} and experiment {prediction_experiment}, so \
+        warn(
+            f"Looks like prophetic features were already calculated for project {project.unique} and experiment {prediction_experiment}, so \
 this calculation step will overwrite those files. If requesting many compounds, consider developing alternate instantiation of prophetic tf_organizer instance \
-in somn.calculate.preprocess.preprocess_prophetic_features().")
+in somn.calculate.preprocess.preprocess_prophetic_features()."
+        )
     organ = tf_organizer(
         name="prophetic_pre",
         partition_dir=partition_dir,
@@ -574,7 +577,14 @@ in somn.calculate.preprocess.preprocess_prophetic_features().")
     # print(IDs)
     # print(organ.masks)
     output = []
+    from glob import glob
+
+    models = glob(f"{project.output}/{model_experiment}/out/*.keras")
+    model_ids = [int(f.split("hpset")[0].split("/")[-1]) for f in models]
+    features.to_csv("TESTING_FMT.csv")
     for id, m1, m2 in zip(IDs, masks[0], masks[1]):
+        if id not in model_ids:
+            break
         mask1 = pd.read_csv(m1, header=0, index_col=0)["0"].values
         mask2 = (
             pd.read_csv(m2, header=0, index_col=0)["0"].values > vt

@@ -42,13 +42,14 @@ def main(
     For substrate masking, the boolean argument is being passed to a few functions down. The assemble_*_descriptors_from_handles function will handle it.
 
     """
-    if 'unique_couplings' in locals(): ## Running in development or a separate script, where a few variables have been created. 
+    if (
+        "unique_couplings" in locals()
+    ):  ## Running in development or a separate script, where a few variables have been created.
         pass
-    else: ## Running from CLI - wrapper stores these variables in the project instance
+    else:  ## Running from CLI - wrapper stores these variables in the project instance
         unique_couplings = project.unique_couplings
         combos = project.combos
         dataset = project.dataset
-
 
     assert bool(
         set([val_schema])
@@ -56,14 +57,16 @@ def main(
     )
     if mask_substrates == True:
         import pandas as pd
+        from somn.build.assemble import load_substrate_masks
 
-        am_mask = pd.read_csv(
-            f"{project.descriptors}/amine_mask.csv", header=0, index_col=0
-        )
-        br_mask = pd.read_csv(
-            f"{project.descriptors}/bromide_mask.csv", header=0, index_col=0
-        )
-        sub_mask = (am_mask, br_mask)
+        sub_mask = load_substrate_masks()
+        # am_mask = pd.read_csv(
+        #     f"{project.descriptors}/amine_mask.csv", header=0, index_col=0
+        # )
+        # br_mask = pd.read_csv(
+        #     f"{project.descriptors}/bromide_mask.csv", header=0, index_col=0
+        # )
+        # sub_mask = (am_mask, br_mask)
         # print("DEBUG",sub_mask[0], sub_mask[0]["0"], type(sub_mask[0]))
     else:
         sub_mask = None
@@ -136,6 +139,8 @@ def main(
             if val_schema == "random":
                 ### RANDOM SPLITS ###
                 tr, va, te = preprocess.random_splits(dataset, validation=True, fold=10)
+                if i >= 20:
+                    break
             ### OUT OF SAMPLE TEST, IN SAMPLE VAL ###
             # am_f,br_f,both,outsamp_handles = split_outsamp_reacts(data_df,amines=[44,38,32],bromides=[13],separate=True)
             elif val_schema == "to_vi" or val_schema == "vi_to":
