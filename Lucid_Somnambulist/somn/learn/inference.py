@@ -46,7 +46,7 @@ def hypermodel_inference(
     prediction_experiment="",
     optional_load="maxdiff_catalyst",
     substrate_pre=("corr", 0.90),
-    vt=0,
+    vt=None,
     all_predictions=False,
 ):
     """
@@ -278,8 +278,8 @@ Shoult have format (col0):SMILES,(col1):role (nuc or el),(col2, optional):mol_na
 
     known_amines, known_bromides = load_reactant_smiles()
     for k, h in zip((known_amines, known_bromides), ("nuc_name", "el_name")):
-        name_check = (
-            lambda x: x if x not in k.keys() else "pr-" + x
+        name_check = lambda x: (
+            x if x not in k.keys() else "pr-" + x
         )  # Define explicit check if compound is known
         p = [
             f.replace("_", "-") for f in total_requests[h]

@@ -269,7 +269,7 @@ def main():
         try:
             _run_predictions(args)
         except:
-            Warning(
+            raise Warning(
                 f"Looks like handling the predict workflow with the arguments: [{args.options}] failed. \
 Check that a project ID, model set ID, and a new identifier are present (in that order)."
             )
