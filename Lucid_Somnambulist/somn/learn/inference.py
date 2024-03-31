@@ -172,7 +172,9 @@ generation of the prophetic feature array. Check project directory for \
     # prophetic_organizer.models = sorted(
     #     list(glob(f"{project.output}/{model_experiment}/out/*.h5"))
     # )
-    all_models = sorted(list(glob(f"{project.output}/{model_experiment}/out/*.keras")))
+    all_models = sorted(
+        list(glob(f"{project.output}/{model_experiment}/out/*.keras"))
+    )  ## KERAS vs H5
     prophetic_driver = tfDriver(
         organizer=prophetic_organizer, prophetic_models=all_models
     )

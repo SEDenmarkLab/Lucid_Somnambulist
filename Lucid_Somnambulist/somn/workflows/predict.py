@@ -54,7 +54,8 @@ def main(args=None):
             project=project,
             model_experiment=args.mdl,
             prediction_experiment=args.exp,
-            all_predictions=False
+            all_predictions=False,
+            vt=0,  # Default value
         )
     except:
         raise RuntimeError(

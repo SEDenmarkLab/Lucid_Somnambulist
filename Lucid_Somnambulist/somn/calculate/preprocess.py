@@ -61,14 +61,7 @@ def load_data(optional_load=None):
         cat_desc = preprocess_maxdiff(
             temp, concat_grid_desc=True, threshold=(0.90, 0.89)
         )
-    elif "correlated_catalyst" in requests:
-        ...  # Perform correlated features cutoff for catalyst features. Perhaps look at multicolinearity
-    elif "embed_catalyst" in requests:
-        # temp = deepcopy(CATDESC)
-        cat_desc = "Set up load for isomap embedding"
-    elif "no_HI_RDF" in requests:
-        ...
-        ## Remove indicator fields for heteroatoms. This may be useful.
+    ### DEV NOTES: later, implement other preprocessing specifically for catalysts ###
     else:
         cat_desc = deepcopy(CATDESC)
     return (
@@ -211,7 +204,7 @@ def get_handles_by_reactants(str_, handles_):
 
 
 def preprocess_feature_arrays(
-    feature_dataframes: (pd.DataFrame), labels: list = None, save_mask=False, _vt=None
+    feature_dataframes: pd.DataFrame, labels: list = None, save_mask=False, _vt=None
 ):
     """
     NOTE: labels depreciated until further development
@@ -579,7 +572,7 @@ in somn.calculate.preprocess.preprocess_prophetic_features()."
     output = []
     from glob import glob
 
-    models = glob(f"{project.output}/{model_experiment}/out/*.keras")
+    models = glob(f"{project.output}/{model_experiment}/out/*.keras")  # KERAS vs H5
     model_ids = [int(f.split("hpset")[0].split("/")[-1]) for f in models]
     features.to_csv("TESTING_FMT.csv")
     for id, m1, m2 in zip(IDs, masks[0], masks[1]):
@@ -626,8 +619,8 @@ def mask_prophetic_features(features: pd.DataFrame, mask: np.ndarray, scale=True
 
 
 def new_mask_random_feature_arrays(
-    real_feature_dataframes: (pd.DataFrame),
-    rand_feat_dataframes: (pd.DataFrame),
+    real_feature_dataframes: pd.DataFrame,
+    rand_feat_dataframes: pd.DataFrame,
     _vt=None,
     prophetic=False,
 ):
@@ -666,6 +659,7 @@ def new_mask_random_feature_arrays(
         _vt = 0.04  # This preserves an old version of vt, and the next condition ought to still be "if" so that it still runs when this is true
     elif _vt == None:
         _vt = 0
+    ### Transposing features to columns, instances to rows ###
     vt = VarianceThreshold(threshold=_vt)
     sc = MinMaxScaler()
     vt_real = vt.fit_transform(filtered_df.transpose().to_numpy())
@@ -735,7 +729,9 @@ def preprocess_maxdiff(input: pd.DataFrame, concat_grid_desc=True, threshold=0.8
         ### Get percentile rank - select pct-based slice of features instead of number - like a threshold cutoff
         ranking = diff.rank(pct=True)
         idx = ranking[ranking >= threshold].index.to_list()
-        return df[idx]  # Going to reorder the features
+        ### DEV idx was used to mask df, and this shuffles features. The mask object below is intended to preserve the original ordering ###
+        mask = [f for f in df.columns if f in idx]
+        return df[mask]  # Should keep the same order of features
 
     def pull_type_(df):
         labels = df.columns

@@ -102,27 +102,39 @@ def _generate_partitions(args):
         "to_noval",
     ]
     ## BEGINNING PREP - LOAD STATIC DATA/PREREQUISITES TO DESCRIPTORS
-    (
-        amines,
-        bromides,
-        dataset,
-        handles,
-        unique_couplings,
-        a_prop,
-        br_prop,
-        base_desc,
-        solv_desc,
-        cat_desc,
-    ) = preprocess.load_data(optional_load="maxdiff_catalyst")
+    # (
+    #     amines,
+    #     bromides,
+    #     dataset,
+    #     handles,
+    #     unique_couplings,
+    #     a_prop,
+    #     br_prop,
+    #     base_desc,
+    #     solv_desc,
+    #     cat_desc,
+    # ) = preprocess.load_data(optional_load="maxdiff_catalyst")
 
     # Checking project status to make sure sub descriptors are calculated
     sub_desc = get_precalc_sub_desc()
     if sub_desc == False:  # Need to calculate
-        real, rand = calc_sub(
+        real, rand, unique_couplings, dataset = calc_sub(
             project, optional_load="maxdiff_catalyst", substrate_pre=("corr", 0.90)
         )
         sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
     else:  # Already calculated descriptors, just fetching them
+        (
+            amines,
+            bromides,
+            dataset,
+            handles,
+            unique_couplings,
+            a_prop,
+            br_prop,
+            base_desc,
+            solv_desc,
+            cat_desc,
+        ) = preprocess.load_data(optional_load="maxdiff_catalyst")
         sub_am_dict, sub_br_dict, rand = sub_desc
         real = (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc)
     combos = deepcopy(

@@ -17,12 +17,6 @@
         "unique": "f39f297851bb11ee882718c04d0a4970",
         "identifier": "partition"
     },
-    "23da5506783411ee9ed918c04d0a4970": {
-        "path": "somn_scratch/23da5506783411ee9ed918c04d0a4970/",
-        "timestamp": "2023-10-31",
-        "unique": "23da5506783411ee9ed918c04d0a4970",
-        "identifier": "val"
-    },
     "e8db169c9e3b11eeb58c18c04d0a4970": {
         "path": "somn_scratch/e8db169c9e3b11eeb58c18c04d0a4970/",
         "timestamp": "2023-12-19",
@@ -73,5 +67,23 @@
         "timestamp": "2024-01-29",
         "unique": "d2399592becc11eea39818c04d0a4970",
         "identifier": "val"
+    },
+    "23da5506783411ee9ed918c04d0a4970": {
+        "path": "somn_scratch/23da5506783411ee9ed918c04d0a4970/",
+        "timestamp": "2023",
+        "unique": "23da5506783411ee9ed918c04d0a4970",
+        "identifier": "latest"
+    },
+    "7e5c9e0eef8911eea9d918c04d0a4970": {
+        "path": "somn_scratch/7e5c9e0eef8911eea9d918c04d0a4970/",
+        "timestamp": "2024-03-31",
+        "unique": "7e5c9e0eef8911eea9d918c04d0a4970",
+        "identifier": "TEST01"
+    },
+    "3aa0f65aef8a11eebf7118c04d0a4970": {
+        "path": "somn_scratch/3aa0f65aef8a11eebf7118c04d0a4970/",
+        "timestamp": "2024-03-31",
+        "unique": "3aa0f65aef8a11eebf7118c04d0a4970",
+        "identifier": "TEST01"
     }
 }

@@ -369,18 +369,18 @@ def get_precalc_sub_desc():
 
 def normal_partition_prep(project: Project):
     # project = Project() ## DEBUG
-    (
-        amines,
-        bromides,
-        dataset,
-        handles,
-        unique_couplings,
-        a_prop,
-        br_prop,
-        base_desc,
-        solv_desc,
-        cat_desc,
-    ) = preprocess.load_data(optional_load="maxdiff_catalyst")
+    # (
+    #     amines,
+    #     bromides,
+    #     dataset,
+    #     handles,
+    #     unique_couplings,
+    #     a_prop,
+    #     br_prop,
+    #     base_desc,
+    #     solv_desc,
+    #     cat_desc,
+    # ) = preprocess.load_data(optional_load="maxdiff_catalyst")
 
     # Checking project status to make sure sub descriptors are calculated
     sub_desc = get_precalc_sub_desc()

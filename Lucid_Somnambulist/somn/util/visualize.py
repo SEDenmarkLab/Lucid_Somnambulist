@@ -15,10 +15,8 @@ from matplotlib.colors import ListedColormap
 import os
 
 
-
-
 def plot_results(
-    outdir: str, expkey: str, train: (np.array), val: (np.array), test: (np.array)
+    outdir: str, expkey: str, train: np.array, val: np.array, test: np.array
 ):
     """
     Plot model predicted vs observed as an image.
@@ -90,7 +88,7 @@ def get_cond_label(x_: int, pos):
 def get_cat_label(x_, pos):
     # print(x_,pos)
     # if type(pos) == None:
-        # print("error")
+    # print("error")
     y_ = np.arange(1, 22)
     y_ = np.delete(y_, 14)
     y_ = y_.tolist()
@@ -337,9 +335,23 @@ def visualize_predictions(
         # plt.show()
         # plt.savefig("rewrite_heatmaps/" + sys.argv[1] + "_heat.svg")
         plt.savefig(
-            f"{project.output}/{prediction_experiment}/{requestor}/{query}_heatmap_{plot_value}.png",
+            f"{project.output}/{prediction_experiment}/{requestor}/{query}_heatmap_{plot_value}.svg",
+            # transparent=True,
             dpi=300,
         )
+        # raise Exception("DEBUG")
+        ### Output heatmap data
+        # print(data.head)
+        cond_labels_output = [get_cond_label(1, f - 1) for f in data.columns]
+        from copy import deepcopy
+
+        # raise Exception("DEBUG")
+        data_out = deepcopy(data)
+        data_out.columns = cond_labels_output
+        data_out.to_csv(
+            f"{project.output}/{prediction_experiment}/{requestor}/{query}_heatmap_{plot_value}_data.csv"
+        )
+        ### fin
         # plt.show()
         plt.clf()
     elif plot_type == "violin":
@@ -446,5 +458,3 @@ def plot_preds(query="", prediction_experiment="", requestor=""):
                 plot_value="average",
                 plot_type=t,
             )
-
-
