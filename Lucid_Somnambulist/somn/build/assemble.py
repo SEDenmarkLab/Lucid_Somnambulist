@@ -248,13 +248,10 @@ def assemble_descriptors_from_handles(handle_input, desc: tuple, sub_mask=None):
         subm = list(sub_mask)
     am_dict, br_dict, cat_real, solv_real, base_real = desc
     ## These were read in from feather files, and must be transposed
-    from copy import deepcopy
-
-    basedf = deepcopy(base_real)
-    solvdf = deepcopy(solv_real)
-    catdf = deepcopy(
-        cat_real
-    )  # Confusing - FIX THIS - trying to use it like a dictionary later, but it's clearly still a df. Need to have column-wise lookup
+    basedf = base_real.transpose()
+    solvdf = solv_real.transpose()
+    catdf = cat_real.transpose()
+    # Confusing - FIX THIS - trying to use it like a dictionary later, but it's clearly still a df. Need to have column-wise lookup
     # br_dict = br_dict_real  # This is just to re-use code, but is confusing.
     # am_dict = am_dict_real
 

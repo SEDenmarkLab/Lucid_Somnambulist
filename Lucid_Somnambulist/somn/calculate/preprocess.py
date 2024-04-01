@@ -574,8 +574,8 @@ in somn.calculate.preprocess.preprocess_prophetic_features()."
 
     models = glob(f"{project.output}/{model_experiment}/out/*.keras")  # KERAS vs H5
     model_ids = [int(f.split("hpset")[0].split("/")[-1]) for f in models]
-    features.to_csv("TESTING_FMT.csv")
-    for id, m1, m2 in zip(IDs, masks[0], masks[1]):
+    # features.to_csv("TESTING_FMT.csv")
+    for id, m1, m2, scaler in zip(IDs, masks[0], masks[1], masks[2]):
         if id not in model_ids:
             break
         mask1 = pd.read_csv(m1, header=0, index_col=0)["0"].values
@@ -583,8 +583,9 @@ in somn.calculate.preprocess.preprocess_prophetic_features()."
             pd.read_csv(m2, header=0, index_col=0)["0"].values > vt
         )  # variances; should be turned into boolean
         # print("DEBUG: ",mask1.shape,mask2.shape,features.shape)
-        temp1 = mask_prophetic_features(features, mask1, scale=False)
-        last = mask_prophetic_features(temp1, mask2, scale=True)
+        temp1 = mask_prophetic_features(features, mask1)
+        temp2 = mask_prophetic_features(temp1, mask2)
+        last = scale_prophetic_features(temp2, scaler)
         last.transpose().reset_index(drop=True).to_feather(
             f"{project.partitions}/prophetic_{prediction_experiment}/{id}_processed_features.feather"
         )
@@ -596,7 +597,17 @@ in somn.calculate.preprocess.preprocess_prophetic_features()."
     return organ
 
 
-def mask_prophetic_features(features: pd.DataFrame, mask: np.ndarray, scale=True):
+def scale_prophetic_features(features: pd.DataFrame, scaling):
+    """
+    Apply precalculated scaling to newly calculated, prophetic features.
+    """
+    sc_df = pd.read_csv(scaling, header=0, index_col=0)
+    scale_ = sc_df["scale"].to_numpy()
+    min_ = sc_df["min"].to_numpy()
+    assert len(scale_) == features.shape[1]
+
+
+def mask_prophetic_features(features: pd.DataFrame, mask: np.ndarray):
     """
     Requires a pre-assembled feature array (with any substrate masking already done), and will apply
     a preprocessing mask (based on variance threshold) from "memory" of a particular modeling experiment.
@@ -609,13 +620,7 @@ def mask_prophetic_features(features: pd.DataFrame, mask: np.ndarray, scale=True
 
     ### Mask features
     output = features[features.columns[mask]]
-    if scale is True:
-        sc = MinMaxScaler()
-        scaled = sc.fit_transform(features.to_numpy())
-        sc = pd.DataFrame(scaled, index=features.index)
-        return sc
-    else:
-        return output
+    return output
 
 
 def new_mask_random_feature_arrays(
@@ -680,7 +685,7 @@ def new_mask_random_feature_arrays(
         output_rand = processed_rand_feats
     output_real = tuple([processed_real_feats[lbl] for lbl in labels])
     ### mask is nunique (basically single value column filter), and variances will be useful IF someone wants to apply a specific cutoff
-    return output_rand, output_real, (mask, vt.variances_)
+    return output_rand, output_real, (mask, vt.variances_, sc.scale_, sc.data_min_)
 
 
 def get_all_combos(unique_couplings):

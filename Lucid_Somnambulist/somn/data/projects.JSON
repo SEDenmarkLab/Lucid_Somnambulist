@@ -85,5 +85,53 @@
         "timestamp": "2024-03-31",
         "unique": "3aa0f65aef8a11eebf7118c04d0a4970",
         "identifier": "TEST01"
+    },
+    "09f46e9eef8d11eeb2ce18c04d0a4970": {
+        "path": "somn_scratch/09f46e9eef8d11eeb2ce18c04d0a4970/",
+        "timestamp": "2024-03-31",
+        "unique": "09f46e9eef8d11eeb2ce18c04d0a4970",
+        "identifier": "TEST02"
+    },
+    "c7081e72ef8d11eea24318c04d0a4970": {
+        "path": "somn_scratch/c7081e72ef8d11eea24318c04d0a4970/",
+        "timestamp": "2024-03-31",
+        "unique": "c7081e72ef8d11eea24318c04d0a4970",
+        "identifier": "TEST01"
+    },
+    "bba5d6b8ef8e11ee9ede18c04d0a4970": {
+        "path": "somn_scratch/bba5d6b8ef8e11ee9ede18c04d0a4970/",
+        "timestamp": "2024-03-31",
+        "unique": "bba5d6b8ef8e11ee9ede18c04d0a4970",
+        "identifier": "TEST01"
+    },
+    "370038daef8f11ee954f18c04d0a4970": {
+        "path": "somn_scratch/370038daef8f11ee954f18c04d0a4970/",
+        "timestamp": "2024-03-31",
+        "unique": "370038daef8f11ee954f18c04d0a4970",
+        "identifier": "TEST01"
+    },
+    "1a8ec864efef11eea53b18c04d0a4970": {
+        "path": "somn_scratch/1a8ec864efef11eea53b18c04d0a4970/",
+        "timestamp": "2024-04-01",
+        "unique": "1a8ec864efef11eea53b18c04d0a4970",
+        "identifier": "testing"
+    },
+    "5c910452efef11eeb06018c04d0a4970": {
+        "path": "somn_scratch/5c910452efef11eeb06018c04d0a4970/",
+        "timestamp": "2024-04-01",
+        "unique": "5c910452efef11eeb06018c04d0a4970",
+        "identifier": "testing"
+    },
+    "c2dc9ad2efef11ee857518c04d0a4970": {
+        "path": "somn_scratch/c2dc9ad2efef11ee857518c04d0a4970/",
+        "timestamp": "2024-04-01",
+        "unique": "c2dc9ad2efef11ee857518c04d0a4970",
+        "identifier": "testing"
+    },
+    "120a5f5eeff011eeae8718c04d0a4970": {
+        "path": "somn_scratch/120a5f5eeff011eeae8718c04d0a4970/",
+        "timestamp": "2024-04-01",
+        "unique": "120a5f5eeff011eeae8718c04d0a4970",
+        "identifier": "testing"
     }
 }

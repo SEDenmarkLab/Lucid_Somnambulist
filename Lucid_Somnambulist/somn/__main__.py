@@ -90,7 +90,7 @@ def _generate_partitions(args):
     if "val" in opts:
         val_schema = opts[opts.index("val") + 1]
     else:
-        val_schema = "vi_to"
+        val_schema = "random"
     # print("DEV - val_schema: ", val_schema)
     assert val_schema in [
         "to_vi",

@@ -76,7 +76,8 @@ class tf_organizer:
         """
         mask1 = sorted(glob(self.part_dir + "/*_constmask.csv"))
         mask2 = sorted(glob(self.part_dir + "/*_vtmask.csv"))
-        return mask1, mask2
+        mask3 = sorted(glob(self.part_dir + "/*_scale.csv"))
+        return mask1, mask2, mask3
 
     def get_partitions(self, val=True):
         """
@@ -633,9 +634,9 @@ class tfDriver:
 def get_mae_metrics(
     model: kt.HyperModel,
     X: np.array,
-    inference_x: (np.array),
+    inference_x: np.array,
     y: np.array,
-    infer_labels: (np.array),
+    infer_labels: np.array,
 ):
     """
     Get inferences on partitions, then evaluate errors and report mae
@@ -656,9 +657,9 @@ def get_mae_metrics(
 def get_mse_metrics(
     model: kt.HyperModel,
     X: np.array,
-    inference_x: (np.array),
+    inference_x: np.array,
     y: np.array,
-    infer_labels: (np.array),
+    infer_labels: np.array,
 ):
     """
     Get inferences, then evaluate mse
@@ -676,7 +677,7 @@ def get_mse_metrics(
     return trainmse, valmse, testmse
 
 
-def compute_residuals(model, X, inference_x: (np.array), y, infer_labels: (np.array)):
+def compute_residuals(model, X, inference_x: np.array, y, infer_labels: np.array):
     """
     Get residual errors for partitions
 
@@ -691,7 +692,7 @@ def compute_residuals(model, X, inference_x: (np.array), y, infer_labels: (np.ar
     return train_errors, val_errors, test_errors
 
 
-def model_inference(model, X, inference_x: (np.array)):
+def model_inference(model, X, inference_x: np.array):
     """
     Takes inference tuple, and processes it. This has val , test, and prophetic X.
 
@@ -1069,18 +1070,18 @@ the utility function somn.calculate.preprocess.prep_mc_labels"
                 tforg.results[name_]["class_metrics"][f"{i+1}_false_neg"] = fn
                 tforg.results[name_]["class_metrics"][f"{i+1}_true_pos"] = tp
                 tforg.results[name_]["class_metrics"][f"{i+1}_true_neg"] = tn
-                tforg.results[name_]["class_metrics"][
-                    f"{i+1}_val_top2"
-                ] = tf.keras.metrics.top_k_categorical_accuracy(yval, yval_p, k=2)
-                tforg.results[name_]["class_metrics"][
-                    f"{i+1}_test_top2"
-                ] = tf.keras.metrics.top_k_categorical_accuracy(yte, yte_p, k=2)
-                tforg.results[name_]["class_metrics"][
-                    f"{i+1}_val_kldiv"
-                ] = tf.keras.metrics.kullback_leibler_divergence(yval, yval_p)
-                tforg.results[name_]["class_metrics"][
-                    f"{i+1}_test_kldiv"
-                ] = tf.keras.metrics.kullback_leibler_divergence(yte, yte_p)
+                tforg.results[name_]["class_metrics"][f"{i+1}_val_top2"] = (
+                    tf.keras.metrics.top_k_categorical_accuracy(yval, yval_p, k=2)
+                )
+                tforg.results[name_]["class_metrics"][f"{i+1}_test_top2"] = (
+                    tf.keras.metrics.top_k_categorical_accuracy(yte, yte_p, k=2)
+                )
+                tforg.results[name_]["class_metrics"][f"{i+1}_val_kldiv"] = (
+                    tf.keras.metrics.kullback_leibler_divergence(yval, yval_p)
+                )
+                tforg.results[name_]["class_metrics"][f"{i+1}_test_kldiv"] = (
+                    tf.keras.metrics.kullback_leibler_divergence(yte, yte_p)
+                )
             ### DEV CLEANUP ###
             del hypermodel
             ### Apparently, keras is notorious for leaving remnants in memory. gc.collect() is supposed to help.

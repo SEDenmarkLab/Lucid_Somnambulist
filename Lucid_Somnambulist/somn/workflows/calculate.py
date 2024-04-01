@@ -244,7 +244,7 @@ def main(
         base_desc,
         solv_desc,
         cat_desc,
-    ) = preprocess.load_data(optional_load)
+    ) = preprocess.load_data(optional_load="maxdiff_catalyst")
 
     ### Calculate descriptors for the reactants, and store their 1D vector arrays in a dictionary-like output.
     _inc = inc
@@ -343,6 +343,7 @@ def main(
     rand = make_randomized_features(
         sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc
     )
+    real = (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc)
     # print(rand)
     if serialize == True:
         with open(f"{project.descriptors}/random_am_br_cat_solv_base.p", "wb") as k:
@@ -351,6 +352,8 @@ def main(
             pickle.dump(sub_am_dict, g)
         with open(f"{project.descriptors}/real_bromide_desc_{_inc}.p", "wb") as q:
             pickle.dump(sub_br_dict, q)
+        with open(f"{project.descriptors}/real_am_br_cat_solv_base.p", "wb") as p:
+            pickle.dump(real, p)
     return (
         (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc),
         rand,

@@ -139,7 +139,7 @@ def main(
             if val_schema == "random":
                 ### RANDOM SPLITS ###
                 tr, va, te = preprocess.random_splits(dataset, validation=True, fold=10)
-                if i >= 20:
+                if i >= 4:
                     break
             ### OUT OF SAMPLE TEST, IN SAMPLE VAL ###
             # am_f,br_f,both,outsamp_handles = split_outsamp_reacts(data_df,amines=[44,38,32],bromides=[13],separate=True)
@@ -200,7 +200,7 @@ def partition_pipeline_noval(
             x_tr_re,
             x_te_re,
         ),
-        vt_mask,
+        (unique_mask, vt_mask, scale_, min_),
     ) = preprocess.new_mask_random_feature_arrays(
         (x_tr_real, x_te_real), (x_tr, x_te), _vt=vt
     )  # Use this for only train/test
@@ -217,7 +217,9 @@ def partition_pipeline_noval(
     x_te_re.to_feather(realout + name_ + "_xte.feather")
     tr.transpose().reset_index(drop=True).to_feather(realout + name_ + "_ytr.feather")
     te.transpose().reset_index(drop=True).to_feather(realout + name_ + "_yte.feather")
-    pd.Series(vt_mask).to_csv(realout + name_ + "_vtmask.csv")
+    pd.Series(vt_mask).to_csv(f"{realout}{name_}_vtmask.csv")
+    pd.Series(unique_mask).to_csv(f"{realout}{name_}_constmask.csv")
+    pd.Series([scale_, min_]).to_csv(f"{realout}{name_}_scale.csv")
 
 
 def partition_pipeline_val(
@@ -274,7 +276,7 @@ def partition_pipeline_val(
             x_va_re,
             x_te_re,
         ),
-        (unique_mask, vt_mask),
+        (unique_mask, vt_mask, scale_, min_),
     ) = preprocess.new_mask_random_feature_arrays(
         (x_tr_real, x_va_real, x_te_real), (x_tr, x_va, x_te), _vt=vt
     )
@@ -310,6 +312,9 @@ def partition_pipeline_val(
 
     pd.Series(vt_mask).to_csv(f"{realout}{name_}_vtmask.csv")
     pd.Series(unique_mask).to_csv(f"{realout}{name_}_constmask.csv")
+    pd.DataFrame([scale_, min_], index=["scale", "min"]).transpose().to_csv(
+        f"{realout}{name_}_scale.csv"
+    )
     ### DEV ###
     # print(
     #     f"DEBUG:\n SHAPE OF processed X ARRAY: {x_tr_re.shape}\n SHAPE OF raw X Array: {x_tr_real.shape}\n SHAPE of mask: {vt_mask.shape}\n name: {name_}"
