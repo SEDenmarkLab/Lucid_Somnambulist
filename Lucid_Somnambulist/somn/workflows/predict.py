@@ -69,6 +69,20 @@ if prediction experiment label is unique and new."
     Processed predictions are in {project.output}/{args.exp}/{stamp}/ "
     )
 
+def check_input_structures():
+    """
+    Method to check input structures for multiple reaction sites, and to organize a return to the user for them to \
+    specify more detail. 
+
+    Strategy is to check if the "Checked" file output is already created, and then to either terminate the run or \
+    continue. If terminating, then the idea is to gracefully succeed when the predict call is run again. 
+    """
+    from somn.learn.inference import prep_requests
+    total_requests, requested_pairs = prep_requests()
+    from somn.workflows.add import add_workflow
+    from pathlib import Path
+    ...
+
 
 if __name__ == "__main__":
     args = argv[1:]

@@ -210,16 +210,19 @@ class InputParser:
         )
         if update == None:
             opt = ml.Concurrent(
-                col, backup_dir=self.path_to_write + "/scratch/", update=2
+                col, backup_dir=self.path_to_write + "/scratch/", update=20,concurrent=16
             )(xtb.optimize)(method="gfn2")
         elif type(update) == int:
             opt = ml.Concurrent(
-                col, backup_dir=self.path_to_write + "/scratch/", update=update
+                col, backup_dir=self.path_to_write + "/scratch/", update=update,concurrent=16
             )(xtb.optimize)(method="gfn2")
         else:
-            raise Exception(
+            Exception(
                 "Optional update argument passed for input structure preoptimization, but the value passed was not an integer. Either do not use this optional feature and accept 2 second update cycles, or input a valid integer value of seconds."
             )
+            opt = ml.Concurrent(
+                col, backup_dir=self.path_to_write + "/scratch/", update=60,concurrent=16
+            )(xtb.optimize)(method="gfn2")
         mols, errs = somn.util.aux_func.check_parsed_mols(opt, col)
         if self.ser == True:
             self.serialize(errs, specific_msg="preopt_err")

@@ -260,8 +260,8 @@ def prep_requests():
     # Quick check for formatting
     df = pd.read_csv(files[0], header=0, index_col=None)
     if len(df.columns) < 2:
-        raise Exception(
-            "Must pass SMILES and role for each reactant! Request input file (in gproject.scratch)\
+        Exception(
+"Must pass SMILES and role for each reactant! Request input file (in gproject.scratch)\
 Shoult have format (col0):SMILES,(col1):role (nuc or el),(col2, optional):mol_name"
         )
     tot = []
@@ -269,8 +269,8 @@ Shoult have format (col0):SMILES,(col1):role (nuc or el),(col2, optional):mol_na
         if i == 0:
             df = pd.read_csv(files[0], header=0, index_col=None)
             if len(df.columns) < 2:
-                raise Exception(
-                    "Must pass SMILES and role for each reactant! Request input file (in gproject.scratch)\
+                Exception(
+"Must pass SMILES and role for each reactant! Request input file (in gproject.scratch)\
 Shoult have format (col0):SMILES,(col1):role (nuc or el),(col2, optional):mol_name"
                 )
         tot.append(df)
@@ -398,15 +398,19 @@ This may cause an error if new molecules are requested now which were not calcul
     prophetic_bromide_col = ml.Collection.from_zip(
         f"{project.structures}/{prediction_experiment}/prophetic_electrophile.zip"
     )
-    p_ap = json.load(
-        open(f"{project.structures}/{prediction_experiment}/newmol_ap_buffer.json")
-    )
 
+    # p_ap = json.load(
+    #     open(f"{project.structures}/{prediction_experiment}/newmol_ap_buffer.json")
+    # )
+    with open(f"{project.structures}/{prediction_experiment}/new_nuc_ap_buffer.json") as g:
+        nuc_ap = json.load(g)
+    with open(f"{project.structures}/{prediction_experiment}/new_el_ap_buffer.json") as k:
+        el_ap = json.load(k)
     p_a_desc = calculate_prophetic(
-        inc=0.75, geometries=prophetic_amine_col, atomproperties=p_ap, react_type="N"
+        inc=0.75, geometries=prophetic_amine_col, atomproperties=nuc_ap, react_type="N"
     )
     p_b_desc = calculate_prophetic(
-        inc=0.75, geometries=prophetic_bromide_col, atomproperties=p_ap, react_type="Br"
+        inc=0.75, geometries=prophetic_bromide_col, atomproperties=el_ap, react_type="Br"
     )
     ### Now we're ready to assemble features
     am, br, ca, so, ba = desc
