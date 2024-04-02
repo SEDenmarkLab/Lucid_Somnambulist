@@ -264,7 +264,8 @@ class tfDriver:
         feat_path = self.curr_prophetic
         models = []
         for path in model_paths:
-            model = tf.keras.saving.load_model(path)
+            # model = tf.keras.saving.load_model(path)
+            model = tf.keras.models.load_model(path)
             models.append(model)
         feat = pd.read_feather(feat_path).transpose()
         return models, feat
