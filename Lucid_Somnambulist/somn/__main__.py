@@ -326,37 +326,39 @@ Ensure that a valid path to reactants is provided."
             import os
             import json
 
-            if Path("./pretrained-somn.tar.gz").exists():
-                assert Path("./projects.JSON").exists()
-                ## EXTRACT MODELS INTO SOMN SCRATCH DIRECTORY
-                print("\n\nExtracting pre-trained models...\n\n")
-                subprocess.run(
-                    ["tar", "-xf", "pretrained-somn.tar.gz", "-C", "somn_scratch/"]
-                )
-                print(
-                    "\n\nModels successfully extracted! Now updating package with their location...\n\n"
-                )
-                ## LOCATE INSTALL PATH FOR DATA MODULE & UPDATE projects.JSON
-                data_module_path = os.path.dirname(somn.data.__file__)
-                with open(f"./projects.JSON", "r") as k:
-                    upd = json.load(k)
-                with open(f"{data_module_path}/projects.JSON", "r") as g:
-                    proj = json.load(g)
-                proj.update(upd)
-                with open(f"{data_module_path}/projects.JSON", "w") as p:
-                    json.dump(proj, p)
-                print(
-                    "somn package has been installed with pre-trained models. Please look in the somn_scratch directory \
-to find the project '44eb8d94effa11eea46f18c04d0a4970', and look in the 'scratch' subdirectory for an example prediction request input file."
-                )
-            else:
-                import warnings
+            os.makedirs("somn_scratch/", exist_ok=True)
+        try:
+            assert Path("./pretrained-somn.tar.gz").exists()
+            assert Path("./projects.JSON").exists()
+            ## EXTRACT MODELS INTO SOMN SCRATCH DIRECTORY
+            print("\n\nExtracting pre-trained models...\n\n")
+            subprocess.run(
+                ["tar", "-xzvf", "pretrained-somn.tar.gz", "-C", "somn_scratch/"]
+            )
+            print(
+                "\n\nModels successfully extracted! Now updating package with their location...\n\n"
+            )
+            ## LOCATE INSTALL PATH FOR DATA MODULE & UPDATE projects.JSON
+            data_module_path = os.path.dirname(somn.data.__file__)
+            with open(f"./projects.JSON", "r") as k:
+                upd = json.load(k)
+            with open(f"{data_module_path}/projects.JSON", "r") as g:
+                proj = json.load(g)
+            proj.update(upd)
+            with open(f"{data_module_path}/projects.JSON", "w") as p:
+                json.dump(proj, p)
+            print(
+                "somn package has been installed with pre-trained models. Please look in the somn_scratch directory \
+to find the project 'IID-Models-2023', and look in the 'scratch' subdirectory for an example prediction request input file."
+            )
+        except:
+            import warnings
 
-                warnings.warn(
-                    "It looks like no pre-trained models were supplied; skipping initialization step. \
+            warnings.warn(
+                "It looks like no pre-trained models were supplied; skipping initialization step. \
 if this is an error, please check documentation and ensure that all files are in \
 the somn home directory (at the same level as the somn initialize command is run)"
-                )
+            )
     elif args.operation in ["add", "visualize"]:
         raise Exception(
             f"DEV - {args.operation} implementation through CLI is under development"
