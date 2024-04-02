@@ -605,6 +605,8 @@ def scale_prophetic_features(features: pd.DataFrame, scaling):
     scale_ = sc_df["scale"].to_numpy()
     min_ = sc_df["min"].to_numpy()
     assert len(scale_) == features.shape[1]
+    scaled_features = (features - min_) * scale_
+    return scaled_features
 
 
 def mask_prophetic_features(features: pd.DataFrame, mask: np.ndarray):

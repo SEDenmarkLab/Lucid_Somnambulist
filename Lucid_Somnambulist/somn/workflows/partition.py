@@ -139,7 +139,7 @@ def main(
             if val_schema == "random":
                 ### RANDOM SPLITS ###
                 tr, va, te = preprocess.random_splits(dataset, validation=True, fold=10)
-                if i >= 4:
+                if i >= 10:
                     break
             ### OUT OF SAMPLE TEST, IN SAMPLE VAL ###
             # am_f,br_f,both,outsamp_handles = split_outsamp_reacts(data_df,amines=[44,38,32],bromides=[13],separate=True)
@@ -396,6 +396,18 @@ def normal_partition_prep(project: Project):
         )
         sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
     else:
+        (
+            amines,
+            bromides,
+            dataset,
+            handles,
+            unique_couplings,
+            a_prop,
+            br_prop,
+            base_desc,
+            solv_desc,
+            cat_desc,
+        ) = preprocess.load_data(optional_load="maxdiff_catalyst")
         sub_am_dict, sub_br_dict, rand = sub_desc
         real = (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc)
 
