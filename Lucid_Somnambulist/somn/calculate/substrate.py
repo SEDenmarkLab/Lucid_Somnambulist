@@ -36,8 +36,10 @@ def calculate_prophetic(
             geometries, atomproperties, increment=inc
         )
     else:
-        raise Exception(f"Looks like {react_type} was passed as a reactant type, which is not \
-recognized. Check input file.")
+        raise Exception(
+            f"Looks like {react_type} was passed as a reactant type, which is not \
+recognized. Check input file."
+        )
     return sub_dict
 
 
@@ -265,12 +267,16 @@ class PropheticInput:
                     if nb is False:
                         nb = True
             if na == True:
-                ACOL.to_zip(str(self.parser.path_to_write) + "/newtotal_nucleophile.zip")
+                ACOL.to_zip(
+                    str(self.parser.path_to_write) + "/newtotal_nucleophile.zip"
+                )
                 ml.Collection(name="proph_nuc", molecules=am_str).to_zip(
                     str(self.parser.path_to_write) + "/prophetic_nucleophile.zip"
                 )
             if nb == True:
-                BCOL.to_zip(str(self.parser.path_to_write) + "/newtotal_electrophile.zip")
+                BCOL.to_zip(
+                    str(self.parser.path_to_write) + "/newtotal_electrophile.zip"
+                )
                 ml.Collection(name="proph_el", molecules=br_str).to_zip(
                     str(self.parser.path_to_write) + "/prophetic_electrophile.zip"
                 )
@@ -279,7 +285,7 @@ class PropheticInput:
         with open(str(self.parser.path_to_write) + "/newstruc_roles.json", "w") as k:
             json.dump(self.roles_d, k)
 
-    def atomprop_pipeline(self, confs=True, concurrent=2, nprocs=2):
+    def atomprop_pipeline(self, confs=True, concurrent=16, nprocs=2):
         """
         Calculate atom properties for descriptor calculation, and add to JSON files.
         """

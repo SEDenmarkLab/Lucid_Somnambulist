@@ -253,7 +253,7 @@ class tfDriver:
     ### Depreciated
     def load_prophetic_hypermodels_and_x(
         self,
-    ) -> ([tf.keras.models.Model], [pd.DataFrame]):
+    ):
         """
         Load current model and prophetic features
 
