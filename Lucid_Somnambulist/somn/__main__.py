@@ -349,7 +349,7 @@ Ensure that a valid path to reactants is provided."
                 json.dump(proj, p)
             print(
                 "somn package has been installed with pre-trained models. Please look in the somn_scratch directory \
-to find the project 'IID-Models-2023', and look in the 'scratch' subdirectory for an example prediction request input file."
+to find the project '44eb8d94effa11eea46f18c04d0a4970', and look in the 'scratch' subdirectory for an example prediction request input file."
             )
         except:
             import warnings
