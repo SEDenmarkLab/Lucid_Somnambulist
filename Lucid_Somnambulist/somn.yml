@@ -9,7 +9,7 @@ dependencies:
   - scikit-learn=1.2.0
   - pyarrow=8.0.0
   - openbabel=3.1.1
-  - xtb=6.5.1
+  - xtb=6.6.1
   - crest=2.12
   - ipykernel=6.15.0
   - pytables=3.7.0

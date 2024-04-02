@@ -42,13 +42,14 @@ def main(
     For substrate masking, the boolean argument is being passed to a few functions down. The assemble_*_descriptors_from_handles function will handle it.
 
     """
-    if 'unique_couplings' in locals(): ## Running in development or a separate script, where a few variables have been created. 
+    if (
+        "unique_couplings" in locals()
+    ):  ## Running in development or a separate script, where a few variables have been created.
         pass
-    else: ## Running from CLI - wrapper stores these variables in the project instance
+    else:  ## Running from CLI - wrapper stores these variables in the project instance
         unique_couplings = project.unique_couplings
         combos = project.combos
         dataset = project.dataset
-
 
     assert bool(
         set([val_schema])
@@ -56,14 +57,16 @@ def main(
     )
     if mask_substrates == True:
         import pandas as pd
+        from somn.build.assemble import load_substrate_masks
 
-        am_mask = pd.read_csv(
-            f"{project.descriptors}/amine_mask.csv", header=0, index_col=0
-        )
-        br_mask = pd.read_csv(
-            f"{project.descriptors}/bromide_mask.csv", header=0, index_col=0
-        )
-        sub_mask = (am_mask, br_mask)
+        sub_mask = load_substrate_masks()
+        # am_mask = pd.read_csv(
+        #     f"{project.descriptors}/amine_mask.csv", header=0, index_col=0
+        # )
+        # br_mask = pd.read_csv(
+        #     f"{project.descriptors}/bromide_mask.csv", header=0, index_col=0
+        # )
+        # sub_mask = (am_mask, br_mask)
         # print("DEBUG",sub_mask[0], sub_mask[0]["0"], type(sub_mask[0]))
     else:
         sub_mask = None
@@ -136,6 +139,8 @@ def main(
             if val_schema == "random":
                 ### RANDOM SPLITS ###
                 tr, va, te = preprocess.random_splits(dataset, validation=True, fold=10)
+                if i >= 10:
+                    break
             ### OUT OF SAMPLE TEST, IN SAMPLE VAL ###
             # am_f,br_f,both,outsamp_handles = split_outsamp_reacts(data_df,amines=[44,38,32],bromides=[13],separate=True)
             elif val_schema == "to_vi" or val_schema == "vi_to":
@@ -195,7 +200,7 @@ def partition_pipeline_noval(
             x_tr_re,
             x_te_re,
         ),
-        vt_mask,
+        (unique_mask, vt_mask, scale_, min_),
     ) = preprocess.new_mask_random_feature_arrays(
         (x_tr_real, x_te_real), (x_tr, x_te), _vt=vt
     )  # Use this for only train/test
@@ -212,7 +217,9 @@ def partition_pipeline_noval(
     x_te_re.to_feather(realout + name_ + "_xte.feather")
     tr.transpose().reset_index(drop=True).to_feather(realout + name_ + "_ytr.feather")
     te.transpose().reset_index(drop=True).to_feather(realout + name_ + "_yte.feather")
-    pd.Series(vt_mask).to_csv(realout + name_ + "_vtmask.csv")
+    pd.Series(vt_mask).to_csv(f"{realout}{name_}_vtmask.csv")
+    pd.Series(unique_mask).to_csv(f"{realout}{name_}_constmask.csv")
+    pd.Series([scale_, min_]).to_csv(f"{realout}{name_}_scale.csv")
 
 
 def partition_pipeline_val(
@@ -269,7 +276,7 @@ def partition_pipeline_val(
             x_va_re,
             x_te_re,
         ),
-        (unique_mask, vt_mask),
+        (unique_mask, vt_mask, scale_, min_),
     ) = preprocess.new_mask_random_feature_arrays(
         (x_tr_real, x_va_real, x_te_real), (x_tr, x_va, x_te), _vt=vt
     )
@@ -305,6 +312,9 @@ def partition_pipeline_val(
 
     pd.Series(vt_mask).to_csv(f"{realout}{name_}_vtmask.csv")
     pd.Series(unique_mask).to_csv(f"{realout}{name_}_constmask.csv")
+    pd.DataFrame([scale_, min_], index=["scale", "min"]).transpose().to_csv(
+        f"{realout}{name_}_scale.csv"
+    )
     ### DEV ###
     # print(
     #     f"DEBUG:\n SHAPE OF processed X ARRAY: {x_tr_re.shape}\n SHAPE OF raw X Array: {x_tr_real.shape}\n SHAPE of mask: {vt_mask.shape}\n name: {name_}"
@@ -364,18 +374,18 @@ def get_precalc_sub_desc():
 
 def normal_partition_prep(project: Project):
     # project = Project() ## DEBUG
-    (
-        amines,
-        bromides,
-        dataset,
-        handles,
-        unique_couplings,
-        a_prop,
-        br_prop,
-        base_desc,
-        solv_desc,
-        cat_desc,
-    ) = preprocess.load_data(optional_load="maxdiff_catalyst")
+    # (
+    #     amines,
+    #     bromides,
+    #     dataset,
+    #     handles,
+    #     unique_couplings,
+    #     a_prop,
+    #     br_prop,
+    #     base_desc,
+    #     solv_desc,
+    #     cat_desc,
+    # ) = preprocess.load_data(optional_load="maxdiff_catalyst")
 
     # Checking project status to make sure sub descriptors are calculated
     sub_desc = get_precalc_sub_desc()
@@ -386,6 +396,18 @@ def normal_partition_prep(project: Project):
         )
         sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
     else:
+        (
+            amines,
+            bromides,
+            dataset,
+            handles,
+            unique_couplings,
+            a_prop,
+            br_prop,
+            base_desc,
+            solv_desc,
+            cat_desc,
+        ) = preprocess.load_data(optional_load="maxdiff_catalyst")
         sub_am_dict, sub_br_dict, rand = sub_desc
         real = (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc)
 

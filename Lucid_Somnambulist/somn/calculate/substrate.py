@@ -165,7 +165,7 @@ class PropheticInput:
             logfile=str(Project().scratch) + "/out1.log",
             update=60,
             timeout=10000,
-            concurrent=1,
+            concurrent=16,
         )
         # print("conformer search beginning")
         output = concur_1(crest.conformer_search)(ewin=8, mdlen=5, constr_val_angles=[])
@@ -191,7 +191,7 @@ class PropheticInput:
             logfile=str(Project().scratch) + "/out2.log",
             update=30,
             timeout=10000,
-            concurrent=1,
+            concurrent=16,
         )
         crest = ml.CRESTDriver(
             name="confs",

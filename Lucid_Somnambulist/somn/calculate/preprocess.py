@@ -61,14 +61,7 @@ def load_data(optional_load=None):
         cat_desc = preprocess_maxdiff(
             temp, concat_grid_desc=True, threshold=(0.90, 0.89)
         )
-    elif "correlated_catalyst" in requests:
-        ...  # Perform correlated features cutoff for catalyst features. Perhaps look at multicolinearity
-    elif "embed_catalyst" in requests:
-        # temp = deepcopy(CATDESC)
-        cat_desc = "Set up load for isomap embedding"
-    elif "no_HI_RDF" in requests:
-        ...
-        ## Remove indicator fields for heteroatoms. This may be useful.
+    ### DEV NOTES: later, implement other preprocessing specifically for catalysts ###
     else:
         cat_desc = deepcopy(CATDESC)
     return (
@@ -211,7 +204,7 @@ def get_handles_by_reactants(str_, handles_):
 
 
 def preprocess_feature_arrays(
-    feature_dataframes: (pd.DataFrame), labels: list = None, save_mask=False, _vt=None
+    feature_dataframes: pd.DataFrame, labels: list = None, save_mask=False, _vt=None
 ):
     """
     NOTE: labels depreciated until further development
@@ -544,7 +537,7 @@ def prep_mc_labels(df, zero_buffer: int = 3):
 
 
 def preprocess_prophetic_features(
-    project: Project, features, prediction_experiment="", vt=0
+    project: Project, features, model_experiment="", prediction_experiment="", vt=0
 ):
     """
     Workflow to recreate preprocessing from model training and apply it to prophetic features
@@ -559,10 +552,13 @@ def preprocess_prophetic_features(
     except:
         from pathlib import Path
         from warnings import warn
+
         assert Path(f"{project.partitions}/prophetic_{prediction_experiment}/").exists()
-        warn(f"Looks like prophetic features were already calculated for project {project.unique} and experiment {prediction_experiment}, so \
+        warn(
+            f"Looks like prophetic features were already calculated for project {project.unique} and experiment {prediction_experiment}, so \
 this calculation step will overwrite those files. If requesting many compounds, consider developing alternate instantiation of prophetic tf_organizer instance \
-in somn.calculate.preprocess.preprocess_prophetic_features().")
+in somn.calculate.preprocess.preprocess_prophetic_features()."
+        )
     organ = tf_organizer(
         name="prophetic_pre",
         partition_dir=partition_dir,
@@ -574,14 +570,22 @@ in somn.calculate.preprocess.preprocess_prophetic_features().")
     # print(IDs)
     # print(organ.masks)
     output = []
-    for id, m1, m2 in zip(IDs, masks[0], masks[1]):
+    from glob import glob
+
+    models = glob(f"{project.output}/{model_experiment}/out/*.keras")  # KERAS vs H5
+    model_ids = [int(f.split("hpset")[0].split("/")[-1]) for f in models]
+    # features.to_csv("TESTING_FMT.csv")
+    for id, m1, m2, scaler in zip(IDs, masks[0], masks[1], masks[2]):
+        if id not in model_ids:
+            break
         mask1 = pd.read_csv(m1, header=0, index_col=0)["0"].values
         mask2 = (
             pd.read_csv(m2, header=0, index_col=0)["0"].values > vt
         )  # variances; should be turned into boolean
         # print("DEBUG: ",mask1.shape,mask2.shape,features.shape)
-        temp1 = mask_prophetic_features(features, mask1, scale=False)
-        last = mask_prophetic_features(temp1, mask2, scale=True)
+        temp1 = mask_prophetic_features(features, mask1)
+        temp2 = mask_prophetic_features(temp1, mask2)
+        last = scale_prophetic_features(temp2, scaler)
         last.transpose().reset_index(drop=True).to_feather(
             f"{project.partitions}/prophetic_{prediction_experiment}/{id}_processed_features.feather"
         )
@@ -593,7 +597,19 @@ in somn.calculate.preprocess.preprocess_prophetic_features().")
     return organ
 
 
-def mask_prophetic_features(features: pd.DataFrame, mask: np.ndarray, scale=True):
+def scale_prophetic_features(features: pd.DataFrame, scaling):
+    """
+    Apply precalculated scaling to newly calculated, prophetic features.
+    """
+    sc_df = pd.read_csv(scaling, header=0, index_col=0)
+    scale_ = sc_df["scale"].to_numpy()
+    min_ = sc_df["min"].to_numpy()
+    assert len(scale_) == features.shape[1]
+    scaled_features = (features - min_) * scale_
+    return scaled_features
+
+
+def mask_prophetic_features(features: pd.DataFrame, mask: np.ndarray):
     """
     Requires a pre-assembled feature array (with any substrate masking already done), and will apply
     a preprocessing mask (based on variance threshold) from "memory" of a particular modeling experiment.
@@ -606,18 +622,12 @@ def mask_prophetic_features(features: pd.DataFrame, mask: np.ndarray, scale=True
 
     ### Mask features
     output = features[features.columns[mask]]
-    if scale is True:
-        sc = MinMaxScaler()
-        scaled = sc.fit_transform(features.to_numpy())
-        sc = pd.DataFrame(scaled, index=features.index)
-        return sc
-    else:
-        return output
+    return output
 
 
 def new_mask_random_feature_arrays(
-    real_feature_dataframes: (pd.DataFrame),
-    rand_feat_dataframes: (pd.DataFrame),
+    real_feature_dataframes: pd.DataFrame,
+    rand_feat_dataframes: pd.DataFrame,
     _vt=None,
     prophetic=False,
 ):
@@ -656,6 +666,7 @@ def new_mask_random_feature_arrays(
         _vt = 0.04  # This preserves an old version of vt, and the next condition ought to still be "if" so that it still runs when this is true
     elif _vt == None:
         _vt = 0
+    ### Transposing features to columns, instances to rows ###
     vt = VarianceThreshold(threshold=_vt)
     sc = MinMaxScaler()
     vt_real = vt.fit_transform(filtered_df.transpose().to_numpy())
@@ -676,7 +687,7 @@ def new_mask_random_feature_arrays(
         output_rand = processed_rand_feats
     output_real = tuple([processed_real_feats[lbl] for lbl in labels])
     ### mask is nunique (basically single value column filter), and variances will be useful IF someone wants to apply a specific cutoff
-    return output_rand, output_real, (mask, vt.variances_)
+    return output_rand, output_real, (mask, vt.variances_, sc.scale_, sc.data_min_)
 
 
 def get_all_combos(unique_couplings):
@@ -725,7 +736,9 @@ def preprocess_maxdiff(input: pd.DataFrame, concat_grid_desc=True, threshold=0.8
         ### Get percentile rank - select pct-based slice of features instead of number - like a threshold cutoff
         ranking = diff.rank(pct=True)
         idx = ranking[ranking >= threshold].index.to_list()
-        return df[idx]  # Going to reorder the features
+        ### DEV idx was used to mask df, and this shuffles features. The mask object below is intended to preserve the original ordering ###
+        mask = [f for f in df.columns if f in idx]
+        return df[mask]  # Should keep the same order of features
 
     def pull_type_(df):
         labels = df.columns

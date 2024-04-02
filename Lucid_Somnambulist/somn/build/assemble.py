@@ -250,9 +250,8 @@ def assemble_descriptors_from_handles(handle_input, desc: tuple, sub_mask=None):
     ## These were read in from feather files, and must be transposed
     basedf = base_real.transpose()
     solvdf = solv_real.transpose()
-    catdf = (
-        cat_real.transpose()
-    )  # Confusing - FIX THIS - trying to use it like a dictionary later, but it's clearly still a df. Need to have column-wise lookup
+    catdf = cat_real.transpose()
+    # Confusing - FIX THIS - trying to use it like a dictionary later, but it's clearly still a df. Need to have column-wise lookup
     # br_dict = br_dict_real  # This is just to re-use code, but is confusing.
     # am_dict = am_dict_real
 
@@ -285,7 +284,9 @@ def assemble_descriptors_from_handles(handle_input, desc: tuple, sub_mask=None):
             # )
             columns.append(amdesc + brdesc + catdesc + solvdesc + basedesc)
             labels.append(handlestring)
-        outdf = pd.DataFrame(columns, index=labels).transpose()
+        outdf = pd.DataFrame(
+            columns, index=labels
+        ).transpose()  # handles as columns, ready for serialization as a .feather
         # ### DEVELOPMENT
         # from somn.util.project import Project
         # import uuid
@@ -344,7 +345,7 @@ def randomize_features(feat: np.ndarray):
     applied to assemble a feature array.
 
     """
-    feat_ = feat
+    # feat_ = feat
     rng = np.random.default_rng()
     feats = rng.random(out=feat)
     return feats
@@ -404,4 +405,3 @@ def load_calculated_substrate_descriptors():
     with open(br[0], "rb") as q:
         sub_br_dict = pickle.load(q)
     return ((sub_am_dict, sub_br_dict), rand)
-
