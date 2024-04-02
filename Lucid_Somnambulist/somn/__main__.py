@@ -317,8 +317,8 @@ Ensure that a valid path to reactants is provided."
         ## PROJECT CLASS LOADED FOR FIRST TIME - WILL MAKE SOMN_SCRATCH DIRECTORY
         from somn.util.project import Project
 
-        p = Project()
-        p.save(identifier="initialization")
+        # p = Project()
+        # p.save(identifier="initialization")
         ## Look for and load projects.JSON & pre-trained models
         if "models" in args.options:
             from pathlib import Path
@@ -326,12 +326,12 @@ Ensure that a valid path to reactants is provided."
             import os
             import json
 
-            if Path("./somn-project.tar.gz").exists():
+            if Path("./pretrained-somn.tar.gz").exists():
                 assert Path("./projects.JSON").exists()
                 ## EXTRACT MODELS INTO SOMN SCRATCH DIRECTORY
                 print("\n\nExtracting pre-trained models...\n\n")
                 subprocess.run(
-                    ["tar", "-xf", "somn-project.tar.gz", "-C", "somn_scratch/"]
+                    ["tar", "-xf", "pretrained-somn.tar.gz", "-C", "somn_scratch/"]
                 )
                 print(
                     "\n\nModels successfully extracted! Now updating package with their location...\n\n"
@@ -347,7 +347,7 @@ Ensure that a valid path to reactants is provided."
                     json.dump(proj, p)
                 print(
                     "somn package has been installed with pre-trained models. Please look in the somn_scratch directory \
-to find the project 'IID-Models-2023', and look in the 'scratch' subdirectory for an example prediction request input file."
+to find the project '44eb8d94effa11eea46f18c04d0a4970', and look in the 'scratch' subdirectory for an example prediction request input file."
                 )
             else:
                 import warnings
