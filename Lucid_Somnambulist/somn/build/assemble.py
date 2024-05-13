@@ -347,7 +347,8 @@ def randomize_features(feat: np.ndarray):
     """
     # feat_ = feat
     rng = np.random.default_rng()
-    feats = rng.random(out=feat)
+    feats = rng.random(size=feat.size)
+    feats = feats.reshape(feat.shape)
     return feats
 
 
