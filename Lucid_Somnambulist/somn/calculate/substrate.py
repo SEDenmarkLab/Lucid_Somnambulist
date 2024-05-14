@@ -344,7 +344,7 @@ class PropheticInput:
         del xtb
         return atomprop_out, failures
 
-    def sort_and_write_outputs(self):
+    def sort_and_write_outputs(self, substrate_indicies=None):
         """
         Sort reactants by role and serialize them
         """
@@ -388,6 +388,16 @@ class PropheticInput:
             raise RuntimeError(
                 "DEBUG: State error for PropheticInput class -- as a result, outputs not serializing."
             )
+        if substrate_indicies != None:
+            nuc_indicies, el_indicies = substrate_indicies
+            with open(
+                f"{self.parser.path_to_write}/nucleophile_indicies.json", "w"
+            ) as k:
+                json.dump(nuc_indicies, k)
+            with open(
+                f"{self.parser.path_to_write}/electrophile_indicies.json", "w"
+            ) as j:
+                json.dump(el_indicies, j)
 
     @classmethod
     def from_mol(cls, mol, smi, role):

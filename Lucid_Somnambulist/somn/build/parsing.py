@@ -15,7 +15,6 @@ import string
 
 
 class InputParser:
-
     """
     Input parsing class with built-in warnings and error serialization features
     """
@@ -85,7 +84,7 @@ class InputParser:
             output[mol.name] = smi
         return output
 
-    def get_mol_from_smiles(self, user_input, recursive_mode=False, names=None):
+    def get_mol_from_smiles(self, user_input, recursive_mode=False, names="none"):
         """
         Take user input of smiles string and convert it to a molli molecule object
 
@@ -130,12 +129,12 @@ class InputParser:
                 warnings.warn(
                     "Warning: list of names passed were not the same length as input SMILES; failed to infer naming scheme, so enumerating structures."
                 )
-                names = None
+                names = "none"
             elif any(item in names for item in self.names_known_tot):
                 warnings.warn(
                     "Warning: could overwrite structure names; an already-used name was included. Switching to default naming."
                 )
-                names = None
+                names = "none"
             mols_out = []
             smi_d = {}  # keep track of smiles for saving later
             gen3d = ob.OBOp.FindType("gen3D")
@@ -156,20 +155,21 @@ class InputParser:
                 gen3d.Do(
                     obmol, "--best"
                 )  # Documentation is lacking for pybel/python, found github issue from 2020 with this
-                if names == None:
+                # print("DEBUG ", names)
+                if type(names) == list:
+                    newmol = ml.Molecule.from_mol2(
+                        obconv.WriteString(obmol), name=f"{names[i]}"
+                    )
+                elif names == "none":
                     newmol = ml.Molecule.from_mol2(
                         obconv.WriteString(obmol),
                         name=f"pr{str(date.today())}_{flag_}_{i+1}",
                     )
-                elif type(names) == list:
-                    newmol = ml.Molecule.from_mol2(
-                        obconv.WriteString(obmol), name=f"{names[i]}"
-                    )
                 mols_out.append(newmol)
                 del obmol
-                smi_d[
-                    newmol.name
-                ] = smiles_  # Save smiles in dict keyed by molecule name
+                smi_d[newmol.name] = (
+                    smiles_  # Save smiles in dict keyed by molecule name
+                )
 
             if self.ser == True:
                 self.serialize(mols_out, specific_msg="smiles_preopt")
@@ -210,18 +210,27 @@ class InputParser:
         )
         if update == None:
             opt = ml.Concurrent(
-                col, backup_dir=self.path_to_write + "/scratch/", update=20,concurrent=16
+                col,
+                backup_dir=self.path_to_write + "/scratch/",
+                update=20,
+                concurrent=16,
             )(xtb.optimize)(method="gfn2")
         elif type(update) == int:
             opt = ml.Concurrent(
-                col, backup_dir=self.path_to_write + "/scratch/", update=update,concurrent=16
+                col,
+                backup_dir=self.path_to_write + "/scratch/",
+                update=update,
+                concurrent=16,
             )(xtb.optimize)(method="gfn2")
         else:
             Exception(
                 "Optional update argument passed for input structure preoptimization, but the value passed was not an integer. Either do not use this optional feature and accept 2 second update cycles, or input a valid integer value of seconds."
             )
             opt = ml.Concurrent(
-                col, backup_dir=self.path_to_write + "/scratch/", update=60,concurrent=16
+                col,
+                backup_dir=self.path_to_write + "/scratch/",
+                update=60,
+                concurrent=16,
             )(xtb.optimize)(method="gfn2")
         mols, errs = somn.util.aux_func.check_parsed_mols(opt, col)
         if self.ser == True:
@@ -229,21 +238,68 @@ class InputParser:
             self.serialize(mols, specific_msg="preopt_suc")
         return ml.Collection(f"{col.name}_preopt", mols), errs
 
-    def prep_collection(self, col: ml.Collection, update=None):
+    def prep_collection(self, col: ml.Collection, update=None, has_hs=True):
         """
         Several consistent steps to prep incoming geometries
         """
 
-        col_h, errs_h = self.add_hydrogens(col)
-        # ID_ = date.today()
+        if has_hs == False:
+            col_h, errs_h = self.add_hydrogens(col)
+        elif has_hs == True:
+            col_h, errs_h = col, []
         if update == None:
             preopt, errs_pre = self.preopt_geom(col_h)
         else:
             preopt, errs_pre = self.preopt_geom(col_h, update=update)
         return preopt, errs_h.extend(errs_pre)
 
-
     def scrape_requests_csv(self, fpath):
+        """
+        Scrapes smiles strings out of a csv file
+
+        Requestor ID or uuid should be column 0, Nuc SMILES should be column 1, El SMILES should be column 2, optional name for nuc column 3, optional name for el column 4
+        """
+        df = pd.read_csv(fpath, header=0, index_col=0)
+        assert isinstance(df, pd.DataFrame)
+        if df.columns.to_list() == [
+            "user",
+            "nuc",
+            "el",
+            "nuc_name",
+            "el_name",
+            "nuc_idx",
+            "el_idx",
+        ]:
+            nucs, smiles_d = self.get_mol_from_smiles(
+                df.iloc[:, 1].to_list(),
+                recursive_mode=True,
+                names=df.iloc[:, 3].to_list(),
+            )
+            elecs, smiles_d_ = self.get_mol_from_smiles(
+                df.iloc[:, 2].to_list(),
+                recursive_mode=True,
+                names=df.iloc[:, 4].to_list(),
+            )
+            roles = ["nuc" for f in nucs] + ["el" for k in elecs]
+            nucs.extend(elecs)
+            smiles_d.update(smiles_d_)
+            raw_indicies = df.iloc[:, 5].to_list() + df.iloc[:, 6].to_list()
+            if all(f == "-" for f in raw_indicies):
+                return nucs, smiles_d, roles, None
+            nuc_indicies, el_indicies = {}, {}
+            for m, r, idx in zip(nucs, roles, raw_indicies):
+                if r == "el":
+                    el_indicies[m.name] = idx
+                elif r == "nuc":
+                    nuc_indicies[m.name] = idx
+            indicies = (nuc_indicies, el_indicies)
+            return nucs, smiles_d, roles, indicies
+        else:
+            raise Exception(
+                "Input requests .csv file not formatted correctly - need 3 or 5 columns, see function scrape_smiles_csv in InputParser"
+            )
+
+    def deprec_scrape_requests_csv(self, fpath):
         """
         Scrapes smiles strings out of a csv file
 
@@ -283,7 +339,6 @@ class InputParser:
             raise Exception(
                 "Input requests .csv file not formatted correctly - need 3 or 5 columns, see function scrape_smiles_csv in InputParser"
             )
-
 
     def scrape_biovia_smi_file(self, fpath):
         """
