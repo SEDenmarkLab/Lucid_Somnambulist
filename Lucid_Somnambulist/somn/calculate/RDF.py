@@ -9,115 +9,118 @@ from rdkit.Chem import rdqueries
 
 # William M Haynes. CRC Handbook of Chemistry and Physics.
 # CRC Press, London, 95th edition, 2014. ISBN 9781482208689.
-vdw_dict: dict[str, float] = {'H': 1.1,
- 'He': 1.4,
- 'Li': 1.82,
- 'Be': 1.53,
- 'B': 1.92,
- 'C': 1.7,
- 'N': 1.55,
- 'O': 1.52,
- 'F': 1.47,
- 'Ne': 1.54,
- 'Na': 2.27,
- 'Mg': 1.73,
- 'Al': 1.84,
- 'Si': 2.1,
- 'P': 1.8,
- 'S': 1.8,
- 'Cl': 1.75,
- 'Ar': 1.88,
- 'K': 2.75,
- 'Ca': 2.31,
- 'Sc': 2.15,
- 'Ti': 2.11,
- 'V': 2.07,
- 'Cr': 2.06,
- 'Mn': 2.05,
- 'Fe': 2.04,
- 'Co': 2.0,
- 'Ni': 1.97,
- 'Cu': 1.96,
- 'Zn': 2.01,
- 'Ga': 1.87,
- 'Ge': 2.11,
- 'As': 1.85,
- 'Se': 1.9,
- 'Br': 1.85,
- 'Kr': 2.02,
- 'Rb': 3.03,
- 'Sr': 2.49,
- 'Y': 2.32,
- 'Zr': 2.23,
- 'Nb': 2.18,
- 'Mo': 2.17,
- 'Tc': 2.16,
- 'Ru': 2.13,
- 'Rh': 2.1,
- 'Pd': 2.1,
- 'Ag': 2.11,
- 'Cd': 2.18,
- 'In': 1.93,
- 'Sn': 2.17,
- 'Sb': 2.06,
- 'Te': 2.06,
- 'I': 1.98,
- 'Xe': 2.16,
- 'Cs': 3.43,
- 'Ba': 2.68,
- 'La': 2.43,
- 'Ce': 2.42,
- 'Pr': 2.4,
- 'Nd': 2.39,
- 'Pm': 2.38,
- 'Sm': 2.36,
- 'Eu': 2.35,
- 'Gd': 2.34,
- 'Tb': 2.33,
- 'Dy': 2.31,
- 'Ho': 2.3,
- 'Er': 2.29,
- 'Tm': 2.27,
- 'Yb': 2.26,
- 'Lu': 2.24,
- 'Hf': 2.23,
- 'Ta': 2.22,
- 'W': 2.18,
- 'Re': 2.16,
- 'Os': 2.16,
- 'Ir': 2.13,
- 'Pt': 2.13,
- 'Au': 2.14,
- 'Hg': 2.23,
- 'Tl': 1.96,
- 'Pb': 2.02,
- 'Bi': 2.07,
- 'Po': 1.97,
- 'At': 2.02,
- 'Rn': 2.2,
- 'Fr': 3.48,
- 'Ra': 2.83,
- 'Ac': 2.47,
- 'Th': 2.45,
- 'Pa': 2.43,
- 'U': 2.41,
- 'Np': 2.39,
- 'Pu': 2.43,
- 'Am': 2.44,
- 'Cm': 2.45,
- 'Bk': 2.44,
- 'Cf': 2.45,
- 'Es': 2.45,
- 'Fm': 2.45,
- 'Md': 2.46,
- 'No': 2.46,
- 'Lr': 2.46}
+vdw_dict: dict[str, float] = {
+    "H": 1.1,
+    "He": 1.4,
+    "Li": 1.82,
+    "Be": 1.53,
+    "B": 1.92,
+    "C": 1.7,
+    "N": 1.55,
+    "O": 1.52,
+    "F": 1.47,
+    "Ne": 1.54,
+    "Na": 2.27,
+    "Mg": 1.73,
+    "Al": 1.84,
+    "Si": 2.1,
+    "P": 1.8,
+    "S": 1.8,
+    "Cl": 1.75,
+    "Ar": 1.88,
+    "K": 2.75,
+    "Ca": 2.31,
+    "Sc": 2.15,
+    "Ti": 2.11,
+    "V": 2.07,
+    "Cr": 2.06,
+    "Mn": 2.05,
+    "Fe": 2.04,
+    "Co": 2.0,
+    "Ni": 1.97,
+    "Cu": 1.96,
+    "Zn": 2.01,
+    "Ga": 1.87,
+    "Ge": 2.11,
+    "As": 1.85,
+    "Se": 1.9,
+    "Br": 1.85,
+    "Kr": 2.02,
+    "Rb": 3.03,
+    "Sr": 2.49,
+    "Y": 2.32,
+    "Zr": 2.23,
+    "Nb": 2.18,
+    "Mo": 2.17,
+    "Tc": 2.16,
+    "Ru": 2.13,
+    "Rh": 2.1,
+    "Pd": 2.1,
+    "Ag": 2.11,
+    "Cd": 2.18,
+    "In": 1.93,
+    "Sn": 2.17,
+    "Sb": 2.06,
+    "Te": 2.06,
+    "I": 1.98,
+    "Xe": 2.16,
+    "Cs": 3.43,
+    "Ba": 2.68,
+    "La": 2.43,
+    "Ce": 2.42,
+    "Pr": 2.4,
+    "Nd": 2.39,
+    "Pm": 2.38,
+    "Sm": 2.36,
+    "Eu": 2.35,
+    "Gd": 2.34,
+    "Tb": 2.33,
+    "Dy": 2.31,
+    "Ho": 2.3,
+    "Er": 2.29,
+    "Tm": 2.27,
+    "Yb": 2.26,
+    "Lu": 2.24,
+    "Hf": 2.23,
+    "Ta": 2.22,
+    "W": 2.18,
+    "Re": 2.16,
+    "Os": 2.16,
+    "Ir": 2.13,
+    "Pt": 2.13,
+    "Au": 2.14,
+    "Hg": 2.23,
+    "Tl": 1.96,
+    "Pb": 2.02,
+    "Bi": 2.07,
+    "Po": 1.97,
+    "At": 2.02,
+    "Rn": 2.2,
+    "Fr": 3.48,
+    "Ra": 2.83,
+    "Ac": 2.47,
+    "Th": 2.45,
+    "Pa": 2.43,
+    "U": 2.41,
+    "Np": 2.39,
+    "Pu": 2.43,
+    "Am": 2.44,
+    "Cm": 2.45,
+    "Bk": 2.44,
+    "Cf": 2.45,
+    "Es": 2.45,
+    "Fm": 2.45,
+    "Md": 2.46,
+    "No": 2.46,
+    "Lr": 2.46,
+}
 """Atomic numbers as keys and CRC vdW radii as values."""
 
 
 symbols_for_rdf = ["C", "N", "S", "O", "F"]
 
-def select_ref_atom(chlorides,bromides):
+
+def select_ref_atoms(chlorides, bromides):
     """
     Choose reference atom from lists of bromides and chlorides in molecule.
     Br and Cl, choose Br
@@ -126,8 +129,10 @@ def select_ref_atom(chlorides,bromides):
     Neither present, raise exception
     """
     if len(chlorides) == 0 and len(bromides) == 0:
-        raise Exception("Electrophiles passed which do not have Br or Cl present. \
-Check inputs to ensure that (hetero)aryl bromides and chlorides are being requested.")
+        raise Exception(
+            "Electrophiles passed which do not have Br or Cl present. \
+Check inputs to ensure that (hetero)aryl bromides and chlorides are being requested."
+        )
     elif len(chlorides) == 0 and len(bromides) > 0:
         if len(bromides) > 1:
             Warning.warn("Multiple bromides identified, selecting one arbitrarily.")
@@ -137,63 +142,156 @@ Check inputs to ensure that (hetero)aryl bromides and chlorides are being reques
             Warning.warn("Multiple chlorides identified, selecting one arbitrarily.")
         return chlorides[0]
     elif len(chlorides) > 0 and len(bromides) > 0:
-        Warning.warn("Multiple halides identified, selecting a bromine atom arbitrarily.")
+        Warning.warn(
+            "Multiple halides identified, selecting a bromine atom arbitrarily."
+        )
         return bromides[0]
 
-def calculate_electrophile_rdf_descriptors(col: ml.Collection = None,
-                              apd: dict = None,
-                              increment: float = 0.75, 
-                              radial_scale: int = 0,
-                              slices: int = 10,
-                              ref_atom = None,
-                              ):
+
+def calculate_electrophile_rdf_descriptors(
+    col: ml.Collection = None,
+    apd: dict = None,
+    increment: float = 0.75,
+    radial_scale: int = 0,
+    slices: int = 10,
+    ref_atoms=None,
+):
     """
-    Generalized RDF descriptor calculation - handles Cl or Br. 
+    Generalized RDF descriptor calculation - handles Cl or Br.
     """
+    assert col is not None
+    assert apd is not None
     failures = []
     molecule_rdfs = {}
-    for mol in col:
-        # rdf_template = pd.DataFrame(index=["sphere_" + str(i) for i in range(slices)])
-        # rdf_df.name = mol.name
-        chlorides = mol.get_atoms_by_symbol(symbol="Cl")
-        bromides = mol.get_atoms_by_symbol(symbol="Br")
-        if ref_atom==None:
-            reference = select_ref_atom(chlorides,bromides)
-        else:
-            try:
-                assert isinstance(ref_atom,ml.dtypes.Atom)
-                reference = ref_atom
-            except:
-                try:
-                    reference = mol.atoms[int(ref_atom)]
-                except:
-                    Warning.warn("Calculating RDF descriptors failed because a ref_atom \
-argument was passed which was neither an atom class nor an atom index. None is a valid case, \
-and will result in a guess of the reference halide atom (Br > Cl).")
-                    failures.append(mol.name)
-                    continue
-        ## MAKING SURE REFERENCE ATOM SELECTION WORKED ##
+
+    def automatically_identify_ref_atoms():
+        reference = []
+        for mol in col:
+            # rdf_template = pd.DataFrame(index=["sphere_" + str(i) for i in range(slices)])
+            # rdf_df.name = mol.name
+            chlorides = mol.get_atoms_by_symbol(symbol="Cl")
+            bromides = mol.get_atoms_by_symbol(symbol="Br")
+            ref_atm = select_ref_atoms(chlorides, bromides)
+            reference.append(ref_atm)
+
+    if ref_atoms is not None:
         try:
-            assert isinstance(reference, ml.dtypes.Atom)
+            assert isinstance(ref_atoms, list)
+            assert all(isinstance(f, ml.dtypes.Atom) or f == "-" for f in ref_atoms)
+            reference = []
+            for i, k in enumerate(ref_atoms):
+                if k == "-":
+                    mol = col.molecules[i]
+                    ref_atm = select_ref_atoms(
+                        mol.get_atoms_by_symbol(symbol="Cl"),
+                        mol.get_atoms_by_symbol(symbol="Br"),
+                    )
+                    reference.append(ref_atm)
+                elif isinstance(k, ml.dtypes.Atom):
+                    reference.append(k)
+                else:
+                    ValueError()
+
         except:
-            Warning.warn("Cannot identify reference atom - failed to calculate RDF")
-            if mol.name not in failures:
-                failures.append(mol.name)
-            continue
-        conn = list(mol.get_connected_atoms(reference))
+            Warning.warn(
+                "Calculating RDF descriptors failed because a ref_atom \
+argument was passed which was neither an atom class nor an atom index. None is a valid case, \
+and will result in a guess of the reference halide atom (Br > Cl)."
+            )
+    elif ref_atoms is None:
+        automatically_identify_ref_atoms()
+    else:
+        raise ValueError(
+            "Passed an improper input for ref_atoms during new substrate descriptor calculation."
+        )
+    assert len(col.molecules) == len(reference)
+    for mol, ref in zip(col, reference):
+        conn = list(mol.get_connected_atoms(ref))
         try:
             assert len(conn) == 1
         except:
             if mol.name not in failures:
                 failures.append(mol.name)
-            continue           
+            continue
         ipso_atom = conn[0]
-
-
-
-                
-
-
+        ipso_idx = mol.atoms.index(ipso_atom)
+        halide_idx = mol.atoms.index(ref)
+        rdk_mol = Chem.MolFromMol2Block(mol.to_mol2(), sanitize=False)
+        if rdk_mol == None:
+            # obabel_ = ml.OpenBabelDriver(name=mol.name,scratch_dir=os.getcwd(),nprocs=1)
+            # out = obabel_.convert(mol_text=mol.to_mol2(),src="mol2",dest="smi")
+            # print(out)
+            obconv = openbabel.OBConversion()
+            obconv.SetInAndOutFormats("mol2", "smi")
+            obmol = openbabel.OBMol()
+            with open("buffer.mol2", "w") as g:
+                g.write(mol.to_mol2())
+            obconv.ReadFile(obmol, "buffer.mol2")
+            obconv.Convert()
+            smi = obconv.WriteString(obmol).split()[0]
+            if "([N](=O)[O-])" in smi:
+                smi = smi.replace("([N](=O)[O-])", "([N+](=O)[O-])")
+            # print(smi)
+            rdk_mol = Chem.MolFromSmiles(smi)
+            # print(rdk_mol)
+            # break
+        leftref = get_left_reference(rdk_mol, ipso_idx, halide_idx)
+        conf_rdfs = {}
+        for k, conf in enumerate(mol.conformers):
+            df = pd.DataFrame.from_dict(apd[mol.name][k], orient="columns")
+            coords = conf.coord
+            a, b, c, d = get_molplane(coords, halide_idx, ipso_idx, leftref)
+            # print(a, b, c, d)
+            orth_out = get_orthogonal_plane(
+                coords, halide_idx, ipso_idx, a, b, c, leftref
+            )
+            if orth_out == None:  ### DEBUG
+                # print(mol.atoms, coords)
+                # print(f"Mol plane was {a},{b},{c},{d}")
+                raise Exception(
+                    f"Cannot find orthogonal plane direction for molecule {mol.name}, molecule number {col.molecules.index(mol)} in collection"
+                )
+            e, f, g, h = orth_out
+            h1, h2 = sort_into_halves(mol, conf, e, f, g, h)
+            for prop in df.index:
+                rdf_ser_1 = get_rdf(
+                    coords,
+                    halide_idx,
+                    h1,
+                    df.loc[prop],
+                    radial_scaling=radial_scale,
+                    inc_size=increment,
+                    first_int=1.80,
+                )
+                rdf_ser_2 = get_rdf(
+                    coords,
+                    halide_idx,
+                    h2,
+                    df.loc[prop],
+                    radial_scaling=radial_scale,
+                    inc_size=increment,
+                    first_int=1.80,
+                )
+                if prop in conf_rdfs.keys():
+                    conf_rdfs[prop].append([list(rdf_ser_1), list(rdf_ser_2)])
+                else:
+                    conf_rdfs[prop] = [[list(rdf_ser_1), list(rdf_ser_2)]]
+            rdf_ser_3 = get_atom_ind_rdf(
+                mol.atoms, coords, halide_idx, h1, inc_size=increment, first_int=1.80
+            )
+            rdf_ser_4 = get_atom_ind_rdf(
+                mol.atoms, coords, halide_idx, h2, inc_size=increment, first_int=1.80
+            )
+        for sym, _3, _4 in zip(symbols_for_rdf, rdf_ser_3, rdf_ser_4):
+            conf_rdfs[sym + "_rdf"] = [[_3, _4]]
+        desc_df = pd.DataFrame()
+        for prop, values in conf_rdfs.items():
+            array_ = np.array(values)
+            avg_array = np.mean(array_, axis=0)
+            desc_df[prop] = pd.concat([pd.Series(f) for f in avg_array], axis=0)
+        desc_df.index = ["slice_" + str(f + 1) for f in range(20)]
+        molecule_rdfs[mol.name] = desc_df
+    return molecule_rdfs
 
 
 def retrieve_chloride_rdf_descriptors(
@@ -443,7 +541,7 @@ def get_amine_ref_n(mol: ml.Molecule):
 
 
 def retrieve_amine_rdf_descriptors(
-    col, apd, increment: float = 1.1, radial_scale: int = 0
+    col, apd, increment: float = 1.1, radial_scale: int = 0, ref_atoms=None
 ):
     """
     Takes collection and json-type atom property descriptors (generated by scraping function built for xTB outputs)
@@ -459,8 +557,40 @@ def retrieve_amine_rdf_descriptors(
     This would give an output with 10 extra rows that could be trimmed or just removed later with variance threshold.
 
     """
-    mol_rdfs = {}  # Going to store dfs in here with name for retrieval for now
-    for mol in col:
+    molecule_rdfs = {}  # Going to store dfs in here with name for retrieval for now
+    if ref_atoms is not None:
+        try:
+            assert isinstance(ref_atoms, list)
+            assert all(isinstance(f, ml.dtypes.Atom) or f == "-" for f in ref_atoms)
+            reference = []
+            for i, k in enumerate(ref_atoms):
+                if k == "-":
+                    reference.append(get_amine_ref_n(col.molecules[i]))
+                elif isinstance(k, ml.dtypes.Atom):
+                    reference.append(k)
+                else:
+                    ValueError()
+        except:
+            Warning.warn(
+                "Calculating RDF descriptors failed because a ref_atom \
+argument was passed which was neither an atom class nor an atom index. None is a valid case, \
+and will result in a guess of the reference halide atom (Br > Cl)."
+            )
+    elif ref_atoms is None:
+        reference = []
+        for mol in col:
+            ref_ = get_amine_ref_n(mol)
+            reference.append(ref_)
+    else:
+        Warning.warn(
+            "Passed an improper input for ref_atoms during new substrate descriptor calculation."
+        )
+        reference = []
+        for mol in col:
+            ref_ = get_amine_ref_n(mol)
+            reference.append(ref_)
+    assert len(col.molecules) == len(reference)
+    for mol, ref in zip(col, reference):
         # atom_props = apd[mol.name]
         # print(apd.keys())
         rdf_df = pd.DataFrame(index=["sphere_" + str(i) for i in range(10)])
@@ -468,9 +598,9 @@ def retrieve_amine_rdf_descriptors(
         ### Get reference atoms
         # labels = [f.symbol for f in mol.atoms]
         # br_atom = mol.get_atoms_by_symbol(symbol='Br')[0]
-        n_atom = get_amine_ref_n(mol)
-        n_idx = mol.atoms.index(n_atom)
-        conn = mol.get_connected_atoms(n_atom)
+        # n_atom = get_amine_ref_n(mol)
+        n_idx = mol.atoms.index(ref)
+        conn = mol.get_connected_atoms(ref)
         if len(conn) == 1:
             raise Exception(
                 "More than one group found bonded to Br atom. Check structures"
@@ -509,9 +639,9 @@ def retrieve_amine_rdf_descriptors(
             avg_array = np.mean(array_, axis=0)
             desc_df[prop] = pd.concat([pd.Series(f) for f in avg_array], axis=0)
         desc_df.index = ["slice_" + str(f + 1) for f in range(10)]
-        mol_rdfs[mol.name] = desc_df
+        molecule_rdfs[mol.name] = desc_df
     # print("all done")
-    return mol_rdfs
+    return molecule_rdfs
 
 
 def get_rdf(
@@ -794,97 +924,124 @@ def sort_into_halves(mol: ml.Molecule, conf: ml.dtypes.CartesianGeometry, e, f, 
     cp = np.array([e, f, g])
     # cp_ = [np.float64(e),np.float64(f),np.float64(g)]
     for i, pos in enumerate(coords):
-        direction_ = (np.tensordot(pos, cp, axes=1) - h) / abs(
-            sqrt(e**2 + f**2 + g**2)
-        )
+        direction_ = (np.tensordot(pos, cp, axes=1) - h) / abs(sqrt(e**2 + f**2 + g**2))
         if direction_ > 0.15:
             oct1.append(i)
         elif direction_ < -0.15:
             oct2.append(i)
     return [oct1, oct2]
 
-def select_left_reference(mol: ml.Molecule,ipso_atom,halide_atom):
+
+def select_left_reference(mol: ml.Molecule, ipso_atom, halide_atom):
     """
     select left reference for molecule
 
     [new version - no RDKit dependency]
     """
-    ortho_atoms,meta_atoms,tertiary_atoms = get_ortho_meta_symbols(mol,ipso_atom,halide_atom)
+    ortho_atoms, meta_atoms, tertiary_atoms = get_ortho_meta_symbols(
+        mol, ipso_atom, halide_atom
+    )
 
 
-def evaluate_atom_heirarchy(mol: ml.Molecule,halide:ml.dtypes.Atom,ortho: list,meta: list):
+def evaluate_atom_heirarchy(
+    mol: ml.Molecule, halide: ml.dtypes.Atom, ortho: list, meta: list
+):
     """
     Pass an ortho atom list or meta atom list
     """
     from mendeleev import element
+
     o_elms = [element(f.symbol) for f in ortho]
     o_aos = [f.atomic_number for f in o_elms]
-    if o_aos[0] == o_aos[1]: # Not simple; have to look through graph
-        ortho_substitutents,meta_ring_atoms=sort_graph_search_atoms(mol,halide,meta)
-        a,b = [set(mol.get_bonds_with_atom(meta_ring_atoms[f])) for f in range(2)]
-        c,d = [set(mol.get_bonds_with_atom(ortho_substituents[f])) for f in range(2)]
+    if o_aos[0] == o_aos[1]:  # Not simple; have to look through graph
+        ortho_substitutents, meta_ring_atoms = sort_graph_search_atoms(
+            mol, halide, meta
+        )
+        a, b = [set(mol.get_bonds_with_atom(meta_ring_atoms[f])) for f in range(2)]
+        c, d = [set(mol.get_bonds_with_atom(ortho_substituents[f])) for f in range(2)]
 
-
-
-
-        
-        meta_symbol_sets = [set([g.symbol for g in f]) for f in meta]        
+        meta_symbol_sets = [set([g.symbol for g in f]) for f in meta]
         m_elms = [[element(f.symbol).atomic_number for f in g] for g in meta]
         m_avg = [sum(k) for k in m_elms]
-        if m_avg[0] != m_avg[1]: #One side is more branched than the other
-            return ortho[m_avg.index(max(m_avg))] #Side with most branching
-        else: #Ortho substitutions are identical - need to look at meta position
-            m_en = [[element(f.symbol).electronegativity("allen") for f in g] for g in meta]
+        if m_avg[0] != m_avg[1]:  # One side is more branched than the other
+            return ortho[m_avg.index(max(m_avg))]  # Side with most branching
+        else:  # Ortho substitutions are identical - need to look at meta position
+            m_en = [
+                [element(f.symbol).electronegativity("allen") for f in g] for g in meta
+            ]
             m_en_max = [max(k) for k in m_elms]
-            if m_en_max[0] != m_en_max[1]: #One meta position is more electronegative (e.g., N vs C)
+            if (
+                m_en_max[0] != m_en_max[1]
+            ):  # One meta position is more electronegative (e.g., N vs C)
                 return ortho[m_en_max.index(max(m_en_max))]
 
-    else: #Ortho atoms are not both carbon
+    else:  # Ortho atoms are not both carbon
         sym = [f.symbol for f in ortho]
-        if "N" in sym: #Highest priority (arbitrary)
+        if "N" in sym:  # Highest priority (arbitrary)
             return ortho[sym.index("N")]
-        if "S" in sym: #Second priority (arbitrary)
+        if "S" in sym:  # Second priority (arbitrary)
             return ortho[sym.index("S")]
-        if "O" in sym: #Third priority (arbitrary)
+        if "O" in sym:  # Third priority (arbitrary)
             return ortho[sym.index("O")]
-        else: #If not one of those heteroatoms, use the highest MW (e.g., weird Se heterocycle, etc.)
-            return ortho[o_aos.index(max(o_aos))] #get ortho atom with largest ao if both sides differ
-    
-def sort_graph_search_atoms(mol: ml.Molecule,halide: ml.dtypes.Atom,meta:list):
+        else:  # If not one of those heteroatoms, use the highest MW (e.g., weird Se heterocycle, etc.)
+            return ortho[
+                o_aos.index(max(o_aos))
+            ]  # get ortho atom with largest ao if both sides differ
+
+
+def sort_graph_search_atoms(mol: ml.Molecule, halide: ml.dtypes.Atom, meta: list):
     """
     Takes atoms 2 Manhattan steps from the ipso aryl atom and returns atoms
     which are an ortho substitutent separately from the meta ring atoms.
-    This is done using distance from the reference atom. 
+    This is done using distance from the reference atom.
     """
     halide_coords = mol.geom.get_coord(mol.get_atom_idx(halide))
-    distances = [[np.linalg.norm(halide_coords-mol.geom.get_coord(mol.get_atom_idx(f))) for f in m] for m in meta]
+    distances = [
+        [
+            np.linalg.norm(halide_coords - mol.geom.get_coord(mol.get_atom_idx(f)))
+            for f in m
+        ]
+        for m in meta
+    ]
     ## Building dist_arr to have 2 columns: distances, and atoms
-    dist_arr = np.concatenate(np.array([[p for p in zip(np.array(f)[0],np.array(f)[1])] for f in zip(distances,meta)]),axis=0)
-    sorted_dist = dist_arr[dist_arr[:,0].argsort()]
-    meta_ring = sorted_dist[-2:,1].flatten().to_list()
-    ortho_subst = sorted_dist[:2,1].flatten().to_list()
-    return ortho_subst,meta_ring
+    dist_arr = np.concatenate(
+        np.array(
+            [
+                [p for p in zip(np.array(f)[0], np.array(f)[1])]
+                for f in zip(distances, meta)
+            ]
+        ),
+        axis=0,
+    )
+    sorted_dist = dist_arr[dist_arr[:, 0].argsort()]
+    meta_ring = sorted_dist[-2:, 1].flatten().to_list()
+    ortho_subst = sorted_dist[:2, 1].flatten().to_list()
+    return ortho_subst, meta_ring
 
 
-def get_ortho_meta_symbols(mol:ml.Molecule,ipso: ml.dtypes.Atom,halide: ml.dtypes.Atom):
+def get_ortho_meta_symbols(
+    mol: ml.Molecule, ipso: ml.dtypes.Atom, halide: ml.dtypes.Atom
+):
     """
-    molli-based molecular graph walk through (hetero)aryl ring system to get symbols of 
+    molli-based molecular graph walk through (hetero)aryl ring system to get symbols of
     ortho and meta ring atoms. These are also returned with branching of carbons.
     """
     ortho_atoms = [f for f in mol.get_connected_atoms(ipso) if f != halide]
     meta_atoms = []
     for orth in ortho_atoms:
-        meta_candidates = [f for f in mol.get_connected_atoms(orth) if f!=ipso]
+        meta_candidates = [f for f in mol.get_connected_atoms(orth) if f != ipso]
         meta_atoms.append(meta_candidates)
     tertiary = []
     for meta in meta_atoms:
-        tert = [[f for f in mol.get_connected_atoms(g) if f not in ortho_atoms] for g in meta]
+        tert = [
+            [f for f in mol.get_connected_atoms(g) if f not in ortho_atoms]
+            for g in meta
+        ]
         # if not tert:
         #     tertiary.append([None])
         tertiary.append(tert)
-    return ortho_atoms,meta_atoms,tertiary
-        
-    
+    return ortho_atoms, meta_atoms, tertiary
+
 
 def get_left_reference(mol: Chem.rdchem.Mol, ipso_idx, br_idx):
     """
@@ -983,7 +1140,10 @@ def _get_ortho_meta_symbols(mol: Chem.rdchem.Mol, aryl_ref):
                     tuple([f for f in test_val_2] + [pt.GetAtomicNumber(test_val_2[0])])
                 )
     # print(ortho_het,meta_het)
-    return ortho_het, meta_het #Should find ortho heteroatoms and meta heteroatoms based on aromaticity, BUT will fail generally for fused systems and ones that RDKit doesn't recognize as aromatic
+    return (
+        ortho_het,
+        meta_het,
+    )  # Should find ortho heteroatoms and meta heteroatoms based on aromaticity, BUT will fail generally for fused systems and ones that RDKit doesn't recognize as aromatic
 
 
 def get_aromatic_atoms(mol: Chem.rdchem.Mol):
@@ -1006,7 +1166,7 @@ def get_less_substituted_ortho(mol: Chem.rdchem.Mol, atomidx):
 
     This is used to define left/right halves of molecule for RDF
 
-    DEFINITELY will fail/not work generally for all molecules. 
+    DEFINITELY will fail/not work generally for all molecules.
     """
 
     atomref = mol.GetAtomWithIdx(atomidx)
