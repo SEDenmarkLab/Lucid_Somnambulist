@@ -145,5 +145,15 @@
         "timestamp": "2024-04-01",
         "unique": "1da4d63af09211ee86be18c04d0a4970",
         "identifier": "val"
+    },
+    "70f110d6246011ef8e7018c04d0a4970": {
+        "path": "somn_scratch/70f110d6246011ef8e7018c04d0a4970/",
+        "timestamp": "2024-06-06",
+        "unique": "70f110d6246011ef8e7018c04d0a4970"
+    },
+    "e5489dcc246111ef8a7418c04d0a4970": {
+        "path": "somn_scratch/e5489dcc246111ef8a7418c04d0a4970",
+        "timestamp": "rxn-site-dev",
+        "unique": "e5489dcc246111ef8a7418c04d0a4970"
     }
 }

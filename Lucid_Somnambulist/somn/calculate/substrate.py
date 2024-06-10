@@ -5,8 +5,9 @@ from attrs import define, field
 
 from somn.calculate.RDF import (
     retrieve_amine_rdf_descriptors,
-    retrieve_bromide_rdf_descriptors,
-    retrieve_chloride_rdf_descriptors,
+    calculate_electrophile_rdf_descriptors,
+    # retrieve_bromide_rdf_descriptors,
+    # retrieve_chloride_rdf_descriptors,
 )
 
 # from somn.workflows import SCRATCH_, STRUC_, DESC_
@@ -19,21 +20,19 @@ def calculate_prophetic(
     geometries: ml.Collection = None,
     atomproperties: dict = None,
     react_type="",
+    nuc_el_ref_atoms=None,
 ):
     """
     Vanilla substrate descriptor retrieval
     """
-    if react_type == "N":
+
+    if react_type == "nuc":
         sub_dict = retrieve_amine_rdf_descriptors(
-            geometries, atomproperties, increment=inc
+            geometries, atomproperties, increment=inc, ref_atoms=nuc_el_ref_atoms
         )
-    elif react_type == "Br":
-        sub_dict = retrieve_bromide_rdf_descriptors(
-            geometries, atomproperties, increment=inc
-        )
-    elif react_type == "Cl":
-        sub_dict = retrieve_chloride_rdf_descriptors(
-            geometries, atomproperties, increment=inc
+    elif react_type == "el":
+        sub_dict = calculate_electrophile_rdf_descriptors(
+            geometries, atomproperties, increment=inc, ref_atoms=nuc_el_ref_atoms
         )
     else:
         raise Exception(

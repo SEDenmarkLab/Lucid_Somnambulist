@@ -222,7 +222,11 @@ def scrape_substrate_csv(fpath):
 
 
 def main(
-    project: Project, inc=0.75, substrate_pre=None, optional_load=None, serialize=True
+    project: Project,
+    inc=0.75,
+    substrate_pre=None,
+    optional_load=None,
+    serialize=True,
 ):
     """
     Run workflow to calculate real and random descriptors for substrates. Saves random features for ALL components,
@@ -249,7 +253,14 @@ def main(
     ### Calculate descriptors for the reactants, and store their 1D vector arrays in a dictionary-like output.
     _inc = inc
     sub_am_dict = retrieve_amine_rdf_descriptors(amines, a_prop, increment=_inc)
-    sub_br_dict = retrieve_bromide_rdf_descriptors(bromides, br_prop, increment=_inc)
+    # sub_br_dict = retrieve_bromide_rdf_descriptors(bromides, br_prop, increment=_inc)
+    ## DEV ##
+    from somn.calculate.RDF import calculate_electrophile_rdf_descriptors
+
+    sub_br_dict = calculate_electrophile_rdf_descriptors(
+        bromides, br_prop, increment=_inc
+    )
+    ### DEV END ###
     ### Preprocess reactant descriptors now, since they are just calculated
     if substrate_pre == None:
         type_, value_ = None, None
