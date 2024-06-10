@@ -335,22 +335,22 @@ Ensure that a valid path to reactants is provided."
             subprocess.run(
                 ["tar", "-xzvf", "pretrained-somn.tar.gz", "-C", "somn_scratch/"]
             )
-            print(
-                "\n\nModels successfully extracted! Now updating package with their location...\n\n"
-            )
+            # print(
+            #     "\n\nModels successfully extracted! Now updating package with their location...\n\n"
+            # )
             ## LOCATE INSTALL PATH FOR DATA MODULE & UPDATE projects.JSON
-            data_module_path = os.path.dirname(somn.data.__file__)
-            with open(f"./projects.JSON", "r") as k:
-                upd = json.load(k)
-            with open(f"{data_module_path}/projects.JSON", "r") as g:
-                proj = json.load(g)
-            proj.update(upd)
-            with open(f"{data_module_path}/projects.JSON", "w") as p:
-                json.dump(proj, p)
-            print(
-                "somn package has been installed with pre-trained models. Please look in the somn_scratch directory \
-to find the project '44eb8d94effa11eea46f18c04d0a4970', and look in the 'scratch' subdirectory for an example prediction request input file."
-            )
+            # data_module_path = os.path.dirname(somn.data.__file__)
+            # with open(f"./projects.JSON", "r") as k:
+            #     upd = json.load(k)
+            # with open(f"{data_module_path}/projects.JSON", "r") as g:
+            #     proj = json.load(g)
+            # proj.update(upd)
+            # with open(f"{data_module_path}/projects.JSON", "w") as p:
+            #     json.dump(proj, p)
+#             print(
+#                 "somn package has been installed with pre-trained models. Please look in the somn_scratch directory \
+# to find the project '44eb8d94effa11eea46f18c04d0a4970', and look in the 'scratch' subdirectory for an example prediction request input file."
+#             )
         except:
             import warnings
 
