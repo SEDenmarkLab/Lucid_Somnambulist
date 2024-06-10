@@ -259,7 +259,7 @@ class InputParser:
 
         Requestor ID or uuid should be column 0, Nuc SMILES should be column 1, El SMILES should be column 2, optional name for nuc column 3, optional name for el column 4
         """
-        df = pd.read_csv(fpath, header=0, index_col=0)
+        df = pd.read_csv(fpath, header=0, index_col=None)
         assert isinstance(df, pd.DataFrame)
         if df.columns.to_list() == [
             "user",
@@ -305,7 +305,7 @@ class InputParser:
 
         Requestor ID or uuid should be column 0, Nuc SMILES should be column 1, El SMILES should be column 2, optional name for nuc column 3, optional name for el column 4
         """
-        df = pd.read_csv(fpath, header=0, index_col=0)
+        df = pd.read_csv(fpath, header=0, index_col=None)
         assert isinstance(df, pd.DataFrame)
         # print("DEBUG", df)
         if len(df.columns) == 3:

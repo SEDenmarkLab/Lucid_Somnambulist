@@ -138,7 +138,7 @@ def main(
             name_ = str(i + 1) + "_" + val + "_" + val_schema + "-schema"
             if val_schema == "random":
                 ### RANDOM SPLITS ###
-                tr, va, te = preprocess.random_splits(dataset, validation=True, fold=10)
+                tr, va, te = preprocess.random_splits(dataset, validation=True, fold=9)
                 if i >= 10:
                     break
             ### OUT OF SAMPLE TEST, IN SAMPLE VAL ###

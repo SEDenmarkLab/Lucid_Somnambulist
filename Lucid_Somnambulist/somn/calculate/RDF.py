@@ -6,6 +6,7 @@ import pandas as pd
 from openbabel import openbabel
 from rdkit import Chem
 from rdkit.Chem import rdqueries
+import warnings
 
 # William M Haynes. CRC Handbook of Chemistry and Physics.
 # CRC Press, London, 95th edition, 2014. ISBN 9781482208689.
@@ -135,14 +136,14 @@ Check inputs to ensure that (hetero)aryl bromides and chlorides are being reques
         )
     elif len(chlorides) == 0 and len(bromides) > 0:
         if len(bromides) > 1:
-            Warning.warn("Multiple bromides identified, selecting one arbitrarily.")
+            warnings.warn("Multiple bromides identified, selecting one arbitrarily.")
         return bromides[0]
     elif len(chlorides) > 0 and len(bromides) == 0:
         if len(chlorides) > 1:
-            Warning.warn("Multiple chlorides identified, selecting one arbitrarily.")
+            warnings.warn("Multiple chlorides identified, selecting one arbitrarily.")
         return chlorides[0]
     elif len(chlorides) > 0 and len(bromides) > 0:
-        Warning.warn(
+        warnings.warn(
             "Multiple halides identified, selecting a bromine atom arbitrarily."
         )
         return bromides[0]
@@ -158,6 +159,8 @@ def calculate_electrophile_rdf_descriptors(
 ):
     """
     Generalized RDF descriptor calculation - handles Cl or Br.
+
+    ref_atoms should be a list that maps onto the collection with either a molli Atom class (for the Br/Cl) or a '-' symbol to autodetect
     """
     assert col is not None
     assert apd is not None
@@ -173,6 +176,7 @@ def calculate_electrophile_rdf_descriptors(
             bromides = mol.get_atoms_by_symbol(symbol="Br")
             ref_atm = select_ref_atoms(chlorides, bromides)
             reference.append(ref_atm)
+        return reference
 
     if ref_atoms is not None:
         try:
@@ -193,13 +197,13 @@ def calculate_electrophile_rdf_descriptors(
                     ValueError()
 
         except:
-            Warning.warn(
+            warnings.warn(
                 "Calculating RDF descriptors failed because a ref_atom \
 argument was passed which was neither an atom class nor an atom index. None is a valid case, \
 and will result in a guess of the reference halide atom (Br > Cl)."
             )
     elif ref_atoms is None:
-        automatically_identify_ref_atoms()
+        reference = automatically_identify_ref_atoms()
     else:
         raise ValueError(
             "Passed an improper input for ref_atoms during new substrate descriptor calculation."
@@ -571,7 +575,7 @@ def retrieve_amine_rdf_descriptors(
                 else:
                     ValueError()
         except:
-            Warning.warn(
+            warnings.warn(
                 "Calculating RDF descriptors failed because a ref_atom \
 argument was passed which was neither an atom class nor an atom index. None is a valid case, \
 and will result in a guess of the reference halide atom (Br > Cl)."
@@ -582,7 +586,7 @@ and will result in a guess of the reference halide atom (Br > Cl)."
             ref_ = get_amine_ref_n(mol)
             reference.append(ref_)
     else:
-        Warning.warn(
+        warnings.warn(
             "Passed an improper input for ref_atoms during new substrate descriptor calculation."
         )
         reference = []
@@ -600,11 +604,9 @@ and will result in a guess of the reference halide atom (Br > Cl)."
         # br_atom = mol.get_atoms_by_symbol(symbol='Br')[0]
         # n_atom = get_amine_ref_n(mol)
         n_idx = mol.atoms.index(ref)
-        conn = mol.get_connected_atoms(ref)
-        if len(conn) == 1:
-            raise Exception(
-                "More than one group found bonded to Br atom. Check structures"
-            )
+        assert ref.symbol == "N"
+        # print(ref)
+        # conn = mol.get_connected_atoms(ref)
         conf_rdfs = {}
         a_idx_l = [mol.atoms.index(f) for f in mol.atoms]
         for k, conf in enumerate(mol.conformers):

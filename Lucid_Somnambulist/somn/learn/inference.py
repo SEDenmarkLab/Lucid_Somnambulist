@@ -19,6 +19,7 @@ from somn.workflows.partition import (
     get_precalc_sub_desc,
 )
 from pathlib import Path
+import warnings
 
 
 def write_preds_to_buffer(
@@ -104,6 +105,11 @@ def hypermodel_inference(
 
     if all_predictions == False:
         total_requests, requested_pairs, reactant_indicies = prep_requests()
+        import numpy as np
+
+        nuc_idx_input = np.array(reactant_indicies)[:, 0]
+        el_idx_input = np.array(reactant_indicies)[:, 1]
+        ref_idx = (nuc_idx_input, el_idx_input)
     elif all_predictions == True:
         requested_pairs = _generate_full_space()
         ##DEV##
@@ -132,6 +138,7 @@ should be False under normal circumstances, and True for specific development ap
             desc=real,
             prediction_experiment=prediction_experiment,
             pred_str=pred_str,
+            ref_idx=ref_idx,
         )
     elif all_predictions == True:
         prophetic_raw = assemble_descriptors_from_handles(
@@ -315,14 +322,14 @@ Shoult have format (col0):SMILES,(col1):role (nuc or el),(col2, optional):mol_na
     total_requests["el_name"] = fix_br
     ### CHANGE END ###
     total_requests.to_csv(
-        f"{Project().scratch}/all_requests.csv", header=True
+        f"{Project().scratch}/all_requests.csv", header=True, index=False
     )  # These are pre-screened for compatibility
     req_pairs = []
     indicies = []
     for row in total_requests.iterrows():
         data = row[1].values
         pair = f"{data[3]}_{data[4]}"
-        pair_idx = (data[5], data[6])
+        pair_idx = [data[5], data[6]]
         req_pairs.append(pair)
         indicies.append(pair_idx)
     # print(",".join(req_pairs))
@@ -357,6 +364,7 @@ def assemble_desc_for_inference_mols(
     prediction_experiment: str,
     pred_str,
     allow_skip=True,
+    ref_idx=None,
 ):
     """
     pipeline to generate raw feature array for inference molecules
@@ -415,14 +423,58 @@ This may cause an error if new molecules are requested now which were not calcul
         f"{project.structures}/{prediction_experiment}/new_el_ap_buffer.json"
     ) as k:
         el_ap = json.load(k)
+    ### Adding atom site selection here ###
+    if ref_idx is None:  # Not specified, just autodetect reaction site (old method)
+        nuc_inp_idx = el_inp_idx = None
+    elif isinstance(
+        ref_idx, tuple
+    ):  # Passing atom indicies, but we're going to get the atoms, too.
+        assert len(ref_idx) == 2
+        nuc_inp_idx, el_inp_idx = ref_idx
+        nuc_ref = []
+        el_ref = []
+        for mol, idx in zip(prophetic_amine_col.molecules, nuc_inp_idx):
+            if idx == "-":
+                nuc_ref.append(idx)
+            elif idx.isnumeric():
+                assert int(idx) in range(len(mol.atoms))
+                nuc_ref.append(mol.atoms[int(idx)])
+            else:
+                warnings.warn(
+                    f"Looks like atom specification was unsuccessful for nucleophile {mol.name}, \
+switching to auto detection."
+                )
+        for mol, idx in zip(prophetic_bromide_col.molecules, el_inp_idx):
+            if idx == "-":
+                el_ref.append(idx)
+            elif idx.isnumeric():
+                assert int(idx) in range(len(mol.atoms))
+                el_ref.append(mol.atoms[int(idx)])
+            else:
+                warnings.warn(
+                    f"Looks like atom specification was unsuccessful for electrophile {mol.name}, \
+switching to auto detection."
+                )
+    else:
+        raise ValueError(
+            "Must pass either None or a tuple of reference atom specifications to  \
+calculate descriptors for prophetic molecules"
+        )
+    ### /site selection ###
+
     p_a_desc = calculate_prophetic(
-        inc=0.75, geometries=prophetic_amine_col, atomproperties=nuc_ap, react_type="N"
+        inc=0.75,
+        geometries=prophetic_amine_col,
+        atomproperties=nuc_ap,
+        react_type="nuc",
+        nuc_el_ref_atoms=nuc_ref,
     )
     p_b_desc = calculate_prophetic(
         inc=0.75,
         geometries=prophetic_bromide_col,
         atomproperties=el_ap,
-        react_type="Br",
+        react_type="el",
+        nuc_el_ref_atoms=el_ref,
     )
     ### Now we're ready to assemble features
     am, br, ca, so, ba = desc
