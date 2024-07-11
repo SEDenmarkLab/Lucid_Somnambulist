@@ -102,7 +102,6 @@ def hypermodel_inference(
     #     real, rand = sub_desc
     output_buffer = []
     # from somn.workflows.calculate import main as calc_sub
-
     if all_predictions == False:
         total_requests, requested_pairs, reactant_indicies = prep_requests()
         import numpy as np

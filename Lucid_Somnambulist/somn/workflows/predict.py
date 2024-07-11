@@ -50,9 +50,13 @@ def main(args=None):
     except:
         raise ValueError("Wrong project ID - could not load")
     try:
+        if args.mdl == "latest":
+            model_experiment = project.latest
+        else:
+            model_experiment = args.mdl
         raw_predictions, requests = hypermodel_inference(
             project=project,
-            model_experiment=args.mdl,
+            model_experiment=model_experiment,
             prediction_experiment=args.exp,
             all_predictions=False,
             vt=0,  # Default value
@@ -69,6 +73,7 @@ if prediction experiment label is unique and new."
     Processed predictions are in {project.output}/{args.exp}/{stamp}/ "
     )
 
+
 def check_input_structures():
     """
     Method to check input structures for multiple reaction sites, and to organize a return to the user for them to \
@@ -78,9 +83,11 @@ def check_input_structures():
     continue. If terminating, then the idea is to gracefully succeed when the predict call is run again. 
     """
     from somn.learn.inference import prep_requests
+
     total_requests, requested_pairs = prep_requests()
     from somn.workflows.add import add_workflow
     from pathlib import Path
+
     ...
 
 

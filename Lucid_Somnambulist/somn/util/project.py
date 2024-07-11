@@ -66,11 +66,11 @@ class Project(object):
         if cls.unique in projects.keys():
             import warnings
 
-            warnings.warn(
-                f"The identifier {cls.unique} is already a known project: check prior work with this identifier. \
-Saving a preexisting project is not necessary and changes the order of projects.JSON, \
-as well as posing risks for errors. Project has not been saved again."
-            )
+            #             warnings.warn(
+            #                 f"The identifier {cls.unique} is already a known project: check prior work with this identifier. \
+            # Saving a preexisting project is not necessary and changes the order of projects.JSON, \
+            # as well as posing risks for errors. Project has not been saved again."
+            #             )
             return None
         projects[cls.unique] = output
         with open(pkg, "w") as k:
@@ -113,6 +113,10 @@ as well as posing risks for errors. Project has not been saved again."
             cls.descriptors = Path(f"{path}/descriptors/")
             cls.structures = Path(f"{path}/structures/")
             cls.output = Path(f"{path}/outputs/")
+            if (
+                "latest" in entry.keys()
+            ):  ## Allows 'latest' alias to be passed in order to specify a specific model set.
+                cls.latest = entry["latest"]
             return cls._instance
 
         pkg = cls.get_json()
@@ -132,4 +136,3 @@ as well as posing risks for errors. Project has not been saved again."
             raise ValueError(
                 f"Did not find {how} in projects.JSON; cannot look up files."
             )
-
