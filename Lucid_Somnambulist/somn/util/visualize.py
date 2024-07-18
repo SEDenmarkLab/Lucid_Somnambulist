@@ -428,14 +428,7 @@ def plot_preds(query="", prediction_experiment="", requestor=""):
 
     any specific amine_bromide handle will plot that set of predictions, specifically.
     """
-    import shutil
 
-    try:
-        shutil.rmtree(
-            f"/home/nir2/somn_container_dev/somn_scratch/cc3d1f3a3d9211eebdbe18c04d0a4970/outputs/testing_pred01/"
-        )
-    except:
-        pass
     project = Project()
     if query == "all":
         df = load_predictions(prediction_experiment)

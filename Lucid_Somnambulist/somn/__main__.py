@@ -21,6 +21,19 @@ partition [project ID, new or old project with no partitions]
 To train a new model set on partitions, use:
 learn [project ID with partitions] [new ID for model set] > learn[identifier, e.g. '001'].log 2>&1 & disown 
 """
+def _build_from_smiles(args):
+    """
+    Utility to build .mol2 files from smiles - can be used for debugging/inspecting
+    """ 
+    from somn.build.parsing import InputParser
+    input_smi,out_dir = args.options
+    p = InputParser(serialize=True,path_to_write=f"somn_mol_buffer/{out_dir}")
+    col,smi = p.get_mol_from_smiles(input_smi,names=[f"{out_dir}".strip("/").strip(r"\\")])
+    print(f"""
+Check the directory somn_mol_buffer/{out_dir} for output files.
+    
+    """
+    )
 
 
 def _run_predictions(args):
@@ -266,6 +279,7 @@ def main():
             "add",
             "visualize",
             "help",
+            "generate",
         ],
         dest="operation",
         default="help",
@@ -359,6 +373,9 @@ Ensure that a valid path to reactants is provided."
 if this is an error, please check documentation and ensure that all files are in \
 the somn home directory (at the same level as the somn initialize command is run)"
             )
+    elif args.operation == "generate":
+        _build_from_smiles(args)
+    
     elif args.operation in ["add", "visualize"]:
         raise Exception(
             f"DEV - {args.operation} implementation through CLI is under development"

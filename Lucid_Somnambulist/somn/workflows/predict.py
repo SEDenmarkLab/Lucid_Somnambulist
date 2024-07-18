@@ -66,7 +66,24 @@ def main(args=None):
             "Something went wrong with hypermodel inferences - check model experiment ID, and \
 if prediction experiment label is unique and new."
         )
-    stamp = str(date.today())
+    stamp = 'couplings'
+    # stamp = str(date.today())
+    # ### DEV - overwrite existing predictions ###
+    # import shutil
+    # try:
+    #     shutil.rmtree(
+    #         f"{project.output}/{args.exp}/{stamp}/"
+    #     )
+    # except:
+    #     pass
+    ### DEV - fail job if existing predictions detected ###
+    try:
+        import pathlib
+        assert not pathlib.Path(f"{project.output}/{args.exp}/{stamp}/").exists()
+    except:
+        raise Exception(f"Invalid prediction output path specified - already exists! {project.output}/{args.exp}/{stamp}/")
+    print('DEV-PRE-PLOTPREDS')
+    ### DEV END ###
     plot_preds(query="all", prediction_experiment=args.exp, requestor=stamp)
     print(
         f"Finished with predictions - please see {project.output}/{args.exp}_rawpredictions.csv \n \

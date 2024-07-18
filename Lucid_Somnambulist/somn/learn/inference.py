@@ -259,11 +259,14 @@ def prep_requests():
 
     Returns a DataFrame and a list of requested pairs (i.e. [amine_bromide,])
     """
+    import pathlib
     files = glob(f"{Project().scratch}/*_request.csv")
+    pathlib.Path(f"{Project().scratch}/all_requests.csv").unlink(missing_ok=True)
     assert (
         len(files) > 0
     )  ### DEBUG - If this fails, the user is PROBABLY running this from the wrong "home" directory
     # Quick check for formatting
+    
     df = pd.read_csv(files[0], header=0, index_col=None)
     if len(df.columns) < 2:
         Exception(
