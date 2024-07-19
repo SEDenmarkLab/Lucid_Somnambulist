@@ -302,6 +302,8 @@ Shoult have format (col0):SMILES,(col1):role (nuc or el),(col2, optional):mol_na
     req_br = total_requests["el_name"]
     am_check = req_am.duplicated()
     br_check = req_br.duplicated()
+    # print("DEBUG",am_check,type(am_check),type(am_check[0]))
+    # raise Exception("DEBUG")
     fix_am = []
     fix_br = []
     check = 0
