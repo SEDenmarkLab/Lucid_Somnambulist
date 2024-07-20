@@ -273,15 +273,10 @@ def prep_requests():
             "Must pass SMILES and role for each reactant! Request input file (in gproject.scratch)\
 Shoult have format (col0):SMILES,(col1):role (nuc or el),(col2, optional):mol_name"
         )
+    del df
     tot = []
     for i, file in enumerate(files):
-        if i == 0:
-            df = pd.read_csv(files[0], header=0, index_col=None)
-            if len(df.columns) < 2:
-                Exception(
-                    "Must pass SMILES and role for each reactant! Request input file (in gproject.scratch)\
-Shoult have format (col0):SMILES,(col1):role (nuc or el),(col2, optional):mol_name"
-                )
+        df = pd.read_csv(file, header=0, index_col=None)
         tot.append(df)
     total_requests = pd.concat(tot, axis=0)
     ### CHECKING USER INPUT NAMES FOR ERROR-INDUCING ISSUES ###
@@ -309,15 +304,15 @@ Shoult have format (col0):SMILES,(col1):role (nuc or el),(col2, optional):mol_na
     check = 0
     for i, (am, br) in enumerate(zip(req_am, req_br)):
         checked = False
-        if am_check[i] == True:
+        if am_check.iloc[i] == True:
             fix_am.append(am + f"-{check}")
             checked = True
-        if am_check[i] == False:
+        if am_check.iloc[i] == False:
             fix_am.append(am)
-        if br_check[i] == True:
+        if br_check.iloc[i] == True:
             fix_br.append(br + f"-{check}")
             checked = True
-        if br_check[i] == False:
+        if br_check.iloc[i] == False:
             fix_br.append(br)
         if checked == True:
             check += 1
