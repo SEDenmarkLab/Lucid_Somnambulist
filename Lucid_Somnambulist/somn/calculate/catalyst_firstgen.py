@@ -121,8 +121,6 @@ def get_closest_gpts(coords, grid, atom):
     gpts = grid.gridpoints
     vdw = vdw_dict[atom.atom_type]["rad"]
     dist = np.sqrt(np.sum((gpts - coords) ** 2, axis=1))
-    # dist = np.linalg.norm(gpts-coords)
-    # print(dist)
     mask = dist < vdw
     return mask
 
@@ -166,24 +164,17 @@ def calculate_ASO(grid: ml.Grid, mol: ml.Molecule):
     """
     atoms = mol.atoms
     confs = mol.conformers
-    # gpts = grid.gridpoints
-    # n_confs = len(confs)
     confs_list = []
     for conf in confs:
         boolean_list = []
         for idx, atom in enumerate(atoms):
-            # print(idx,atom.atom_type)
             msk = get_closest_gpts(conf.coord[idx], grid, atom)
             boolean_list.append(msk)
         conf_boolean = intersect_boolean(boolean_list)
         conf_SIF = conf_boolean.astype(int)
-        # print(sum(conf_SIF))
         confs_list.append(conf_SIF)
-    # print(confs_list)
     mol_array = np.array(tuple(confs_list), dtype=np.float32)
-    # print(mol_array)
     aso_array = mol_array.mean(axis=0)
-    # print(sum(aso_array))
     return aso_array
 
 
@@ -192,59 +183,51 @@ def trim_nico3(mol: ml.Molecule):
     bonds = mol.bonds
     conformers = mol.conformers
     ni_atom = mol.get_atoms_by_symbol("Ni")[0]
-    # print(ni_atom)
     p_atom = mol.get_atoms_by_symbol("P")[0]
-    # print(p_atom)
     ni_c_atoms = mol.get_connected_atoms(ni_atom)
     ni_c_atoms_ = [f for f in ni_c_atoms if "P" not in f.label]
-    # print(ni_c_atoms_)
     ni_o_atoms = []
     for atom in ni_c_atoms_:
         o_atom = mol.get_connected_atoms(atom)
         ni_o_atoms.extend(o_atom)
     ni_o_atoms_ = [f for f in ni_o_atoms if "Ni" not in f.symbol]
-    # print(ni_o_atoms_)
     remove_list = ni_c_atoms_ + ni_o_atoms_ + [ni_atom]
-    # print(remove_list)
     mol.remove_atoms(*remove_list)
-    # print(mol.atoms)
-    # for conf in mol.conformers:
-    #     print(len(conf.coord),len(mol.atoms))
 
-
-if __name__ == "__main__":
-    mol2dir = r"catalyst_descriptors/mol2s/"
-    outdir = r"catalyst_descriptors/aligned_buchwald_ligands/"
-    align_dict = {}
-    os.makedirs(mol2dir, exist_ok=True)
-    os.makedirs(outdir, exist_ok=True)
-    with open("alignment_guide.txt", "r") as g:
-        lines = g.readlines()
-        for line in lines:
-            spl = line.strip().split(",")
-            align_dict[spl[0]] = spl[1:]
-    mols = []
-    mol2s = glob(mol2dir + "*.mol2")
-    for mol2 in mol2s:
-        mol = ml.Molecule.from_mol2(mol2)
-        mols.append(mol)
-    col = ml.Collection(name="alignment", molecules=mols)
-    refmol = col[0]
-    pr, nir, cr = get_ref_atoms(refmol)
-    refmol.geom.set_origin(refmol.get_atom_idx(pr))
-    refgeom = refmol.get_subgeom([pr, nir, cr])
-    stdout = open("align_stdout.txt", "w")
-    stdout.write("molname,alignment_rmsd\n")
-    for mol in col:
-        p, ni, c = get_ref_atoms(mol)
-        mol.geom.set_origin(mol.get_atom_idx(p))
-        sub_inst = mol.get_subgeom([p, ni, c])
-        rot, rmsd = R.align_vectors(sub_inst.coord, refgeom.coord)
-        rot_mat = rot.as_matrix()
-        mol.geom.transform(rot_mat)
-        output = [mol.name, str(float(rmsd))]
-        stdout.write(",".join(output) + "\n")
-        mol2str = mol.to_mol2()
-        with open(outdir + mol.name + ".mol2", "w") as k:
-            k.write(mol2str)
-    col.to_zip("catalyst_descriptors/aligned_buchwald_conformers.zip")
+#### Leaving this in case someone wants to run this on their own set of mols ####
+# if __name__ == "__main__":
+#     mol2dir = r"catalyst_descriptors/mol2s/"
+#     outdir = r"catalyst_descriptors/aligned_buchwald_ligands/"
+#     align_dict = {}
+#     os.makedirs(mol2dir, exist_ok=True)
+#     os.makedirs(outdir, exist_ok=True)
+#     with open("alignment_guide.txt", "r") as g:
+#         lines = g.readlines()
+#         for line in lines:
+#             spl = line.strip().split(",")
+#             align_dict[spl[0]] = spl[1:]
+#     mols = []
+#     mol2s = glob(mol2dir + "*.mol2")
+#     for mol2 in mol2s:
+#         mol = ml.Molecule.from_mol2(mol2)
+#         mols.append(mol)
+#     col = ml.Collection(name="alignment", molecules=mols)
+#     refmol = col[0]
+#     pr, nir, cr = get_ref_atoms(refmol)
+#     refmol.geom.set_origin(refmol.get_atom_idx(pr))
+#     refgeom = refmol.get_subgeom([pr, nir, cr])
+#     stdout = open("align_stdout.txt", "w")
+#     stdout.write("molname,alignment_rmsd\n")
+#     for mol in col:
+#         p, ni, c = get_ref_atoms(mol)
+#         mol.geom.set_origin(mol.get_atom_idx(p))
+#         sub_inst = mol.get_subgeom([p, ni, c])
+#         rot, rmsd = R.align_vectors(sub_inst.coord, refgeom.coord)
+#         rot_mat = rot.as_matrix()
+#         mol.geom.transform(rot_mat)
+#         output = [mol.name, str(float(rmsd))]
+#         stdout.write(",".join(output) + "\n")
+#         mol2str = mol.to_mol2()
+#         with open(outdir + mol.name + ".mol2", "w") as k:
+#             k.write(mol2str)
+#     col.to_zip("catalyst_descriptors/aligned_buchwald_conformers.zip")

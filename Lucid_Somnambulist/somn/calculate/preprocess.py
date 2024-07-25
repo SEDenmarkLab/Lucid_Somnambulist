@@ -179,7 +179,6 @@ def trim_out_of_sample(partition: tuple, reacts: str):
     xtr, xval, xte, ytr, yval, yte = [pd.DataFrame(f[0], index=f[1]) for f in partition]
     to_move_tr = get_handles_by_reactants(reacts, ytr.index)
     to_move_va = get_handles_by_reactants(reacts, yval.index)
-    # to_move_tot = to_move_tr+to_move_va
     x_trcut = xtr.loc[to_move_tr]
     y_trcut = ytr.loc[to_move_tr]
     xtr.drop(index=to_move_tr, inplace=True)
@@ -196,8 +195,6 @@ def trim_out_of_sample(partition: tuple, reacts: str):
 def get_handles_by_reactants(str_, handles_):
     out = []
     for k in handles_:
-        # print(k.rsplit('_',3)[0])
-        # print(str_)
         if k.rsplit("_", 3)[0] == str_:
             out.append(k)
     return out
@@ -237,34 +234,21 @@ def preprocess_feature_arrays(
         combined_df = pd.concat(
             feature_dataframes, axis=1, keys=labels
         )  # concatenate instances on columns
-        # print(combined_df)
         mask = list(
             combined_df.nunique(axis=1) != 1
         )  # Boolean for rows with more than one unique value
-        # print(len(mask))
         filtered_df = combined_df.iloc[
             mask, :
         ]  # Get only indices with more than one unique value
-        # print(filtered_df)
-        ### IAN CHANGE ADDED VARIANCE THRESHOLD ### - this was probably a mistake and may remove too many features. Scaling first is probably the correct thing to do.
         if type(_vt) == float:
             vt = VarianceThreshold(threshold=_vt)
         elif _vt == "old":
             vt = VarianceThreshold(threshold=0.04)
         elif _vt == None:
             vt = VarianceThreshold(threshold=1e-4)
-        # filtered_df_scale = pd.DataFrame(np.transpose(MinMaxScaler().fit_transform(VarianceThreshold(threshold=0.04).fit_transform(filtered_df.transpose().to_numpy()))),columns=filtered_df.columns) ## No variance threshold is better for the new RDFs
-        # output = tuple([filtered_df_scale[lbl] for lbl in labels])
-        # if save_mask==True: return output,mask,filtered_df.transpose().columns,None
-        # elif save_mask==False: return output
-
-        # sc = MinMaxScaler().fit_transform(filtered_df.transpose().to_numpy())
         vt_f = vt.fit_transform(filtered_df.transpose().to_numpy())
         sc = MinMaxScaler().fit_transform(vt_f)
         filtered_df_scale = pd.DataFrame(np.transpose(sc), columns=filtered_df.columns)
-        # filtered_df_scale = pd.DataFrame(np.transpose(VarianceThreshold(threshold=0.08).fit_transform(MinMaxScaler().fit_transform(filtered_df.transpose().to_numpy()))),columns=filtered_df.columns)
-        # filtered_df_scale = pd.DataFrame(np.transpose(MinMaxScaler().fit_transform(filtered_df.transpose().to_numpy())),columns=filtered_df.columns) ## No variance threshold is better for the new RDFs
-        # print(filtered_df_scale)
         output = tuple([filtered_df_scale[lbl] for lbl in labels])
         if save_mask == True:
             return output, mask
@@ -333,14 +317,10 @@ def platewise_splits(
         temp = [
             f for f in handles if f.rsplit("_", 3)[0] not in test
         ]  # both train and val will come from here; handles, not am_br
-        # print(np.rint(len(temp)/val_split))
         va_h = random.sample(
             temp, int(np.rint(len(temp) / val_split))
         )  # handles sampled randomly from train&val list of handles (temp)
         tr_h = [f for f in temp if f not in va_h]
-        # print(
-        #     "check :", [f for f in tr_h if f in va_h or f in te_h]
-        # )  # data leakage test
         mask_list = [tr_h, va_h, te_h]
         if save_mask == False:
             out = tuple([data_df.loc[msk, :] for msk in mask_list])
@@ -389,11 +369,9 @@ def split_outsamp_reacts(
     amine_out_hand = split_handles_reactants(
         reacts=amines, handle_position=1, handles=dataset_.index
     )
-    # print(amine_out_hand)
     bromide_out_hand = split_handles_reactants(
         reacts=bromides, handle_position=2, handles=dataset_.index
     )
-    # print(bromide_out_hand)
     outsamp_handles = sorted(
         list(set(amine_out_hand + bromide_out_hand))
     )  # remove duplicates (from any matches to both reactants) and provide consistent ordering
@@ -405,7 +383,6 @@ def split_outsamp_reacts(
         comb = [
             str(f[0]) + "_" + str(f[1]) for f in itertools.product(amines, bromides)
         ]
-        # print(comb)
         both = [f for f in outsamp_handles if f.strip().rsplit("_", 3)[0] in comb]
         not_both = [f for f in outsamp_handles if f not in both]
         for k in amines:
@@ -505,37 +482,6 @@ def prep_mc_labels(df, zero_buffer: int = 3):
     new_y = MultiLabelBinarizer().fit_transform([tuple([k]) for k in binned_y])
     return pd.DataFrame(new_y, index=df.index)
 
-
-# def prep_for_binary_classifier(df_in, yield_cutoff: int = 1):
-#     """
-#     Prepare data for classifier by getting class labels from continuous yields
-
-#     DEPRECIATED
-
-#     """
-#     if type(df_in) == tuple:
-#         out = []
-#         for df in df_in:
-#             df = df.where(
-#                 df > yield_cutoff, other=0, inplace=True
-#             )  # collapse yields at or below yield cutoff to class zero
-#             df = df.where(
-#                 df == 0, other=1, inplace=True
-#             )  # collapse yields to class one
-#             out.append(df)
-#         return tuple(out)
-#     elif isinstance(df_in, pd.DataFrame):
-#         df = df.where(
-#             df > yield_cutoff, other=0, inplace=True
-#         )  # collapse yields at or below yield cutoff to class zero
-#         df = df.where(df == 0, other=1, inplace=True)  # collapse yields to class one
-#         return df
-#     else:
-#         raise Exception(
-#             "Passed incorrect input to staticmethod of DataHandler to prep data for classification - check input."
-#         )
-
-
 def preprocess_prophetic_features(
     project: Project, features, model_experiment="", prediction_experiment="", vt=0
 ):
@@ -567,14 +513,11 @@ in somn.calculate.preprocess.preprocess_prophetic_features()."
     )
     IDs = organ.partIDs
     masks = organ.masks
-    # print(IDs)
-    # print(organ.masks)
     output = []
     from glob import glob
 
     models = glob(f"{project.output}/{model_experiment}/out/*.keras")  # KERAS vs H5
     model_ids = [int(f.split("hpset")[0].split("/")[-1]) for f in models]
-    # features.to_csv("TESTING_FMT.csv")
     for id, m1, m2, scaler in zip(IDs, masks[0], masks[1], masks[2]):
         if id not in model_ids:
             break
@@ -582,7 +525,6 @@ in somn.calculate.preprocess.preprocess_prophetic_features()."
         mask2 = (
             pd.read_csv(m2, header=0, index_col=0)["0"].values > vt
         )  # variances; should be turned into boolean
-        # print("DEBUG: ",mask1.shape,mask2.shape,features.shape)
         temp1 = mask_prophetic_features(features, mask1)
         temp2 = mask_prophetic_features(temp1, mask2)
         last = scale_prophetic_features(temp2, scaler)
@@ -592,7 +534,6 @@ in somn.calculate.preprocess.preprocess_prophetic_features()."
         output.append(
             f"{project.partitions}/prophetic_{prediction_experiment}/{id}_processed_features.feather"
         )
-    # print(output)
     organ.prophetic_features = output
     return organ
 
@@ -617,7 +558,6 @@ def mask_prophetic_features(features: pd.DataFrame, mask: np.ndarray):
     NOTE: columns are features
     """
     assert isinstance(features, pd.DataFrame)
-    # print("DEBUG",len(mask), features.shape[1])
     assert len(mask) == features.shape[1]
 
     ### Mask features
@@ -733,10 +673,8 @@ def preprocess_maxdiff(input: pd.DataFrame, concat_grid_desc=True, threshold=0.8
         """
         diff = df.apply(max_diff)
         diff.sort_values(inplace=True, ascending=False)
-        ### Get percentile rank - select pct-based slice of features instead of number - like a threshold cutoff
         ranking = diff.rank(pct=True)
         idx = ranking[ranking >= threshold].index.to_list()
-        ### DEV idx was used to mask df, and this shuffles features. The mask object below is intended to preserve the original ordering ###
         mask = [f for f in df.columns if f in idx]
         return df[mask]  # Should keep the same order of features
 
@@ -773,7 +711,6 @@ def preprocess_maxdiff(input: pd.DataFrame, concat_grid_desc=True, threshold=0.8
         aso = [f"aso_{f+1}" for f in range(sli)]
         aeif = [f"aeif_{f+1}" for f in range(sli)]
         category = aso + aeif
-        # print(category)
         temp = deepcopy(df)
         temp.columns = category
         if type(threshold) == tuple:
@@ -796,5 +733,4 @@ def preprocess_maxdiff(input: pd.DataFrame, concat_grid_desc=True, threshold=0.8
         output = _maxdiff_then_scale(feat_copy, threshold=threshold)
     elif concat_grid_desc == False:
         output = diff_then_scale(feat_copy, threshold=threshold)
-    # print("Maxdiff output: ", output.shape)
     return output

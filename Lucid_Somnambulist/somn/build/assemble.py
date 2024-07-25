@@ -3,8 +3,6 @@ import pandas as pd
 import os
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-# from sklearn.preprocessing import MinMaxScaler
-# from sklearn.feature_selection import VarianceThreshold
 import numpy as np
 from itertools import product
 
@@ -42,16 +40,11 @@ def vectorize_substrate_desc(sub_df_dict, sub, feat_mask=None):
         try:
             assert all([isinstance(f, (np.bool_, bool)) for f in feat_mask])
         except:
-            # print(feat_mask, all(feat_mask))
-            # print([type(k) for k in feat_mask])
             raise Exception(
-                "Feature mask passed for substrate preprocessing is a Series, but appears to not ONLY contain boolean values"
+                "Feature mask passed for substrate preprocessing is a Series, but appears to not ONLY contain boolean values."
             )
         if len(feat_mask.to_list()) == len(subdesc):
             out = [b for a, b in zip(feat_mask.to_list(), subdesc) if a]
-            ### DEBUG
-            # print(subdesc)
-            ###
             return out
         else:
             raise Exception("length mismatch! cannot apply substrate mask")
@@ -64,25 +57,18 @@ def vectorize_substrate_desc(sub_df_dict, sub, feat_mask=None):
             )
         if len(feat_mask["0"].to_list()) == len(subdesc):
             out = [b for a, b in zip(feat_mask["0"].to_list(), subdesc) if a]
-            ### DEBUG
-            # print(subdesc)
-            ###
             return out
         else:
             raise Exception("length mismatch! cannot apply substrate mask")
-    elif isinstance(feat_mask, np.ndarray):  ##NEEDS TESTING
+    elif isinstance(feat_mask, np.ndarray):
         try:
             assert all([isinstance(f, (np.bool_, bool)) for f in feat_mask])
         except:
-            # print(feat_mask, all(feat_mask))
             raise Exception(
                 "Feature mask passed for substrate preprocessing does not ONLY contain boolean values"
             )
         if len(feat_mask) == len(subdesc):
             out = [b for a, b in zip(feat_mask, subdesc) if a]
-            ### DEBUG
-            # print(subdesc)
-            ###
             return out
         else:
             raise Exception(
@@ -110,94 +96,6 @@ def load_substrate_masks():
     am_mask = pd.read_csv(afp, header=0, index_col=0)
     br_mask = pd.read_csv(bfp, header=0, index_col=0)
     return (am_mask, br_mask)
-
-
-# def assemble_random_descriptors_from_handles(
-#     handle_input, desc: tuple, substrate_mask=None
-# ):
-#     """
-#     NOTE: Depreciated in favor of passing either real or random descriptor tuples to the same parent function.
-
-#     Input descriptors as: (am_dict, br_dict, catdf, solvdf, basedf)
-#     Output is: df with component-wise random features
-
-#     To do this for many compounds, pass every am_br joined with a comma
-
-#     """
-#     if type(handle_input) == str:
-#         rxn_hndls = [f for f in handle_input.split(",") if f != ""]
-#         prophetic = True
-#     elif type(handle_input) == list:
-#         rxn_hndls = [tuple(f.rsplit("_")) for f in handle_input]
-#         prophetic = False
-#     else:
-#         raise ValueError(
-#             "Must pass manual string input of handles OR list from dataset"
-#         )
-#     if substrate_mask == None:
-#         subm = None
-#     elif type(substrate_mask) == tuple:
-#         assert len(substrate_mask) == 2
-#         subm = substrate_mask
-#     am_dict_rand, br_dict_rand, cat_rand, solv_rand, base_rand = desc
-#     basedf = base_rand.transpose()
-#     solvdf = solv_rand.transpose()
-#     catdf = (
-#         cat_rand.transpose()
-#     )  # Confusing - FIX THIS - trying to use it like a dictionary later, but it's clearly still a df. Need to have column-wise lookup
-#     br_dict = br_dict_rand
-#     am_dict = am_dict_rand
-#     ### Trying to assemble descriptors for labelled examples with specific conditions ###
-#     if prophetic == False:
-#         columns = []
-#         labels = []
-#         for i, handle in enumerate(rxn_hndls):
-#             am, br, cat, solv, base = handle
-#             catdesc = catdf[cat].tolist()
-#             solvdesc = solvdf[int(solv)].tolist()
-#             basedesc = basedf[base].tolist()
-#             ### CHANGES HERE SUBSTRATE MASKING
-#             if subm != None:
-#                 assert isinstance(subm, list)
-#                 amdesc = vectorize_substrate_desc(am_dict, am, feat_mask=subm[0])
-#                 brdesc = vectorize_substrate_desc(br_dict, br, feat_mask=subm[1])
-#             elif subm == None:
-#                 amdesc = vectorize_substrate_desc(am_dict, am, feat_mask=None)
-#                 brdesc = vectorize_substrate_desc(br_dict, br, feat_mask=None)
-#             else:
-#                 raise Exception(
-#                     "Substrate mask was not None or a list - check arguments for assembling descriptors."
-#                 )
-#             handlestring = handle_input[i]
-#             columns.append(amdesc + brdesc + catdesc + solvdesc + basedesc)
-#             labels.append(handlestring)
-#         outdf = pd.DataFrame(columns, index=labels).transpose()
-#         return outdf
-#     ### Trying to assemble descriptors for ALL conditions for specific amine/bromide couplings ###
-#     elif prophetic == True:
-#         solv_base_cond = ["1_a", "1_b", "1_c", "2_a", "2_b", "2_c", "3_a", "3_b", "3_c"]
-#         allcats = [str(f + 1) for f in range(21) if f != 14]
-#         s = "{}_{}_{}"
-#         exp_handles = []
-#         for combination in product(rxn_hndls, allcats, solv_base_cond):
-#             exp_handles.append(s.format(*combination))
-#         columns = []
-#         labels = []
-#         for handle in exp_handles:
-#             am, br, cat, solv, base = tuple(handle.split("_"))
-#             catdesc = catdf[cat].tolist()
-#             solvdesc = solvdf[int(solv)].tolist()
-#             basedesc = basedf[base].tolist()
-#             amdesc = []
-#             for key, val in am_dict[am].items():  # This is a pd df
-#                 amdesc.extend(val.tolist())
-#             brdesc = []
-#             for key, val in br_dict[br].items():
-#                 brdesc.extend(val.tolist())
-#             columns.append(amdesc + brdesc + catdesc + solvdesc + basedesc)
-#             labels.append(handle)
-#         outdf = pd.DataFrame(columns, index=labels).transpose()
-#         return outdf
 
 
 def assemble_descriptors_from_handles(handle_input, desc: tuple, sub_mask=None):
@@ -244,16 +142,11 @@ def assemble_descriptors_from_handles(handle_input, desc: tuple, sub_mask=None):
         subm = None
     elif type(sub_mask) == tuple:
         assert len(sub_mask) == 2
-        # print("DEBUG found substrate mask")
         subm = list(sub_mask)
     am_dict, br_dict, cat_real, solv_real, base_real = desc
-    ## These were read in from feather files, and must be transposed
     basedf = base_real.transpose()
     solvdf = solv_real.transpose()
     catdf = cat_real.transpose()
-    # Confusing - FIX THIS - trying to use it like a dictionary later, but it's clearly still a df. Need to have column-wise lookup
-    # br_dict = br_dict_real  # This is just to re-use code, but is confusing.
-    # am_dict = am_dict_real
 
     ### Trying to assemble descriptors for labelled examples with specific conditions ###
     if prophetic is False:
@@ -264,12 +157,10 @@ def assemble_descriptors_from_handles(handle_input, desc: tuple, sub_mask=None):
             catdesc = catdf[cat].tolist()
             solvdesc = solvdf[int(solv)].tolist()
             basedesc = basedf[base].tolist()
-            ### CHANGES HERE SUBSTRATE MASKING
             if subm is not None:
                 assert isinstance(subm, list)
                 amdesc = vectorize_substrate_desc(am_dict, am, feat_mask=subm[0])
                 brdesc = vectorize_substrate_desc(br_dict, br, feat_mask=subm[1])
-                # print(f"DEBUG used sub mask {amdesc}")
             elif subm is None:
                 amdesc = vectorize_substrate_desc(am_dict, am, feat_mask=None)
                 brdesc = vectorize_substrate_desc(br_dict, br, feat_mask=None)
@@ -277,24 +168,12 @@ def assemble_descriptors_from_handles(handle_input, desc: tuple, sub_mask=None):
                 raise Exception(
                     "Substrate mask caused an error - check arguments for assembling descriptors."
                 )
-            ### END SUB MASK CHANGES
             handlestring = handle_input[i]
-            # print(
-            #     f"DEBUG desc are {[type(f) for f in [amdesc,brdesc,catdesc,solvdesc,basedesc]]}"
-            # )
             columns.append(amdesc + brdesc + catdesc + solvdesc + basedesc)
             labels.append(handlestring)
         outdf = pd.DataFrame(
             columns, index=labels
         ).transpose()  # handles as columns, ready for serialization as a .feather
-        # ### DEVELOPMENT
-        # from somn.util.project import Project
-        # import uuid
-
-        # outdf.to_csv(
-        #     f"{Project().descriptors}/DEBUG-OUTPUTDESC-MASKED{uuid.uuid1().hex}.csv"
-        # )
-        # ### DEVELOPMENT
         return outdf
     ### Trying to assemble descriptors for ALL conditions for specific amine/bromide couplings ###
     elif prophetic is True:
@@ -322,14 +201,6 @@ def assemble_descriptors_from_handles(handle_input, desc: tuple, sub_mask=None):
                 raise Exception(
                     "Substrate mask caused an error - check arguments for assembling descriptors."
                 )
-            ### No masking - depreciated
-            # amdesc = []
-            # for key, val in am_dict[am].items():  # This is a pd df
-            #     amdesc.extend(val.tolist())
-            # brdesc = []
-            # for key, val in br_dict[br].items():
-            #     brdesc.extend(val.tolist())
-            ###
             columns.append(amdesc + brdesc + catdesc + solvdesc + basedesc)
             labels.append(handle)
         outdf = pd.DataFrame(columns, index=labels).transpose()
@@ -345,7 +216,6 @@ def randomize_features(feat: np.ndarray):
     applied to assemble a feature array.
 
     """
-    # feat_ = feat
     rng = np.random.default_rng()
     feats = rng.random(size=feat.size)
     feats = feats.reshape(feat.shape)

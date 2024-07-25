@@ -164,13 +164,11 @@ class PropheticInput:
             col,
             backup_dir=str(Project().scratch) + "/crest_search/",
             logfile=str(Project().scratch) + "/out1.log",
-            update=60,
+            update=30,
             timeout=10000,
             concurrent=16,
         )
-        # print("conformer search beginning")
         output = concur_1(crest.conformer_search)(ewin=8, mdlen=5, constr_val_angles=[])
-        # print("searched conf\n", output)
         buffer = []
         tracking = {}  # Used to track progress
         for i, k in enumerate(output):
@@ -179,13 +177,11 @@ class PropheticInput:
                 buffer.append(k)
             else:
                 tracking[col.molecules[i].name] = False
-        # print(buffer)
         if len(buffer) == 0:
             raise Exception("Error calculating conformers - search step failed")
         col2 = ml.Collection(
             name="searched", molecules=buffer
         )  # These have undergone a conformer search.
-        # print(col2.molecules)
         concur_2 = ml.Concurrent(
             col2,
             backup_dir=str(Project().scratch) + "/crest_screen/",
@@ -199,12 +195,10 @@ class PropheticInput:
             scratch_dir=str(Project().scratch) + "/crest_scratch_2/",
             nprocs=2,
         )
-        # print("conformer screen beginning")
         output2 = concur_2(crest.confomer_screen)(
             method="gfn2", ewin=12
         )  # These get screened to prune out unreasonable structures and reopt.
         buffer2 = []
-        # print("screened conf\n", output2)
         assert len(output2) > 0
         for j, k in enumerate(output2):
             if isinstance(k, ml.Molecule):  # By definition, must have succeeded before
@@ -295,6 +289,7 @@ class PropheticInput:
                 logfile=str(Project().scratch) + "/atomprops.log",
                 timeout=6000,
                 concurrent=concurrent,
+                update=30
             )
             xtb = ml.XTBDriver(
                 name="atomprops",
@@ -335,9 +330,6 @@ class PropheticInput:
                     failures.append(name)
             except TypeError:
                 failures.append(name)
-        # print(atomprops[0])
-        # raise Exception("DEBUG")
-        # print(atomprops[0][0])
         self.atomprops = atomprop_out
         del concur
         del xtb

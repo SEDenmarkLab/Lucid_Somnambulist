@@ -21,7 +21,6 @@ def main(args=None):
         help="Model set id - this is a new, unique identifier that will be used later to fetch these models",
     )
     args = parser.parse_args(args=args)
-    # print("DEV", args)
     try:
         project = Project.reload(how=args.proj)
     except:
@@ -34,7 +33,7 @@ def main(args=None):
         )
 
 
-if __name__ == "__main__":
-    project = Project.reload(how="last")
-    hypermodel_search(experiment="full_search")
-    # experiment = argv[1]
+# if __name__ == "__main__":
+#     project = Project.reload(how="last")
+#     hypermodel_search(experiment="full_search")
+#     # experiment = argv[1]

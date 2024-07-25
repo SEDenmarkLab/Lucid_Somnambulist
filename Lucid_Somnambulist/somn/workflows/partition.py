@@ -60,14 +60,6 @@ def main(
         from somn.build.assemble import load_substrate_masks
 
         sub_mask = load_substrate_masks()
-        # am_mask = pd.read_csv(
-        #     f"{project.descriptors}/amine_mask.csv", header=0, index_col=0
-        # )
-        # br_mask = pd.read_csv(
-        #     f"{project.descriptors}/bromide_mask.csv", header=0, index_col=0
-        # )
-        # sub_mask = (am_mask, br_mask)
-        # print("DEBUG",sub_mask[0], sub_mask[0]["0"], type(sub_mask[0]))
     else:
         sub_mask = None
     if val_schema == "vo_to" or val_schema == "to_vo":
@@ -152,12 +144,6 @@ def main(
                 tr, va = preprocess.random_splits(
                     temp, validation=False, n_splits=1, fold=7
                 )
-            # #### DEV
-            # if 65 < i < 73:  # Actually run these
-            #     pass
-            # else:
-            #     continue  # Skip others
-            # #### DEV
             partition_pipeline_val(
                 name_,
                 tr,
@@ -170,9 +156,6 @@ def main(
                 sub_mask=sub_mask,
                 serialize_rand=serialize_rand,
             )
-            #### DEBUG
-            # if i == 4:
-            # break
 
 
 def partition_pipeline_noval(
@@ -247,7 +230,7 @@ def partition_pipeline_val(
         x_te = assemble_descriptors_from_handles(
             te.index.tolist(), rand, sub_mask=sub_mask
         )
-    else:  ### DEV - need to change this
+    else:  
         raise Exception(
             "Must pass random descriptors to partition pipeline function - this is going to be depreciated later"
         )
@@ -315,12 +298,6 @@ def partition_pipeline_val(
     pd.DataFrame([scale_, min_], index=["scale", "min"]).transpose().to_csv(
         f"{realout}{name_}_scale.csv"
     )
-    ### DEV ###
-    # print(
-    #     f"DEBUG:\n SHAPE OF processed X ARRAY: {x_tr_re.shape}\n SHAPE OF raw X Array: {x_tr_real.shape}\n SHAPE of mask: {vt_mask.shape}\n name: {name_}"
-    # )
-    # raise Exception("DEBUG")
-    ###########
 
 
 def check_sub_status():
@@ -366,30 +343,15 @@ def get_precalc_sub_desc():
         sub_br_dict = pickle.load(open(brf[0], "rb"))
         with open(rand_fp, "rb") as k:
             rand = pickle.load(k)
-        # real = (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc)
         return sub_am_dict, sub_br_dict, rand
     else:
         return False
 
 
 def normal_partition_prep(project: Project):
-    # project = Project() ## DEBUG
-    # (
-    #     amines,
-    #     bromides,
-    #     dataset,
-    #     handles,
-    #     unique_couplings,
-    #     a_prop,
-    #     br_prop,
-    #     base_desc,
-    #     solv_desc,
-    #     cat_desc,
-    # ) = preprocess.load_data(optional_load="maxdiff_catalyst")
 
     # Checking project status to make sure sub descriptors are calculated
     sub_desc = get_precalc_sub_desc()
-    # print("DEV", type(sub_desc), sub_desc[0])
     if sub_desc == False:  # Need to calculate
         real, rand = calc_sub(
             project, optional_load="maxdiff_catalyst", substrate_pre=("corr", 0.90)
@@ -410,17 +372,11 @@ def normal_partition_prep(project: Project):
         ) = preprocess.load_data(optional_load="maxdiff_catalyst")
         sub_am_dict, sub_br_dict, rand = sub_desc
         real = (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc)
-
-    # sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
-    # print(rand)
-    # Val have out of sample reactants
-    # combos = preprocess.get_all_combos(unique_couplings)
     combos = deepcopy(
         unique_couplings
     )  # This will significantly cut down on the number of partitions
     import os
 
-    # print(pd.DataFrame(combos).to_string())
     outdir = deepcopy(f"{project.partitions}/")
     os.makedirs(outdir + "real/", exist_ok=True)
     os.makedirs(outdir + "rand/", exist_ok=True)
@@ -429,69 +385,69 @@ def normal_partition_prep(project: Project):
     return outdir, combos, unique_couplings, real, rand  # DEV HERE
 
 
-if __name__ == "__main__":
-    from sys import argv
+# if __name__ == "__main__":
+#     from sys import argv
 
-    if argv[1] == "new":
-        assert len(argv) >= 3
-        project = Project()
-        project.save(identifier=argv[2])
-    else:
-        try:
-            project = Project.reload(how=argv[1])
-        except:
-            raise Exception(
-                "Must pass valid identifier or 'last' to load project. Can say 'new' and give an identifier"
-            )
+#     if argv[1] == "new":
+#         assert len(argv) >= 3
+#         project = Project()
+#         project.save(identifier=argv[2])
+#     else:
+#         try:
+#             project = Project.reload(how=argv[1])
+#         except:
+#             raise Exception(
+#                 "Must pass valid identifier or 'last' to load project. Can say 'new' and give an identifier"
+#             )
 
-    # project = Project() ## DEBUG
-    (
-        amines,
-        bromides,
-        dataset,
-        handles,
-        unique_couplings,
-        a_prop,
-        br_prop,
-        base_desc,
-        solv_desc,
-        cat_desc,
-    ) = preprocess.load_data(optional_load="maxdiff_catalyst")
+#     # project = Project() ## DEBUG
+#     (
+#         amines,
+#         bromides,
+#         dataset,
+#         handles,
+#         unique_couplings,
+#         a_prop,
+#         br_prop,
+#         base_desc,
+#         solv_desc,
+#         cat_desc,
+#     ) = preprocess.load_data(optional_load="maxdiff_catalyst")
 
-    # Checking project status to make sure sub descriptors are calculated
-    sub_desc = get_precalc_sub_desc()
-    # print("DEV", type(sub_desc), sub_desc[0])
-    if sub_desc == False:  # Need to calculate
-        real, rand = calc_sub(
-            project, optional_load="maxdiff_catalyst", substrate_pre=("corr", 0.90)
-        )
-        sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
-    else:
-        sub_am_dict, sub_br_dict, rand = sub_desc
-        real = (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc)
+#     # Checking project status to make sure sub descriptors are calculated
+#     sub_desc = get_precalc_sub_desc()
+#     # print("DEV", type(sub_desc), sub_desc[0])
+#     if sub_desc == False:  # Need to calculate
+#         real, rand = calc_sub(
+#             project, optional_load="maxdiff_catalyst", substrate_pre=("corr", 0.90)
+#         )
+#         sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
+#     else:
+#         sub_am_dict, sub_br_dict, rand = sub_desc
+#         real = (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc)
 
-    # sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
-    # print(rand)
-    # Val have out of sample reactants
-    # combos = preprocess.get_all_combos(unique_couplings)
-    combos = deepcopy(
-        unique_couplings
-    )  # This will significantly cut down on the number of partitions
-    import pandas as pd
+#     # sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
+#     # print(rand)
+#     # Val have out of sample reactants
+#     # combos = preprocess.get_all_combos(unique_couplings)
+#     combos = deepcopy(
+#         unique_couplings
+#     )  # This will significantly cut down on the number of partitions
+#     import pandas as pd
 
-    # print(pd.DataFrame(combos).to_string())
-    outdir = deepcopy(f"{project.partitions}/")
-    os.makedirs(outdir + "real/", exist_ok=True)
-    os.makedirs(outdir + "rand/", exist_ok=True)
-    realout = outdir + "real/"
-    randout = outdir + "rand/"
+#     # print(pd.DataFrame(combos).to_string())
+#     outdir = deepcopy(f"{project.partitions}/")
+#     os.makedirs(outdir + "real/", exist_ok=True)
+#     os.makedirs(outdir + "rand/", exist_ok=True)
+#     realout = outdir + "real/"
+#     randout = outdir + "rand/"
 
-    main(
-        project,
-        val_schema="vi_to",
-        vt=0,
-        mask_substrates=True,
-        rand=rand,
-        real=real,
-        serialize_rand=False,
-    )  ## Correlation cutoff is under development: should not be implemented here.
+#     main(
+#         project,
+#         val_schema="vi_to",
+#         vt=0,
+#         mask_substrates=True,
+#         rand=rand,
+#         real=real,
+#         serialize_rand=False,
+#     )  ## Correlation cutoff is under development: should not be implemented here.

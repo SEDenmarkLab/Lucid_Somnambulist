@@ -170,8 +170,6 @@ def calculate_electrophile_rdf_descriptors(
     def automatically_identify_ref_atoms():
         reference = []
         for mol in col:
-            # rdf_template = pd.DataFrame(index=["sphere_" + str(i) for i in range(slices)])
-            # rdf_df.name = mol.name
             chlorides = mol.get_atoms_by_symbol(symbol="Cl")
             bromides = mol.get_atoms_by_symbol(symbol="Br")
             ref_atm = select_ref_atoms(chlorides, bromides)
@@ -222,9 +220,6 @@ and will result in a guess of the reference halide atom (Br > Cl)."
         halide_idx = mol.atoms.index(ref)
         rdk_mol = Chem.MolFromMol2Block(mol.to_mol2(), sanitize=False)
         if rdk_mol == None:
-            # obabel_ = ml.OpenBabelDriver(name=mol.name,scratch_dir=os.getcwd(),nprocs=1)
-            # out = obabel_.convert(mol_text=mol.to_mol2(),src="mol2",dest="smi")
-            # print(out)
             obconv = openbabel.OBConversion()
             obconv.SetInAndOutFormats("mol2", "smi")
             obmol = openbabel.OBMol()
@@ -235,23 +230,17 @@ and will result in a guess of the reference halide atom (Br > Cl)."
             smi = obconv.WriteString(obmol).split()[0]
             if "([N](=O)[O-])" in smi:
                 smi = smi.replace("([N](=O)[O-])", "([N+](=O)[O-])")
-            # print(smi)
             rdk_mol = Chem.MolFromSmiles(smi)
-            # print(rdk_mol)
-            # break
         leftref = get_left_reference(rdk_mol, ipso_idx, halide_idx)
         conf_rdfs = {}
         for k, conf in enumerate(mol.conformers):
             df = pd.DataFrame.from_dict(apd[mol.name][k], orient="columns")
             coords = conf.coord
             a, b, c, d = get_molplane(coords, halide_idx, ipso_idx, leftref)
-            # print(a, b, c, d)
             orth_out = get_orthogonal_plane(
                 coords, halide_idx, ipso_idx, a, b, c, leftref
             )
-            if orth_out == None:  ### DEBUG
-                # print(mol.atoms, coords)
-                # print(f"Mol plane was {a},{b},{c},{d}")
+            if orth_out == None:
                 raise Exception(
                     f"Cannot find orthogonal plane direction for molecule {mol.name}, molecule number {col.molecules.index(mol)} in collection"
                 )
@@ -316,14 +305,7 @@ def retrieve_chloride_rdf_descriptors(
 
     """
     mol_rdfs = {}  # Going to store dfs in here with name for retrieval for now
-    # conf_rdfs = {}
-    # print(list(df[3]))
     for mol in col:
-        # atom_props = apd[mol.name]
-        # print(apd.keys())
-        # rdf_df = pd.DataFrame(index=["sphere_" + str(i) for i in range(10)])
-        # rdf_df.name = mol.name
-        ### Get reference atoms
         labels = [f.symbol for f in mol.atoms]
         cl_atom = mol.get_atoms_by_symbol(symbol="Cl")[0]
         cl_idx = mol.atoms.index(cl_atom)
@@ -339,9 +321,6 @@ def retrieve_chloride_rdf_descriptors(
         ipso_idx = mol.atoms.index(ipso_atom)
         rdk_mol = Chem.MolFromMol2Block(mol.to_mol2(), sanitize=False)
         if rdk_mol == None:
-            # obabel_ = ml.OpenBabelDriver(name=mol.name,scratch_dir=os.getcwd(),nprocs=1)
-            # out = obabel_.convert(mol_text=mol.to_mol2(),src="mol2",dest="smi")
-            # print(out)
             obconv = openbabel.OBConversion()
             obconv.SetInAndOutFormats("mol2", "smi")
             obmol = openbabel.OBMol()
@@ -352,21 +331,15 @@ def retrieve_chloride_rdf_descriptors(
             smi = obconv.WriteString(obmol).split()[0]
             if "([N](=O)[O-])" in smi:
                 smi = smi.replace("([N](=O)[O-])", "([N+](=O)[O-])")
-            # print(smi)
             rdk_mol = Chem.MolFromSmiles(smi)
-            # print(rdk_mol)
-            # break
         leftref = get_left_reference(rdk_mol, ipso_idx, cl_idx)
         conf_rdfs = {}
         for k, conf in enumerate(mol.conformers):
             df = pd.DataFrame.from_dict(apd[mol.name][k], orient="columns")
             coords = conf.coord
             a, b, c, d = get_molplane(coords, cl_idx, ipso_idx, leftref)
-            # print(a, b, c, d)
             orth_out = get_orthogonal_plane(coords, cl_idx, ipso_idx, a, b, c, leftref)
-            if orth_out == None:  ### DEBUG
-                # print(mol.atoms, coords)
-                # print(f"Mol plane was {a},{b},{c},{d}")
+            if orth_out == None:
                 raise Exception(
                     f"Cannot find orthogonal plane direction for molecule {mol.name}, molecule number {col.molecules.index(mol)} in collection"
                 )
@@ -410,7 +383,6 @@ def retrieve_chloride_rdf_descriptors(
             desc_df[prop] = pd.concat([pd.Series(f) for f in avg_array], axis=0)
         desc_df.index = ["slice_" + str(f + 1) for f in range(20)]
         mol_rdfs[mol.name] = desc_df
-    # print("all done")
     return mol_rdfs
 
 
@@ -432,14 +404,9 @@ def retrieve_bromide_rdf_descriptors(
 
     """
     mol_rdfs = {}  # Going to store dfs in here with name for retrieval for now
-    # conf_rdfs = {}
-    # print(list(df[3]))
     for mol in col:
-        # atom_props = apd[mol.name]
-        # print(apd.keys())
         rdf_df = pd.DataFrame(index=["sphere_" + str(i) for i in range(10)])
         rdf_df.name = mol.name
-        ### Get reference atoms
         labels = [f.symbol for f in mol.atoms]
         try:
             br_atom = mol.get_atoms_by_symbol(symbol="Br")[0]
@@ -460,10 +427,6 @@ def retrieve_bromide_rdf_descriptors(
         ipso_idx = mol.atoms.index(ipso_atom)
         rdk_mol = Chem.MolFromMol2Block(mol.to_mol2(), sanitize=False)
         if rdk_mol == None:
-            # obabel_ = ml.OpenBabelDriver(name=mol.name,scratch_dir=os.getcwd(),nprocs=1)
-            # out = obabel_.convert(mol_text=mol.to_mol2(),src="mol2",dest="smi")
-            # print(out)
-            # print("THISMOLECULEFAILED ", mol.name, col.name)
             obconv = openbabel.OBConversion()
             obconv.SetInAndOutFormats("mol2", "smi")
             obmol = openbabel.OBMol()
@@ -474,10 +437,7 @@ def retrieve_bromide_rdf_descriptors(
             smi = obconv.WriteString(obmol).split()[0]
             if "([N](=O)[O-])" in smi:
                 smi = smi.replace("([N](=O)[O-])", "([N+](=O)[O-])")
-            # print(smi)
             rdk_mol = Chem.MolFromSmiles(smi)
-            # print("AFTER FAILURE, MADE THIS: ", rdk_mol)
-            # break
         leftref = get_left_reference(rdk_mol, ipso_idx, br_idx)
         conf_rdfs = {}
         for k, conf in enumerate(mol.conformers):
@@ -526,7 +486,6 @@ def retrieve_bromide_rdf_descriptors(
             desc_df[prop] = pd.concat([pd.Series(f) for f in avg_array], axis=0)
         desc_df.index = ["slice_" + str(f + 1) for f in range(20)]
         mol_rdfs[mol.name] = desc_df
-    # print("all done")
     return mol_rdfs
 
 
@@ -538,7 +497,6 @@ def get_amine_ref_n(mol: ml.Molecule):
     for atm in mol.get_atoms_by_symbol(symbol="N"):
         nbrs = mol.get_connected_atoms(atm)
         for nbr in nbrs:
-            # print(nbr.symbol)
             if nbr.symbol == "H":
                 nit_atm = atm
                 return nit_atm
@@ -595,27 +553,15 @@ and will result in a guess of the reference halide atom (Br > Cl)."
             reference.append(ref_)
     assert len(col.molecules) == len(reference)
     for mol, ref in zip(col, reference):
-        # atom_props = apd[mol.name]
-        # print(apd.keys())
         rdf_df = pd.DataFrame(index=["sphere_" + str(i) for i in range(10)])
         rdf_df.name = mol.name
-        ### Get reference atoms
-        # labels = [f.symbol for f in mol.atoms]
-        # br_atom = mol.get_atoms_by_symbol(symbol='Br')[0]
-        # n_atom = get_amine_ref_n(mol)
         n_idx = mol.atoms.index(ref)
         assert ref.symbol == "N"
-        # print(ref)
-        # conn = mol.get_connected_atoms(ref)
         conf_rdfs = {}
         a_idx_l = [mol.atoms.index(f) for f in mol.atoms]
         for k, conf in enumerate(mol.conformers):
-            # print("DEBUG", k, mol.name)
             df = pd.DataFrame.from_dict(apd[mol.name][k], orient="columns")
             coords = conf.coord
-            # a,b,c,d = get_molplane(coords,n_idx,ipso_idx,leftref)
-            # e,f,g,h = get_orthogonal_plane(coords,n_idx,ipso_idx,a,b,c,leftref)
-            # h1,h2 = sort_into_halves(mol,conf,e,f,g,h)
             for prop in df.index:
                 rdf_ser_1 = get_rdf(
                     coords,
@@ -642,7 +588,6 @@ and will result in a guess of the reference halide atom (Br > Cl)."
             desc_df[prop] = pd.concat([pd.Series(f) for f in avg_array], axis=0)
         desc_df.index = ["slice_" + str(f + 1) for f in range(10)]
         molecule_rdfs[mol.name] = desc_df
-    # print("all done")
     return molecule_rdfs
 
 
@@ -672,11 +617,8 @@ def get_rdf(
     il = []
     jl = []
     central_atom = coords[reference_idx]
-    # print(atom_list)
     for x in atom_list:
         point = coords[x]
-        # print(point)
-        # print(central_atom)
         dist = sqrt(
             (
                 (float(central_atom[0]) - float(point[0])) ** 2
@@ -684,7 +626,6 @@ def get_rdf(
                 + (float(central_atom[2]) - float(point[2])) ** 2
             )
         )
-        # atom = ''.join([i for i in x if not i.isdigit()])
         property = list(all_atoms_property_list)[x]
         try:
             property_ = float(property)
@@ -772,7 +713,6 @@ def get_atom_ind_rdf(
         il = []
         jl = []
         central_atom = coords[reference_idx]
-        # print(atom_list)
         for x in atom_list:
             point = coords[x]
             symbol = atoms[x].symbol
@@ -819,7 +759,6 @@ def get_atom_ind_rdf(
             sum(jl),
         ]
         outlist.append(series_)
-    # output = np.array(outlist).T.tolist()
     output = outlist
     return output
 
@@ -844,38 +783,6 @@ def get_molplane(coords: np.array, ref_1, ref_2, ref_3):
     d = np.dot(cp, p1)
     return a, b, c, d
 
-
-# def get_orthogonal_plane(coords: np.array, ref_1, ref_2, a, b, c, leftref):
-#     """
-#     Retrieve orthogonal plane to molecule, but containing reactive atom
-#     ref1 is the reactive atom (br or n)
-#     ref2 is the atom attached to it (for making a direction towards the molecule)
-#     """
-#     p1 = np.array(coords[ref_1])
-#     p2 = np.array(coords[ref_2])
-#     # This is important - we use a specific reference atom here.
-#     p3 = np.array(coords[leftref])  # for "positive" direction left/right
-#     v1 = p2 - p1  # Vector along Br-ipsoC bond
-#     # Molplane vector
-#     v2 = np.array([a, b, c])
-#     # Crossing molplane direction with the Br-C bond to get orthogonal plane direction
-#     cp = np.cross(v1, v2)
-#     e, f, g = cp
-#     vc = np.array([e, f, g])  # direction of orthogonal plane (i.e. "left" or "right")
-#     # To define the specific orthogonal plane, need to know leftref directions
-#     if np.dot(vc, p3) > 0:  # query leftref vector vs orthogonal plane
-#         h = np.dot(vc, p1)
-#         return e, f, g, h
-#     elif np.dot(vc, p3) < 0:  # wrong direction; cross the other way
-#         cp = np.cross(v2, v1)
-#         e, f, g = cp
-#         vc = np.array([e, f, g])
-#         h = np.dot(vc, p1)
-#         return e, f, g, h
-#     else:
-#         raise Exception("Failed to calculate molecular planes")
-
-
 def get_orthogonal_plane(coords: np.array, ref_1, ref_2, a, b, c, leftref):
     """
     DEV VERSION - MAKING COMPATIBLE WITH CL CALCULATIONS
@@ -889,16 +796,8 @@ def get_orthogonal_plane(coords: np.array, ref_1, ref_2, a, b, c, leftref):
     v1 = p2 - p1  # ipso to halogen
     v2 = np.array([a, b, c])  # vector for molecular plane
     cp = np.cross(v1, v2)
-    # print(cp)
     e, f, g = cp
     vc = np.array([e, f, g])  # vector for orthogonal plane
-    # print("norm vect", vc)
-    # print("p1", p1)
-    # print("p4", p4)
-    # print(np.dot(vc, p4))
-    # print(leftref)
-    # print(ref_1)
-
     if np.dot(vc, p4) > 0:
         h = np.dot(vc, p1)
         return e, f, g, h
@@ -909,9 +808,6 @@ def get_orthogonal_plane(coords: np.array, ref_1, ref_2, a, b, c, leftref):
         h = np.dot(vc, p1)
         return e, f, g, h
     else:
-        # print(f"Not finding direction for molecule; dot output is {np.dot(vc,p4)}")
-        # print(f"Cl is at {p1}, ipso is at {p2}, left reference is at {p4}")
-        # print(f"Plane is {vc}, molecular plane is {v2}, and halogen bond is {v1}")
         return None
 
 
@@ -924,7 +820,6 @@ def sort_into_halves(mol: ml.Molecule, conf: ml.dtypes.CartesianGeometry, e, f, 
     oct1 = []
     oct2 = []
     cp = np.array([e, f, g])
-    # cp_ = [np.float64(e),np.float64(f),np.float64(g)]
     for i, pos in enumerate(coords):
         direction_ = (np.tensordot(pos, cp, axes=1) - h) / abs(sqrt(e**2 + f**2 + g**2))
         if direction_ > 0.15:
@@ -1039,8 +934,6 @@ def get_ortho_meta_symbols(
             [f for f in mol.get_connected_atoms(g) if f not in ortho_atoms]
             for g in meta
         ]
-        # if not tert:
-        #     tertiary.append([None])
         tertiary.append(tert)
     return ortho_atoms, meta_atoms, tertiary
 
@@ -1052,19 +945,15 @@ def get_left_reference(mol: Chem.rdchem.Mol, ipso_idx, br_idx):
     ipso_reference = mol.GetAtomWithIdx(ipso_idx)
     br_ref = mol.GetAtomWithIdx(br_idx)
     ortho_het, meta_het = _get_ortho_meta_symbols(mol, ipso_idx)
-    # print(ortho_het,meta_het)
     if len(ortho_het) == 0:  # no ortho heteroatoms
         less_sub = get_less_substituted_ortho(mol, ipso_idx)
-        # print(less_sub,'less_sub_ortho')
         if less_sub == None:  # ortho both the same
             if len(meta_het) == 0:  # no meta het, so using substitution
                 less_meta_sub = get_less_substituted_meta(mol, ipso_idx)
-                # print(less_meta_sub,'less_meta_sub')
                 if less_meta_sub == None:
                     nbrs = [
                         f for f in ipso_reference.GetNeighbors() if f.GetIdx() != br_idx
                     ]
-                    # print([f.GetIdx() for f in nbrs])
                     leftref = nbrs[0].GetIdx()  # arbitrary; symmetric
                 elif (
                     less_meta_sub != None
@@ -1096,7 +985,6 @@ def get_left_reference(mol: Chem.rdchem.Mol, ipso_idx, br_idx):
             leftref = ortho_het[0][1]  # arbitrary if they are the same
     else:
         pass
-        # print("Error! Could not find bromide left reference after all conditions")
     return leftref
 
 
@@ -1111,13 +999,8 @@ def _get_ortho_meta_symbols(mol: Chem.rdchem.Mol, aryl_ref):
     Uses ipso carbon as reference atom.
     """
     pt = Chem.GetPeriodicTable()
-    # if is_aniline(mol,refn)==False:
-    #     print('error! trying to use aniline func on non aniline!')
-    #     return None
     ar_atm = get_aromatic_atoms(mol)  # all aryl atoms
-    # print(ar_atm,aryl_ref)
     if aryl_ref not in ar_atm:
-        # print("weird")
         return None  # This is weird; error here if this happens RDKIT BREAKS HERE - NON-ARYL HETEROARENES
     het_ar_atm = []  # list of tuples describing heteroarene heteroatoms, empty if none
     for atm in ar_atm:  # Loop over aromatic atoms to find heteroaromatic atoms
@@ -1141,7 +1024,6 @@ def _get_ortho_meta_symbols(mol: Chem.rdchem.Mol, aryl_ref):
                 meta_het.append(
                     tuple([f for f in test_val_2] + [pt.GetAtomicNumber(test_val_2[0])])
                 )
-    # print(ortho_het,meta_het)
     return (
         ortho_het,
         meta_het,
@@ -1218,8 +1100,6 @@ def get_less_substituted_meta(mol: Chem.rdchem.Mol, ipsoidx):
         for f in nbrs_
     ]
     meta_ = [p for p in meta_ if len(p) != 0]
-    # for f in meta_:
-    #     print(f,'test')
     meta_type_list = [
         [k.GetSymbol() for k in f[0].GetNeighbors()] for f in meta_
     ]  # List with one item; need index in nested inner list
@@ -1229,5 +1109,4 @@ def get_less_substituted_meta(mol: Chem.rdchem.Mol, ipsoidx):
     min_v = min(cntlist)
     min_indx = cntlist.index(min_v)
     lesssub = meta_[min_indx][0].GetIdx()
-    # print(lesssub)
     return lesssub

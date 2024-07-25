@@ -48,29 +48,18 @@ class Project(object):
         from datetime import date
 
         timestamp = date.today()
-        # print(timestamp) ## DEBUG
         output = {
             "path": rf"{cls.path}/",
             "timestamp": rf"{timestamp}",
             "unique": rf"{cls.unique}",
         }
-        # print(output) ## DEBUG
-        ## Identifier gets added IF it is known (i.e. user specifies a special name). Placeholder for now.
         if type(identifier) == str:
             output["identifier"] = identifier
 
         pkg = cls.get_json()
         with open(pkg, "r") as g:
             projects = json.load(g, object_pairs_hook=OrderedDict)
-            # last_ = max(list(map(int, projects.keys())))
         if cls.unique in projects.keys():
-            import warnings
-
-            #             warnings.warn(
-            #                 f"The identifier {cls.unique} is already a known project: check prior work with this identifier. \
-            # Saving a preexisting project is not necessary and changes the order of projects.JSON, \
-            # as well as posing risks for errors. Project has not been saved again."
-            #             )
             return None
         projects[cls.unique] = output
         with open(pkg, "w") as k:
@@ -122,15 +111,12 @@ class Project(object):
         pkg = cls.get_json()
         with open(pkg, "r") as g:
             projects = json.load(g, object_pairs_hook=OrderedDict)
-        # print(f"KEYS, {projects.keys()}")
         if how == "last":
             last_entry = projects.popitem(last=True)[1]
-            # print(last_entry) ## DEBUG
             last_instance = __load_entry(cls, entry=last_entry)
             return last_instance
         elif how in projects.keys():
             entry = projects[how]
-            # print(entry)  ## DEBUG
             return __load_entry(cls, entry=entry)
         else:
             raise ValueError(

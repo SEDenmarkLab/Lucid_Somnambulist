@@ -1,4 +1,3 @@
-##Something
 from sys import argv
 from argparse import ArgumentParser
 import somn
@@ -78,20 +77,16 @@ def _generate_partitions(args):
     DEV - checked for "last" and "new" operation.
     """
     opts = args.options
-    ## DEV
-    # print(f"DEV {opts}")
-    ##
     from somn.workflows.partition import main as partition, get_precalc_sub_desc
     from somn.workflows.calculate import main as calc_sub
     from somn.workflows.calculate import preprocess
     from copy import deepcopy
     from somn.util.project import Project
 
-    ## IDENTIFY OR CREATE AND INSTANTIATE PROJECT ##
     if opts[0] == "new":
         assert len(opts) >= 2
         project = Project()
-        project.save(identifier=opts[1])  ####DEV####
+        project.save(identifier=opts[1])
     else:
         try:
             project = Project.reload(how=opts[0])
@@ -104,7 +99,6 @@ def _generate_partitions(args):
         val_schema = opts[opts.index("val") + 1]
     else:
         val_schema = "random"
-    # print("DEV - val_schema: ", val_schema)
     assert val_schema in [
         "to_vi",
         "vi_to",
@@ -114,19 +108,6 @@ def _generate_partitions(args):
         "noval_to",
         "to_noval",
     ]
-    ## BEGINNING PREP - LOAD STATIC DATA/PREREQUISITES TO DESCRIPTORS
-    # (
-    #     amines,
-    #     bromides,
-    #     dataset,
-    #     handles,
-    #     unique_couplings,
-    #     a_prop,
-    #     br_prop,
-    #     base_desc,
-    #     solv_desc,
-    #     cat_desc,
-    # ) = preprocess.load_data(optional_load="maxdiff_catalyst")
 
     # Checking project status to make sure sub descriptors are calculated
     sub_desc = get_precalc_sub_desc()
@@ -158,12 +139,9 @@ def _generate_partitions(args):
     # the user (e.g. a csv file with a list of items in it).
     import os
 
-    # print(pd.DataFrame(combos).to_string())
     outdir = deepcopy(f"{project.partitions}/")
     os.makedirs(outdir + "real/", exist_ok=True)
-    # os.makedirs(outdir + "rand/", exist_ok=True)
     realout = outdir + "real/"
-    # randout = outdir + "rand/"
     project.combos = combos
     project.unique_couplings = unique_couplings
     project.dataset = dataset
@@ -265,7 +243,6 @@ splash = f"""
 
 
 def main():
-    # print("DEV - module")
     print(splash)
     parser = ArgumentParser(usage=use_msg)
     parser.add_argument(
@@ -290,7 +267,6 @@ def main():
         default=False,
     )
     args = parser.parse_args()
-    # print(args)
     if args.operation == "predict":  ## Make predictions
         try:
             _run_predictions(args)
@@ -331,9 +307,6 @@ Ensure that a valid path to reactants is provided."
         ## PROJECT CLASS LOADED FOR FIRST TIME - WILL MAKE SOMN_SCRATCH DIRECTORY
         from somn.util.project import Project
 
-        # p = Project()
-        # p.save(identifier="initialization")
-        ## Look for and load projects.JSON & pre-trained models
         if "models" in args.options:
             from pathlib import Path
             import subprocess
@@ -349,9 +322,6 @@ Ensure that a valid path to reactants is provided."
             subprocess.run(
                 ["tar", "-xzvf", "pretrained-somn.tar.gz", "-C", "somn_scratch/"]
             )
-            # print(
-            #     "\n\nModels successfully extracted! Now updating package with their location...\n\n"
-            # )
             ## LOCATE INSTALL PATH FOR DATA MODULE & UPDATE projects.JSON
             # data_module_path = os.path.dirname(somn.data.__file__)
             # with open(f"./projects.JSON", "r") as k:
@@ -361,15 +331,11 @@ Ensure that a valid path to reactants is provided."
             # proj.update(upd)
             # with open(f"{data_module_path}/projects.JSON", "w") as p:
             #     json.dump(proj, p)
-#             print(
-#                 "somn package has been installed with pre-trained models. Please look in the somn_scratch directory \
-# to find the project '44eb8d94effa11eea46f18c04d0a4970', and look in the 'scratch' subdirectory for an example prediction request input file."
-#             )
         except:
             import warnings
 
             warnings.warn(
-                "It looks like no pre-trained models were supplied; skipping initialization step. \
+"It looks like no pre-trained models were supplied; skipping initialization step. \
 if this is an error, please check documentation and ensure that all files are in \
 the somn home directory (at the same level as the somn initialize command is run)"
             )

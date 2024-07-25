@@ -54,7 +54,6 @@ def plot_results(
         robust=True,
     )
     g.set(xlim=(-5, 110), ylim=(-5, 110))
-    # print(g.axes)
     for ax in g.axes.flatten():
         ax.set_xticks([0, 20, 40, 60, 80, 100])
         ax.set_yticks([20, 40, 60, 80, 100])
@@ -80,15 +79,10 @@ def get_cond_label(x_: int, pos):
         "DBU/Dioxane",
         "DBU/tAmOH",
     ]
-    # print(pos)
-    # print(x_)
     return labels[pos]
 
 
 def get_cat_label(x_, pos):
-    # print(x_,pos)
-    # if type(pos) == None:
-    # print("error")
     y_ = np.arange(1, 22)
     y_ = np.delete(y_, 14)
     y_ = y_.tolist()
@@ -122,8 +116,6 @@ def get_components(str_):
 def get_handles_by_reactants(str_, handles_):
     out = []
     for k in handles_:
-        # print(k.rsplit('_',3)[0])
-        # print(str_)
         if k.rsplit("_", 3)[0] == str_:
             out.append(k)
     return out
@@ -166,8 +158,6 @@ def load_predictions(prediction_experiment=None):
     NOTE: must be called after a somn Project has been specified
     """
     assert isinstance(prediction_experiment, str)
-    # from somn.util.project import Project
-
     project = Project()
     preds = pd.read_csv(
         f"{project.output}/{prediction_experiment}_rawpredictions.csv",
@@ -271,16 +261,9 @@ def visualize_predictions(
             cmap_ = "viridis"
         else:
             cbar_top = int(max_frac * N) + 3
-            # print(cbar_top)
             other_frac = 1 - max_frac
             viridis = plt.get_cmap(name="viridis", lut=cbar_top)
             newcolors = viridis(np.linspace(0, 1, cbar_top))
-            # upper_frac = (100.0-np.max(Z_r))/100.0
-            # num = int(np.round(upper_frac*N,decimals=0)-5)
-            # print(num)
-            # print(num/512)
-            # print(np.max(Z_r))
-            # print(N*other_frac)
             newcolors = np.append(
                 newcolors,
                 [
@@ -289,34 +272,25 @@ def visualize_predictions(
                 ],
                 axis=0,
             )
-            # print(newcolors)
             cmap_ = ListedColormap(newcolors)
 
         ax = sns.heatmap(
             data=data,
-            # cmap='viridis',
             cmap=cmap_,
             square=True,
             vmin=0.0,
             vmax=100,
-            # vmax=500,
-            # vmax = np.max(Z_r),
-            # center=np.max(Z_r)/2,
             cbar=True,
             cbar_kws={
                 "shrink": 0.75,
                 "extend": "max",
                 "extendrect": True,
                 "ticks": [0, 15, 30, 50, 75, 100],
-                # "ticks": [100, 200, 300, 400, 500],  # For metric
                 "spacing": "proportional",
                 "label": "Predicted Yield",
                 "location": "right",
-                # 'extendfrac':(100.0-np.max(Z_r))/np.max(Z_r)
             },
-            # center=50.0
         )
-        # ax.yaxis.set_major_formatter(get_cat_label)
         ax.xaxis.set_major_formatter(get_cond_label)
         ax.tick_params("x", labelsize="small")
         plt.setp(
@@ -332,27 +306,19 @@ def visualize_predictions(
             rotation_mode="anchor",
         )
         plt.subplots_adjust(bottom=0.25)
-        # plt.show()
-        # plt.savefig("rewrite_heatmaps/" + sys.argv[1] + "_heat.svg")
         plt.savefig(
             f"{project.output}/{prediction_experiment}/{requestor}/{query}_heatmap_{plot_value}.svg",
-            # transparent=True,
+            transparent=True,
             dpi=300,
         )
-        # raise Exception("DEBUG")
-        ### Output heatmap data
-        # print(data.head)
         cond_labels_output = [get_cond_label(1, f - 1) for f in data.columns]
         from copy import deepcopy
 
-        # raise Exception("DEBUG")
         data_out = deepcopy(data)
         data_out.columns = cond_labels_output
         data_out.to_csv(
             f"{project.output}/{prediction_experiment}/{requestor}/{query}_heatmap_{plot_value}_data.csv"
         )
-        ### fin
-        # plt.show()
         plt.clf()
     elif plot_type == "violin":
         sns.set_theme(style="white")
@@ -396,22 +362,11 @@ def visualize_predictions(
                 rotation_mode="anchor",
             )
             ax1.yaxis._axinfo["label"]["space_factor"] = 7
-            # plt.subplots_adjust(up=0.5)
-            # plt.tight_layout(h_pad=10.0,w_pad=3.0)
             fig.subplots_adjust(bottom=0.15)
             return fig
-
-        # def anim_func(i):
-        #     ax1.view_init(45, 100 - 20 * math.cos((math.pi * i) / 180))
-        #     return (fig,)
-
-        # ani = animation.FuncAnimation(
-        #     fig, anim_func, init_func=init, frames=360, blit=True
-        # )
         init()
         ax1.view_init(22, -25)
         plt.yticks(fontsize=12)
-        # ani.save(__tst+'085inc.gif',fps=25,dpi=300)
         plt.savefig(
             f"{project.output}/{prediction_experiment}/{requestor}/{query}_3d_{plot_value}.png",
             format="png",

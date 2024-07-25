@@ -67,27 +67,15 @@ def main(args=None):
 if prediction experiment label is unique and new."
         )
     stamp = 'couplings'
-    # stamp = str(date.today())
-    # ### DEV - overwrite existing predictions ###
-    # import shutil
-    # try:
-    #     shutil.rmtree(
-    #         f"{project.output}/{args.exp}/{stamp}/"
-    #     )
-    # except:
-    #     pass
-    ### DEV - fail job if existing predictions detected ###
     try:
         import pathlib
         assert not pathlib.Path(f"{project.output}/{args.exp}/{stamp}/").exists()
     except:
         raise Exception(f"Invalid prediction output path specified - already exists! {project.output}/{args.exp}/{stamp}/")
-    print('DEV-PRE-PLOTPREDS')
-    ### DEV END ###
     plot_preds(query="all", prediction_experiment=args.exp, requestor=stamp)
     print(
         f"Finished with predictions - please see {project.output}/{args.exp}_rawpredictions.csv \n \
-    Processed predictions are in {project.output}/{args.exp}/{stamp}/ "
+Processed predictions are in {project.output}/{args.exp}/{stamp}/ "
     )
 
 
@@ -108,20 +96,18 @@ def check_input_structures():
     ...
 
 
-if __name__ == "__main__":
-    args = argv[1:]
-    if len(args) == 1:
-        raise Exception(
-            "Trying to make predictions, but did not specify input values. Check main() from somn.workflows.predict."
-        )
-    # print(args)
-    # del args[0]
-    try:
-        assert len(args) == 3
-    except:
-        raise Exception(
-            "Inference workflow received the wrong number of arguments.\n \
-            Specify project ID, then model set ID, then a new, unique \n \
-            identifier for the predictions being made. "
-        )
-    main(args=args)
+# if __name__ == "__main__":
+#     args = argv[1:]
+#     if len(args) == 1:
+#         raise Exception(
+#             "Trying to make predictions, but did not specify input values. Check main() from somn.workflows.predict."
+#         )
+#     try:
+#         assert len(args) == 3
+#     except:
+#         raise Exception(
+#             "Inference workflow received the wrong number of arguments.\n \
+#             Specify project ID, then model set ID, then a new, unique \n \
+#             identifier for the predictions being made. "
+#         )
+#     main(args=args)

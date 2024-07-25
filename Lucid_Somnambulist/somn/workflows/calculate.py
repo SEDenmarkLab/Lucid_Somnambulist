@@ -45,8 +45,6 @@ def calculate_substrate_descriptors(fpath, concurrent=2, nprocs=2):
         print("Successfully calculated geometries and atom properties.")
     except:
         raise Exception("Calculating substrate geometries and atop properties failed.")
-    # amines: ml.Collection
-    # filtered_amines = ml.Collection(name="amines",molecules=[f for f in amines.molecules if f.name in am_atomprops.keys()])
     for react_type, (geom, ap) in results.items():
         vector_sub_desc = {}
         filt_geom = []
@@ -299,13 +297,6 @@ def main(
                     full_am_df.to_csv(
                         f"{project.descriptors}/amine_only_features.csv", header=True
                     )
-                ### DEV ###
-                # print(full_am_df)
-                # print(full_am_df.corr())
-                # raise Exception("DEBUG")
-                # full_am_df.to_csv("testing.csv", header=True)
-                # full_am_df.corr().abs().to_csv("correlation.csv", header=True)
-                ###
 
         else:
             raise Exception("Tuple passed to sub preprocessing, but not length 2")
@@ -322,16 +313,9 @@ def main(
             am_mask = preprocess.corrX_new(
                 full_am_df, cut=value_, get_const=True, bool_out=True
             )
-            ### DEBUG
-            # print("Boolean mask:\n", am_mask)
-            # print(am_label)
             br_mask = preprocess.corrX_new(
                 full_br_df, cut=value_, get_const=True, bool_out=True
             )
-            ### DEBUG
-            # print("Boolean mask:\n", br_mask)
-            # print(br_label)
-            # Saving selected features for inspection later
             pd.Series(br_mask[0], index=br_label).to_csv(
                 f"{project.descriptors}/bromide_mask.csv"
             )
@@ -355,7 +339,6 @@ def main(
         sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc
     )
     real = (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc)
-    # print(rand)
     if serialize == True:
         with open(f"{project.descriptors}/random_am_br_cat_solv_base.p", "wb") as k:
             pickle.dump(rand, k)

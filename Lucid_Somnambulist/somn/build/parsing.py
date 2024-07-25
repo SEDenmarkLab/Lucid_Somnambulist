@@ -27,7 +27,6 @@ class InputParser:
         somn.data.load_all_desc()
         from somn.data import ACOL, BCOL
 
-        # print(ACOL.mol_index)
         names_known = [f.name for f in ACOL.molecules]
         names_known.extend([k.name for k in BCOL.molecules])
         self.names_known_tot = names_known
@@ -142,7 +141,6 @@ class InputParser:
             obconv.SetInAndOutFormats("smi", "mol2")
             obconv.AddOption("h", ob.OBConversion.GENOPTIONS)
             for i, smiles_ in enumerate(user_input):
-                # print(i, smiles_)
                 obmol = ob.OBMol()
                 try:
                     obconv.ReadString(
@@ -155,7 +153,6 @@ class InputParser:
                 gen3d.Do(
                     obmol, "--best"
                 )  # Documentation is lacking for pybel/python, found github issue from 2020 with this
-                # print("DEBUG ", names)
                 if type(names) == list:
                     newmol = ml.Molecule.from_mol2(
                         obconv.WriteString(obmol), name=f"{names[i]}"
@@ -229,7 +226,7 @@ class InputParser:
             opt = ml.Concurrent(
                 col,
                 backup_dir=self.path_to_write + "/scratch/",
-                update=60,
+                update=30,
                 concurrent=16,
             )(xtb.optimize)(method="gfn2")
         mols, errs = somn.util.aux_func.check_parsed_mols(opt, col)
@@ -307,7 +304,6 @@ class InputParser:
         """
         df = pd.read_csv(fpath, header=0, index_col=None)
         assert isinstance(df, pd.DataFrame)
-        # print("DEBUG", df)
         if len(df.columns) == 3:
             nucs, smiles_d = self.get_mol_from_smiles(
                 df.iloc[:, 1].to_list(), recursive_mode=True
@@ -325,7 +321,6 @@ class InputParser:
                 recursive_mode=True,
                 names=df.iloc[:, 3].to_list(),
             )
-            # print("NUCS DEBUG", nucs.molecules)
             elecs, smiles_d_ = self.get_mol_from_smiles(
                 df.iloc[:, 2].to_list(),
                 recursive_mode=True,
@@ -357,6 +352,5 @@ def cleanup_handles(data_df: pd.DataFrame):
     indices = data_df.index
     strip_indices = pd.Series([f.strip() for f in indices])
     data_df.index = strip_indices
-    # data_df.drop_duplicates(inplace=True) ## This does not work; it seems to drop most
     data_df = data_df[~data_df.index.duplicated(keep="first")]
     return data_df

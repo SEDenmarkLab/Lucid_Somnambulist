@@ -10,17 +10,9 @@ import argparse
 from pathlib import Path
 from somn.build import parsing
 
-# from somn.workflows import STRUC_
 from somn.calculate.substrate import PropheticInput
 import warnings
 from somn.util.project import Project
-
-# temp_work = r"C:\Users\rineharn\workspace/"
-# temp_work = r"/mnt/c/Users/rineharn/workspace/linux/"
-
-#### Use example
-# python add.py smi 'CC(=O)N1CCN(CC1)C2=CC=C(C=C2)OC[C@@H]3CO[C@@](O3)(CN4C=CN=C4)C5=C(C=C(C=C5)Cl)Cl' el
-####
 
 
 def add_workflow(
@@ -66,7 +58,6 @@ def add_workflow(
     if (
         args.ser
     ):  # Serialization during parsing to check for errors - this is important for users to troubleshoot
-        # assert Path(args.ser[1]).exists()
         parse = parsing.InputParser(
             serialize=True,
             path_to_write=f"{project.structures}/{prediction_experiment}",
@@ -79,9 +70,6 @@ def add_workflow(
     ###             Checking inputs and generating initial 3D geometries.            ###
 
     if args.fmt[0] == "smi":
-        # raise Exception(
-        #     "SMILES parsing not yet supported; please use fpath option for CDXML"
-        # )
         if Path(args.fmt[1]).exists():
             raise Exception(
                 "Looks like a file path was passed as a SMILES - check inputs. If multiple smiles are being input, use 'multsmi' for format"
@@ -95,7 +83,6 @@ def add_workflow(
             )
         collection, err = parse.preopt_geom(pre)
     elif args.fmt[0] == "multsmi":
-        # print("DEBUG got to multsmi")
         if Path(args.fmt[1]).suffix == ".smi":
             multismi_inp = parse.scrape_biovia_smi_file(args.fmt[1])
             collection, smiles_d = parse.get_mol_from_smiles(
@@ -103,7 +90,6 @@ def add_workflow(
             )
         elif Path(args.fmt[1]).suffix == ".csv":
             pre, smiles_d, roles, indicies = parse.scrape_requests_csv(args.fmt[1])
-            # print("DEBUG", pre.mol_index)
             collection, err = parse.prep_collection(pre, update=20, has_hs=True)
         else:
             raise Exception(
@@ -164,18 +150,15 @@ def add_workflow(
         input_packet = PropheticInput.from_col(
             collection, smi_list, [args.r], parser=parse
         )
-        # print(input_packet.struc)
 
     elif args.fmt[0] == "multsmi":
         input_packet = PropheticInput.from_col(
             collection, smi_list, roles, parser=parse
         )
-        # print(input_packet.struc)
     elif args.fmt[0] == "cdxml":
         input_packet = PropheticInput.from_col(
             collection, smi_list, [args.r for f in collection.molecules], parser=parse
         )
-        # print(input_packet.struc)
     elif args.fmt[0] == "mol2":  # Single structure
         input_packet = PropheticInput.from_col(
             collection, smi_list, [args.r], parser=parse
@@ -199,14 +182,5 @@ def add_workflow(
 
     if len(ap_errors) != 0:
         print(f"ERRORS DURING CALCULATIONS: \n{ap_errors}")
-    # print("DEBUG", input_packet.roles_d, input_packet.state)
     input_packet.sort_and_write_outputs(substrate_indicies=indicies)
 
-
-if __name__ == "__main__":
-    ### Assuming we want to always keep track of this
-    # args = argv
-    # assert len(args) >= 2
-    # how = args[1]
-    project = Project.reload(how="291e711a9e3f11eea23918c04d0a4970")
-    add_workflow(project, prediction_experiment="testing_parser")

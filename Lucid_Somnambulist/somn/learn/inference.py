@@ -1,7 +1,10 @@
 import os
-
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
+# tf.autograph.set_verbosity(3)
+# tf.get_logger().setLevel(logging.ERROR)
+# os.environ["KMP_AFFINITY"] = "noverbose"
+# logging.getLogger("tensorflow").setLevel(logging.ERROR)
 import pandas as pd
 from glob import glob
 from somn.build.assemble import assemble_descriptors_from_handles
@@ -53,55 +56,10 @@ def hypermodel_inference(
     """
     project must contain (1) partitions, and (2) pre-trained hypermodels.
     """
-    # if real == True:
-    #     organ = tf_organizer(
-    #         f"inference_{model_experiment}",
-    #         partition_dir=f"{project.partitions}/real",
-    #         validation=True,
-    #         inference=True,
-    #     )
-    # elif real == False:
-    #     try:
-    #         organ = tf_organizer(
-    #             f"inference_{model_experiment}",
-    #             partition_dir=f"{project.partitions}/rand",
-    #             validation=True,
-    #             inference=True,
-    #         )
-    #     except:
-    #         raise Exception(
-    #             "Attempted to make inferences using models trained on random features, but could not find/load those models. Check partitions"
-    #         )
-    # else:
-    #     raise Exception(
-    #         "Must specify real = True or False, representing whether inferences should be made using 'real' chemical descriptors, or random ones (as a control)"
-    #     )
-    # drive = tfDriver(organ)
-    # model_dir = f"{project.output}/{model_experiment}/out/"
-    # pred_buffer_fp = f"{project.output}prediction_buffer_{model_experiment}_{prediction_experiment}.csv"
-    # # sub_desc, rand = load_calculated_substrate_descriptors()
-    # ### Get descriptors so that features for predictions can be assembled
-    # (
-    #     amines,
-    #     bromides,
-    #     dataset,
-    #     handles,
-    #     unique_couplings,
-    #     a_prop,
-    #     br_prop,
-    #     base_desc,
-    #     solv_desc,
-    #     cat_desc,
-    # ) = load_data(optional_load=optional_load)
-    # sub_desc = get_precalc_sub_desc()
-    # if sub_desc == False:  # Need to calculate
-    #     raise Exception(
-    #         "Tried to load descriptors for inference, but could not locate pre-calcualted descriptors. This could lead to problems with predictions; check input project."
-    #     )
-    # else:
-    #     real, rand = sub_desc
+    # os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+    # import logging
+    # tf.get_logger().setLevel(logging.ERROR)
     output_buffer = []
-    # from somn.workflows.calculate import main as calc_sub
     if all_predictions == False:
         total_requests, requested_pairs, reactant_indicies = prep_requests()
         import numpy as np
@@ -111,18 +69,12 @@ def hypermodel_inference(
         ref_idx = (nuc_idx_input, el_idx_input)
     elif all_predictions == True:
         requested_pairs = _generate_full_space()
-        ##DEV##
-        # requested_pairs= ['4_22','13_13','1_20','6_28']
-        ##DEV##
         total_requests = None
     else:
         raise Exception(
             "Function hypermodel_inference received an invalid argument for the all_predictions keyword. This \
 should be False under normal circumstances, and True for specific development applications (i.e. getting all possible predictions)"
         )
-    # real, rand = calc_sub(
-    #     project, substrate_pre=substrate_pre, optional_load=optional_load
-    # )
     from somn.workflows.partition import normal_partition_prep
 
     _, _, _, real, rand = normal_partition_prep(project=project)
@@ -174,37 +126,24 @@ generation of the prophetic feature array. Check project directory for \
         vt=vt,
     )
     print("""Features for predictions have been processed...getting predictions now.""")
-    # model_info = [prophetic_organizer.get_partition_info(m)[0] for m in all_models]
-    # prophetic_organizer.models = sorted(
-    #     list(glob(f"{project.output}/{model_experiment}/out/*.h5"))
-    # )
+    ### Suppress annoying tensorflow prints ###
+    import contextlib,os
+    @contextlib.contextmanager
+    def suppress_print():
+        with open(os.devnull, "w") as f, contextlib.redirect_stdout(f):
+            yield
+    
     all_models = sorted(
         list(glob(f"{project.output}/{model_experiment}/out/*.keras"))
     )  ## KERAS vs H5
     prophetic_driver = tfDriver(
         organizer=prophetic_organizer, prophetic_models=all_models
     )
-    ###
-    # prophetic_driver.sort_inference_models(all_models)
-    # print(
-    #     "DEBUG - inference is",
-    #     prophetic_driver.organizer.inference,
-    #     prophetic_organizer.inference,
-    #     prophetic_driver.models,
-    #     len(prophetic_driver.models),
-    #     len(prophetic_driver.prophetic),
-    # )
-    ### Iterate over tuple of models (multiple hyperparameter sets can be handled per partition), and
-    ### concatenate predictions for those with the predictions from multiple models from the next partition
-    ### (and so on).
     import gc
 
     for i, (model_set, feat_set) in enumerate(
         zip(prophetic_driver.models, prophetic_organizer.prophetic_features)
     ):
-        # print(
-        #     f"DEVELOPMENT - working on partition {i}\nmodel_ is {model_}\ndriver model is {prophetic_driver.curr_models}"
-        # )
         assert model_set == prophetic_driver.curr_models
         assert feat_set == prophetic_driver.curr_prophetic
         from tensorflow import keras
@@ -212,25 +151,23 @@ generation of the prophetic feature array. Check project directory for \
 
         models, feat = prophetic_driver.load_prophetic_hypermodels_and_x()
         feat: pd.DataFrame
-
         if i == 0:
             pred_idx = feat.index.to_list()
-            # print("DEV", feat.index)
         else:
             assert (
                 feat.index.to_list() == pred_idx
             )  # All index lists should match or something BAD is happening
-        for model in models:
-            predictions = model.predict(feat.values)
-            # print("DEV", predictions.shape)
-            output_buffer.append(pd.Series(predictions.ravel(), index=pred_idx))
-            write_preds_to_buffer(project, predictions, pred_idx, prediction_experiment)
-        del (
-            models,
-            feat,
-            predictions,
-        )
-        gc.collect()
+        with suppress_print():
+            for model in models:
+                predictions = model.predict(feat.values)
+                output_buffer.append(pd.Series(predictions.ravel(), index=pred_idx))
+                write_preds_to_buffer(project, predictions, pred_idx, prediction_experiment)
+            del (
+                models,
+                feat,
+                predictions,
+            )
+            gc.collect()
         check_done = prophetic_driver.get_next_part()
         tf.keras.backend.clear_session()
         if check_done == 0:
@@ -241,15 +178,10 @@ generation of the prophetic feature array. Check project directory for \
             raise Exception(
                 "Error with prophetic driver instance - check that partitions and models in project passed to hypermodel_inference are complete"
             )
-    # print("DEVELOPMENT - final output buffer", output_buffer)
-    # print("DEVELOPMENT - first output buffer", output_buffer[0], output_buffer[0].shape)
     concat = pd.concat(output_buffer, axis=1)
-    # print("DEVELOPMENT - concat ", concat, concat.shape)
-    # pred_out = pd.DataFrame(concat, index=pred_idx)
     concat.to_csv(
         f"{project.output}/{prediction_experiment}_rawpredictions.csv", header=True
     )
-    # print(concat)
     return concat, total_requests
 
 
@@ -297,8 +229,6 @@ Shoult have format (col0):SMILES,(col1):role (nuc or el),(col2, optional):mol_na
     req_br = total_requests["el_name"]
     am_check = req_am.duplicated()
     br_check = req_br.duplicated()
-    # print("DEBUG",am_check,type(am_check),type(am_check[0]))
-    # raise Exception("DEBUG")
     fix_am = []
     fix_br = []
     check = 0
@@ -331,8 +261,6 @@ Shoult have format (col0):SMILES,(col1):role (nuc or el),(col2, optional):mol_na
         pair_idx = [data[5], data[6]]
         req_pairs.append(pair)
         indicies.append(pair_idx)
-    # print(",".join(req_pairs))
-    # print(total_requests)
 
     return total_requests, req_pairs, indicies
 
@@ -480,13 +408,10 @@ calculate descriptors for prophetic molecules"
     am.update(p_a_desc)
     br.update(p_b_desc)
     upd_desc = (am, br, ca, so, ba)
-    # print(upd_desc)
     prophetic_features = assemble_descriptors_from_handles(
         pred_str, desc=upd_desc, sub_mask=sub_masks
     )
-    # print("DEBUG", prophetic_features)
     prophetic_features.reset_index(drop=True).to_feather(
         f"{project.descriptors}/prophetic_{prediction_experiment}.feather"
     )
-    # from somn.calculate.preprocess import new_mask_random_feature_arrays
     return prophetic_features

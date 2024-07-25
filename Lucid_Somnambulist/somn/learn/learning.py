@@ -1,7 +1,13 @@
 from glob import glob
-import os
 import pandas as pd
+import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
+# tf.autograph.set_verbosity(3)
+# tf.get_logger().setLevel(logging.ERROR)
+# os.environ["KMP_AFFINITY"] = "noverbose"
+# logging.getLogger("tensorflow").setLevel(logging.ERROR)
+# import tensorflow as tf
 
 ########### DEV ############
 # tf.compat.v1.disable_eager_execution()  ## Trying to fix speed + memory issues DEV
@@ -239,7 +245,7 @@ class tfDriver:
                         "Looks like prediction workflow ran out of pre-trained models before exhausting all partitions. Stopping now."
                     )
                     return 0  # Do not have models for ALL of the partitions; the earlier check can fail.
-        print("Getting next partition", "\n\n", self.organizer.log[-1], new_current)
+        # print("Getting next partition", self.organizer.log[-1])
         # return new_current,current_number ### vestigial - no longer used
 
     ### Depreciated - this is done beforehand
@@ -321,25 +327,15 @@ class tfDriver:
 
         """
 
-        # input_dimension=self.input_dim
         model = Sequential()
-        # model.add(Input(shape=input_dimension))
         hp_n_1 = hp.Int(
             "nodes_1", min_value=256, max_value=1024, step=16
         )  # 48 states possible
         hp_n_2 = hp.Int(
             "nodes_2", min_value=16, max_value=64, step=4
         )  # 48 states possible
-        # hp_n_3 = hp.Int("nodes_3", min_value=8, max_value=256, step=8) ##DEV
         hp_noise = hp.Float("gaus_noise", min_value=0.005, max_value=0.08, step=0.005)
         hp_d_1 = hp.Float("dropout1", min_value=0.0, max_value=0.65)
-        # hp_d_2 = hp.Float("dropout2", min_value=0.0, max_value=0.65) ##DEV
-        # hp_a_1 = hp.Choice('act1',values=['relu','selu','softmax','tanh','gelu'])
-        # hp_a_2 = hp.Choice('act2',values=['relu','selu','softmax','tanh','gelu'])
-        # hp_a_3 = hp.Choice('act3',values=['relu','selu','softmax','tanh','gelu'])
-        # hp_a_1 = hp.Choice("act1", values=["relu"])
-        # hp_a_2 = hp.Choice("act2", values=["relu"])
-        # hp_a_3 = hp.Choice("act3", values=["relu"])
         model.add(
             tf.keras.layers.GaussianNoise(
                 # stddev=0.05,
@@ -348,7 +344,6 @@ class tfDriver:
                 input_shape=(self.input_dim,),
             )
         )
-        # model.add(tf.keras.layers.BatchNormalization())
         model.add(
             Dense(
                 hp_n_1,
@@ -369,19 +364,7 @@ class tfDriver:
                 # kernel_regularizer=tf.keras.regularizers.l1_l2(l1=1e-5,l2=1e-4)
             )
         )
-        # model.add(Dropout(hp_d_2))
-        # model.add(
-        #     Dense(
-        #         hp_n_3,
-        #         # activation=hp_a_3,
-        #         activation="relu",
-        #     )
-        # )
         model.add(Dense(1, activation="linear"))
-        # hp_lr = hp.Choice("learning_rate", values=[1e-2, 1e-3, 1e-4, 1e-5, 1e-6])
-        # opt = tf.keras.optimizers.Adam(learning_rate=1e-4)
-
-        # opt = tf.keras.optimizers.SGD(learning_rate=1e-4)
         lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             initial_learning_rate=1e-2, decay_steps=100, decay_rate=0.95
         )
@@ -415,9 +398,7 @@ class tfDriver:
         def kl_div(y_true, y_pred):
             return tf.keras.metrics.kullback_leibler_divergence(y_true, y_pred)
 
-        # input_dimension=self.input_dim
         model = Sequential()
-        # model.add(Input(shape=input_dimension))
         hp_n_1 = hp.Int(
             "nodes_1", min_value=256, max_value=2496, step=64
         )  # 48 states possible
@@ -428,12 +409,6 @@ class tfDriver:
         hp_noise = hp.Float("gaus_noise", min_value=0.005, max_value=0.08, step=0.005)
         hp_d_1 = hp.Float("dropout1", min_value=0.0, max_value=0.65)
         hp_d_2 = hp.Float("dropout2", min_value=0.0, max_value=0.65)
-        # hp_a_1 = hp.Choice('act1',values=['relu','selu','softmax','tanh','gelu'])
-        # hp_a_2 = hp.Choice('act2',values=['relu','selu','softmax','tanh','gelu'])
-        # hp_a_3 = hp.Choice('act3',values=['relu','selu','softmax','tanh','gelu'])
-        # hp_a_1 = hp.Choice("act1", values=["relu"])
-        # hp_a_2 = hp.Choice("act2", values=["relu"])
-        # hp_a_3 = hp.Choice("act3", values=["relu"])
         model.add(
             tf.keras.layers.GaussianNoise(
                 # stddev=0.05,
@@ -442,7 +417,6 @@ class tfDriver:
                 input_shape=(self.input_dim,),
             )
         )
-        # model.add(tf.keras.layers.BatchNormalization())
         model.add(
             Dense(
                 hp_n_1,
@@ -472,15 +446,9 @@ class tfDriver:
             )
         )
         model.add(Dense(5, activation="softmax"))
-        # hp_lr = hp.Choice("learning_rate", values=[1e-2, 1e-3, 1e-4, 1e-5, 1e-6])
-        # opt = tf.keras.optimizers.Adam(learning_rate=1e-4)
-
-        # opt = tf.keras.optimizers.SGD(learning_rate=1e-4)
         lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             initial_learning_rate=1e-2, decay_steps=100, decay_rate=0.95
         )
-        # opt = tf.keras.optimizers.Adadelta(learning_rate=lr_schedule)
-        # opt = tf.keras.optimizers.Adagrad(learning_rate=1e-4)
         opt = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
         model.compile(
             optimizer=opt,
@@ -534,7 +502,6 @@ class tfDriver:
         hp_a_1 = hp.Choice("act1", values=["relu", "selu", "softmax", "gelu"])
         hp_a_2 = hp.Choice("act2", values=["relu", "selu", "softmax", "gelu"])
         hp_a_3 = hp.Choice("act3", values=["relu", "selu", "softmax", "gelu"])
-        # hp_a_1 = hp.Choice("act1", values=["relu"])
         hp_a_2 = hp.Choice("act2", values=["relu"])
         hp_a_3 = hp.Choice("act3", values=["relu"])
         model.add(
@@ -545,7 +512,6 @@ class tfDriver:
                 input_shape=(self.input_dim,),
             )
         )
-        # model.add(tf.keras.layers.BatchNormalization())
         model.add(
             Dense(
                 hp_n_1,
@@ -575,12 +541,7 @@ class tfDriver:
             )
         )
         model.add(Dense(1, activation="linear"))
-        # hp_lr = hp.Choice('learning_rate',values=[1e-2,1e-3,1e-4,1e-5,1e-6])
-        # opt = tf.keras.optimizers.Adam(learning_rate=1e-4)
-        # opt = tf.keras.optimizers.Adam(learning_rate=1e-2)
-        # opt = tf.keras.optimizers.SGD(learning_rate=1e-4)
         opt = Adadelta(learning_rate=1)
-        # opt = tf.keras.optimizers.Adagrad(learning_rate=1e-4)
         model.compile(
             optimizer=opt,
             loss="mse",
@@ -692,6 +653,13 @@ def compute_residuals(model, X, inference_x: np.array, y, infer_labels: np.array
     test_errors = abs(yte_p - yte)
     return train_errors, val_errors, test_errors
 
+# ###DEV
+# import contextlib
+# @contextlib.contextmanager
+# def suppress_print():
+#     with open(os.devnull, "w") as f, contextlib.redirect_stdout(f):
+#         yield
+# ###
 
 def model_inference(model, X, inference_x: np.array):
     """
@@ -701,6 +669,7 @@ def model_inference(model, X, inference_x: np.array):
 
     Outputs predicted values based on descriptors
     """
+    # with suppress_print():
     if len(inference_x) == 3:
         X_val, X_test, Xp = inference_x
         ytr_p = model.predict(X).ravel()
@@ -811,15 +780,8 @@ def hypermodel_search(
         )  ## DEV - trying to specify a specific GPU.
         config.gpu_options.allow_growth = True
         session = tf.compat.v1.Session(config=config)
-    # elif cpu_testing == True:  # TEST - this was not the goal here. CPU is not going to be useful for this.
-    #     config = tf.compat.v1.ConfigProto(device_count={"GPU": 0})
-    #     session = tf.compat.v1.Session(config=config)
-    # import sys
-    # exp = sys.argv[1]
     assert isinstance(experiment, str)
-    # with tf.device("/GPU:0"):  ### Need a solution for this OR just don't and let it run in a container without specific hardware and multiple jobs
-    # date__ = date.today().strftime("%b-%d-%Y-%H-%M") + "_" + experiment
-    date__ = experiment  # Should not be a slash before or after
+    experiment_name = experiment.strip(" ").strip("/").replace("_","-")  # Should not be a slash before or after
     tforg = tf_organizer(
         name="mdl_srch_" + experiment,
         partition_dir=f"{project.partitions}/real",  # noslash needed
@@ -828,25 +790,12 @@ def hypermodel_search(
 
     drive = tfDriver(tforg)
     json_buffer_path = (
-        f"{project.output}/{date__}/"  # There is already a slash after output
+        f"{project.output}/{experiment_name}/"  # There is already a slash after output
     )
-    out_dir_path = f"{project.output}/{date__}/out/"  # Both slashes for out needed here
+    out_dir_path = f"{project.output}/{experiment_name}/out/"  # Both slashes for out needed here
     drive.model_out_path = out_dir_path
     os.makedirs(json_buffer_path, exist_ok=True)
     os.makedirs(out_dir_path, exist_ok=True)
-    # Directorys should be covered in above os.makedirs() call
-    # splits = {}
-    # csvs = glob(tforg.part_dir.rsplit("/", 1)[0] + "/*csv")
-    # for f in csvs:
-    #     key = f.rsplit("_", 1)[1].split(".")[0]
-    #     val = pd.read_csv(f, header=0, index_col=0)
-    #     splits[key] = val.to_dict(orient="list")
-    # # print(len(drive.organizer.partitions))
-    # # tf.debugging.set_log_device_placement(True)
-    # # gpus = tf.config.list_logical_devices('GPU')
-    # ### Restart; skipping already done partitions ####
-    # # for i in range(6):
-    # #     drive.get_next_part()
     completed, iter_ = check_for_completed(drive)
     if len(completed) > 0:  # Restarting - don't overwrite old file.
         import uuid
@@ -986,18 +935,6 @@ the utility function somn.calculate.preprocess.prep_mc_labels"
                 out_dir_path + name_ + "hpset" + str(i) + "_" + get_hps(hps) + ".keras",
                 overwrite=False,
             )
-            #### Not tested yet - for later development ####
-            # if (
-            #     mae_result[1] < 20.0
-            # ):  # Validation must pass 20% MAE. Arbitrary cutoff for whether to save a model or not.
-            #     ### Need to test to_json() and tf.keras.models.model_from_json() for just saving config.
-            #     # tf.keras.saving.save_model(hypermodel,out_dir_path + name_ + "hpset" + str(i) + "_" + get_hps(hps) + ".h5",overwrite=False,save_format='h5',save_traces=False)
-            #     ### Below is a prototype for json serialization of JUST the model configuration. This removes the needless
-            #     ### save/load of weights that will just be retrained anyway.
-            #     # json_model = hypermodel.to_json()
-            #     # with open(f"{out_dir_path}{name_}_hpset{str(i)}_{get_hps(hps)}.json",'w') as g:
-            #     #     json.dump(json_model,g)
-            #### Untested development json serialization of models
             yval_p = hypermodel.predict(xval).ravel()
             yte_p = hypermodel.predict(xte).ravel()
             ytr_p = hypermodel.predict(xtr).ravel()
@@ -1016,13 +953,10 @@ the utility function somn.calculate.preprocess.prep_mc_labels"
                     "mae_result": {str(i + 1) + "hp_" + name_: mae_result},
                     "train_loss": {str(i + 1) + "hp_" + name_: train_h},
                     "val_loss": {str(i + 1) + "hp_" + name_: val_h},
-                    # "test_correlation": {},
-                    # "val_correlation": {},
                     "regression_stats": {},
                 }
                 if model_type == "classification":
                     tforg.results[name_]["class_metrics"] = {}
-                # tforg.results[name_]["split"] = splits["spl" + name_]
             else:  ## Other iterations, append results to dictionary entry
                 keys = [
                     "val_result",
@@ -1044,7 +978,6 @@ the utility function somn.calculate.preprocess.prep_mc_labels"
                     keys, vals
                 ):  # requires above lists to be ordered correctly, but is fairly efficient
                     tforg.results[name_][k][str(i + 1) + "hp_" + name_] = v
-            # plot_results(outdir=out_dir_path,expkey=name_+'_'+str(i)+'hps_valtest',train=(yval.ravel(),yval_p),test=(yte.ravel(),yte_p))
             if model_type == "regression":
                 reg_lin_met = plot_results(
                     outdir=out_dir_path,
@@ -1053,15 +986,7 @@ the utility function somn.calculate.preprocess.prep_mc_labels"
                     val=(yval.ravel(), yval_p),
                     test=(yte.ravel(), yte_p),
                 )
-                # val_lin_met = plot_results(
-                #     outdir=out_dir_path,
-                #     expkey=name_ + "val" + "_hp" + str(i),
-                #     train=(ytr.ravel(), ytr_p),
-                #     test=(yval.ravel(), yval_p),
-                # )
-                #### Linear regression metrics - slope, intercept, then R2 ####
                 tforg.results[name_]["regression_stats"][i + 1] = reg_lin_met
-                # tforg.results[name_]["val_correlation"][i + 1] = val_lin_met
             elif model_type == "classification":
                 fp = history.history["false_pos"]
                 fn = history.history["false_neg"]
@@ -1083,11 +1008,8 @@ the utility function somn.calculate.preprocess.prep_mc_labels"
                 tforg.results[name_]["class_metrics"][f"{i+1}_test_kldiv"] = (
                     tf.keras.metrics.kullback_leibler_divergence(yte, yte_p)
                 )
-            ### DEV CLEANUP ###
             del hypermodel
-            ### Apparently, keras is notorious for leaving remnants in memory. gc.collect() is supposed to help.
             gc.collect()
-            ###################
         buffer_log = json.dumps(tforg.results[name_])
         logfile.write(name_ + "," + str(__k) + buffer_log + "\n")
         logfile.flush()
@@ -1100,20 +1022,8 @@ the utility function somn.calculate.preprocess.prep_mc_labels"
         ) as j:  # Should just overwrite
             json.dump(results, j)
         tforg.results = {}
-        ### Let's see if not carrying the tforg.results through the whole process is worthwhile.
-        ### DEV CLEANUP ###
         del tuner
         gc.collect()
-        ###################
         tf.keras.backend.clear_session()  # Cleanup - this is supposed to help lower memory leaks on iterations.
         drive.get_next_part()  # Iterate to next partition
 
-    # with open(f"{json_buffer_path}final_complete_log{date__}.json", "w") as g:
-    #     g.write(json.dumps(tforg.results))
-
-
-# if __name__ == "__main__":
-#     import sys
-
-#     experiment = sys.argv[1]
-#     hypermodel_search(experiment=experiment)
