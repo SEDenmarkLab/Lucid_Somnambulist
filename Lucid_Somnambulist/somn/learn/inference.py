@@ -199,7 +199,7 @@ def prep_requests():
     )  ### DEBUG - If this fails, the user is PROBABLY running this from the wrong "home" directory
     # Quick check for formatting
     
-    df = pd.read_csv(files[0], header=0, index_col=None)
+    df = pd.read_csv(files[0], header=0, index_col=None, dtype=str)
     if len(df.columns) < 2:
         Exception(
             "Must pass SMILES and role for each reactant! Request input file (in gproject.scratch)\
@@ -208,7 +208,7 @@ Shoult have format (col0):SMILES,(col1):role (nuc or el),(col2, optional):mol_na
     del df
     tot = []
     for i, file in enumerate(files):
-        df = pd.read_csv(file, header=0, index_col=None)
+        df = pd.read_csv(file, header=0, index_col=None, dtype=str)
         tot.append(df)
     total_requests = pd.concat(tot, axis=0)
     ### CHECKING USER INPUT NAMES FOR ERROR-INDUCING ISSUES ###
