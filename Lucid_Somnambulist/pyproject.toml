@@ -3,7 +3,7 @@ requires = ["setuptools>=67"]
 build-backend = "setuptools.build_meta"
 
 [project]
-authors = [{ name = "N. Ian Rinehart", email = "i.rinehart4@gmail.com" }]
+authors = [{ name = "N. Ian Rinehart", email = "ian.rinehart251@gmail.com" }]
 requires-python = ">=3.10"
 name = "somn"
 description = "Active learning multi-component chemical reaction spaces for substrate-adaptive yield prediction."
