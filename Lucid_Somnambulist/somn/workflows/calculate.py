@@ -3,10 +3,7 @@
 import pickle
 from somn.calculate.RDF import (
     retrieve_amine_rdf_descriptors,
-    retrieve_bromide_rdf_descriptors,
-    retrieve_chloride_rdf_descriptors,
 )
-from somn.calculate.preprocess import new_mask_random_feature_arrays
 from somn.build.assemble import (
     # assemble_descriptors_from_handles,
     # assemble_random_descriptors_from_handles,
@@ -14,7 +11,9 @@ from somn.build.assemble import (
     get_labels,
     vectorize_substrate_desc,
 )
-
+import warnings
+import molli as ml
+from somn.util.project import Project
 # ====================================================================
 # Load in data shipped with package for manipulation. Optional import + function call
 # ====================================================================
@@ -24,9 +23,7 @@ import pandas as pd
 
 data.load_sub_mols()
 data.load_all_desc()
-import warnings
-import molli as ml
-from somn.util.project import Project
+
 
 
 def calculate_substrate_descriptors(fpath, concurrent=2, nprocs=2):
@@ -37,14 +34,14 @@ def calculate_substrate_descriptors(fpath, concurrent=2, nprocs=2):
     from somn.calculate.substrate import calculate_prophetic
     from itertools import product
 
-    project = Project()
+    project = Project()  # noqa: F841
     try:
         results = calculate_substrate_geoms_and_props(
             fpath, concurrent=concurrent, nprocs=nprocs
         )
         print("Successfully calculated geometries and atom properties.")
-    except:
-        raise Exception("Calculating substrate geometries and atop properties failed.")
+    except Exception:
+        Exception("Calculating substrate geometries and atop properties failed.")
     for react_type, (geom, ap) in results.items():
         vector_sub_desc = {}
         filt_geom = []
@@ -83,14 +80,14 @@ def calculate_substrate_descriptors(fpath, concurrent=2, nprocs=2):
     )
 
 
-def calculate_substrate_geoms_and_props(fpath, concurrent=2, nprocs=2):
+def calculate_substrate_geoms_and_props(fpath, concurrent=2, nprocs=2,known_ok=False,confs=False):
     """ """
     from somn.calculate.substrate import PropheticInput
     from somn.build.parsing import InputParser
     from pathlib import Path
     import json
 
-    parse = InputParser(serialize=False, path_to_write="./somn_calculate_outputs/")
+    parse = InputParser(serialize=True, path_to_write="./somn_calculate_outputs/")
     # project = Project()
     assert ".csv" == Path(fpath).suffix
     req_am, am_smi, req_br, br_smi, req_cl, cl_smi = scrape_substrate_csv(fpath)
@@ -103,24 +100,33 @@ def calculate_substrate_geoms_and_props(fpath, concurrent=2, nprocs=2):
         amines, err_0 = parse.preopt_geom(amines_pre, update=60)
         if len(err_0) > 0:
             warnings.warn(
-                "Looks like some amines did not generate 3D geometries or preoptimize correctly. Check inputs."
+                f"Looks like some amines did not generate 3D geometries or preoptimize correctly. Check inputs {err_0}."
             )
         amines.to_zip(parse.path_to_write + "amines_preopt_geom.zip")
         amine_input_packet = PropheticInput.from_col(
-            amines, am_smi, ["nuc" for f in am_smi], parser=parse
+            amines, am_smi, ["nuc" for f in am_smi], parser=parse,known_ok=True
         )
+        if confs is True: amine_input_packet.conformer_pipeline(concurrent=concurrent,nprocs=nprocs)  # noqa: E701
         ### Calculating atom properties
         am_atomprops, am_errs = amine_input_packet.atomprop_pipeline(
-            confs=False, concurrent=concurrent, nprocs=nprocs
+            confs=True, concurrent=concurrent, nprocs=nprocs
         )
         if len(am_errs) > 0:
-            warnings.warn(
+            print(
                 f"Looks like {len(am_errs)} amines failed at the atomproperty calculation step - this singlepoint calc usually fails because \
                 the input structure is not valid. Check that backed up structure in the working directory {parse.path_to_write}"
             )
-        with open(f"{parse.path_to_write}/amine_ap_buffer.json", "w") as k:
-            json.dump(am_atomprops, k)
-        output["N"] = (amines, am_atomprops)
+        if known_ok is True:
+            am_ap_strippednames = {}
+            for k,v in am_atomprops.items():
+                am_ap_strippednames[k.strip('am-')] = v
+            with open(f"{parse.path_to_write}/amine_ap_buffer.json", "w") as k:
+                json.dump(am_ap_strippednames, k)
+            output["N"] = (amines,am_ap_strippednames)
+        elif known_ok is False:
+            with open(f"{parse.path_to_write}/amine_ap_buffer.json", "w") as k:
+                json.dump(am_atomprops, k)
+            output["N"] = (amines, am_atomprops)
     ### Take care of bromides
     bromides_pre, _ = parse.get_mol_from_smiles(
         user_input=br_smi, recursive_mode=True, names=req_br
@@ -129,24 +135,33 @@ def calculate_substrate_geoms_and_props(fpath, concurrent=2, nprocs=2):
         bromides, err_1 = parse.preopt_geom(bromides_pre, update=60)
         if len(err_1) > 0:
             warnings.warn(
-                "Looks like some bromides did not generate 3D geometries or preoptimize correctly. Check inputs."
+                f"Looks like some bromides did not generate 3D geometries or preoptimize correctly. Check inputs {err_1}."
             )
         bromides.to_zip(parse.path_to_write + "bromides_preopt_geom.zip")
         bromide_input_packet = PropheticInput.from_col(
-            bromides, br_smi, ["el" for f in br_smi], parser=parse
+            bromides, br_smi, ["el" for f in br_smi], parser=parse,known_ok=True
         )
+        if confs is True: bromide_input_packet.conformer_pipeline(concurrent=concurrent,nprocs=nprocs)  # noqa: E701
         ### Calculating atom properties
         br_atomprops, br_errs = bromide_input_packet.atomprop_pipeline(
-            confs=False, concurrent=concurrent, nprocs=nprocs
+            confs=True, concurrent=concurrent, nprocs=nprocs
         )
-        if len(am_errs) > 0:
+        if len(br_errs) > 0:
             warnings.warn(
                 f"Looks like {len(br_errs)} bromides failed at the atomproperty calculation step - this singlepoint calc usually fails because \
                 the input structure is not valid. Check that backed up structure in the working directory {parse.path_to_write}"
             )
-        with open(f"{parse.path_to_write}/bromide_ap_buffer.json", "w") as k:
-            json.dump(br_atomprops, k)
-        output["Br"] = (bromides, br_atomprops)
+        if known_ok is True:
+            br_ap_strippednames = {}
+            for k,v in br_atomprops.items():
+                br_ap_strippednames[k.strip('br-')] = v
+            with open(f"{parse.path_to_write}/bromide_ap_buffer.json", "w") as k:
+                json.dump(br_ap_strippednames, k)
+            output["Br"] = (bromides,br_ap_strippednames)
+        elif known_ok is False:
+            with open(f"{parse.path_to_write}/bromide_ap_buffer.json", "w") as k:
+                json.dump(br_atomprops, k)
+            output["Br"] = (bromides, br_atomprops)
     ### Take care of chlorides
     chlorides_pre, _ = parse.get_mol_from_smiles(
         user_input=cl_smi, recursive_mode=True, names=req_cl
@@ -155,24 +170,33 @@ def calculate_substrate_geoms_and_props(fpath, concurrent=2, nprocs=2):
         chlorides, err_2 = parse.preopt_geom(chlorides_pre, update=60)
         if len(err_2) > 0:
             warnings.warn(
-                "Looks like some chlorides did not generate 3D geometries or preoptimize correctly. Check inputs."
+                f"Looks like some chlorides did not generate 3D geometries or preoptimize correctly. Check inputs {err_2}."
             )
         chlorides.to_zip(parse.path_to_write + "chlorides_preopt_geom.zip")
         chloride_input_packet = PropheticInput.from_col(
-            chlorides, cl_smi, ["el" for f in cl_smi], parser=parse
+            chlorides, cl_smi, ["el" for f in cl_smi], parser=parse,known_ok=True
         )
+        if confs is True: chloride_input_packet.conformer_pipeline(concurrent=concurrent,nprocs=nprocs)  # noqa: E701
         ### Calculating atom properties
         cl_atomprops, cl_errs = chloride_input_packet.atomprop_pipeline(
-            confs=False, concurrent=concurrent, nprocs=nprocs
+            confs=True, concurrent=concurrent, nprocs=nprocs
         )
-        if len(am_errs) > 0:
+        if len(cl_errs) > 0:
             warnings.warn(
                 f"Looks like {len(cl_errs)} chlorides failed at the atomproperty calculation step - this singlepoint calc usually fails because \
                 the input structure is not valid. Check that backed up structure in the working directory {parse.path_to_write}"
             )
-        with open(f"{parse.path_to_write}/chloride_ap_buffer.json", "w") as k:
-            json.dump(cl_atomprops, k)
-        output["Cl"] = (chlorides, cl_atomprops)
+        if known_ok is True:
+            cl_ap_strippednames = {}
+            for k,v in am_atomprops.items():
+                cl_ap_strippednames[k.strip('cl-')] = v
+            with open(f"{parse.path_to_write}/chloride_ap_buffer.json", "w") as k:
+                json.dump(cl_ap_strippednames, k)
+            output["Cl"] = (chlorides,cl_ap_strippednames)
+        elif known_ok is False:
+            with open(f"{parse.path_to_write}/chloride_ap_buffer.json", "w") as k:
+                json.dump(am_atomprops, k)
+            output["Cl"] = (chlorides, cl_atomprops)
     return output
 
 
@@ -182,7 +206,7 @@ def scrape_substrate_csv(fpath):
 
     First column is SMILES, second column is type ("N", "Br", or "Cl")
     """
-    df = pd.read_csv(fpath, header=0, index_col=0)
+    df = pd.read_csv(fpath, header=0, index_col=0, dtype=str)
     try:
         assert isinstance(df, pd.DataFrame)
         assert len(df.columns) == 2
@@ -192,12 +216,12 @@ def scrape_substrate_csv(fpath):
         for i, name in enumerate(df.index):
             checked = False
             dupe = name_check[i]
-            if dupe == False:
+            if dupe is False:
                 fix_names.append(name.replace("_", "-"))
-            if dupe == True:
+            if dupe is True:
                 fix_names.append(name.replace("_", "-") + f"-{check}")
                 checked = True
-            if checked == True:
+            if checked is True:
                 check += 1
         df.index = fix_names
         req_am, req_br, req_cl, am_smi, br_smi, cl_smi = ([] for i in range(6))
@@ -211,13 +235,66 @@ def scrape_substrate_csv(fpath):
             elif row[1][1] in ["Cl", "cl", "CL"]:
                 req_cl.append(row[0])
                 cl_smi.append(row[1][0])
-    except:
+    except Exception:
         raise Exception(
             "Looks like the input file to request descriptors was not formatted \
                         correctly. Input should be 3 columns: name, SMILES, and 'type' ('N','Br', or 'Cl')"
         )
     return req_am, am_smi, req_br, br_smi, req_cl, cl_smi
 
+def recalculate_dataset_descriptors(concurrent=6,nprocs=1):
+    """
+    Helper/wrapper to REcalculate all geometries and descriptors for substrates and catalysts. 
+    
+    Intended uses:
+    1. xTB/CREST updates
+    2. updating dataset compounds with ones which may have new data NOTE: will need to add chloride support later
+    """
+    ASMI,BSMI = data.load_reactant_smiles()
+    from copy import deepcopy
+    asmi = deepcopy(ASMI)
+    bsmi = deepcopy(BSMI)
+    # Rows for input - same as what a user will do
+    names = []
+    smiles = []
+    roles = []
+    for k,v in asmi.items():
+        names.append('am-'+k)
+        smiles.append(v)
+        roles.append('N')
+    for k,v in bsmi.items():
+        names.append('br-'+k)
+        smiles.append(v)
+        roles.append('Br')
+    # for k,v in CSMI.items():
+    #     names.append('cl-'+k)
+    #     smiles.append(v)
+    #     roles.append('Cl')
+    temp_file = pd.DataFrame(list(map(list,zip(*[smiles,roles]))),index=names,columns=['smiles','role'])
+    temp_file.to_csv('somn-tmp-SUB-REQUEST.csv')
+    print(
+"""
+Substrate request file has been saved as somn-tmp-SUB-REQUEST.csv, beginning calculations...
+
+"""        
+    )
+    # try:
+    calculate_substrate_geoms_and_props('somn-tmp-SUB-REQUEST.csv',concurrent=concurrent,nprocs=nprocs,known_ok=True,confs=True)
+#         print(
+# """
+# Substrate descriptors have been calculated
+# """
+# )
+#     except:
+#         print(
+#             """
+#             It looks like substrate descriptor calculation FAILED
+#             """
+#         )
+
+        
+    
+    
 
 def main(
     project: Project,
@@ -247,7 +324,6 @@ def main(
         solv_desc,
         cat_desc,
     ) = preprocess.load_data(optional_load="maxdiff_catalyst")
-
     ### Calculate descriptors for the reactants, and store their 1D vector arrays in a dictionary-like output.
     _inc = inc
     sub_am_dict = retrieve_amine_rdf_descriptors(amines, a_prop, increment=_inc)
@@ -260,12 +336,12 @@ def main(
     )
     ### DEV END ###
     ### Preprocess reactant descriptors now, since they are just calculated
-    if substrate_pre == None:
+    
+    if substrate_pre is None:
         type_, value_ = None, None
     elif isinstance(substrate_pre, tuple):
         from somn.build.assemble import vectorize_substrate_desc
         import pandas as pd
-
         ### Assemble a feature array with row:instance,column:feature to perform preprocessing
         if (
             len(substrate_pre) == 2
@@ -290,7 +366,7 @@ def main(
                 full_br_df = pd.DataFrame.from_dict(
                     br_desc, orient="index", columns=br_label
                 )
-                if serialize == True:
+                if serialize is True:
                     full_br_df.to_csv(
                         f"{project.descriptors}/bromide_only_features.csv", header=True
                     )
@@ -299,20 +375,22 @@ def main(
                     )
 
         else:
-            raise Exception("Tuple passed to sub preprocessing, but not length 2")
+            print("Tuple passed to sub preprocessing, but not length 2")
     else:
-        raise Exception(
+        print(
             "Need to pass both arguments for substrate preprocessing in a length 2 tuple"
         )
     if (
-        type_ != None and value_ != None
+        type_ is not None and value_ is not None
     ):  # Need to process then make matching random features.
         if (
             type_ == "corr"
-        ):  # This step will actually compute the correlated features mask
+        ):  # This step will actually compute the correlated features mask ###DEV
+            full_am_df.to_csv("testing.csv")
             am_mask = preprocess.corrX_new(
                 full_am_df, cut=value_, get_const=True, bool_out=True
             )
+            print(am_mask)
             br_mask = preprocess.corrX_new(
                 full_br_df, cut=value_, get_const=True, bool_out=True
             )
@@ -339,7 +417,7 @@ def main(
         sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc
     )
     real = (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc)
-    if serialize == True:
+    if serialize is True:
         with open(f"{project.descriptors}/random_am_br_cat_solv_base.p", "wb") as k:
             pickle.dump(rand, k)
         with open(f"{project.descriptors}/real_amine_desc_{_inc}.p", "wb") as g:

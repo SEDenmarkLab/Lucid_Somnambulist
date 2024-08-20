@@ -25,7 +25,6 @@ def calculate_prophetic(
     """
     Vanilla substrate descriptor retrieval
     """
-
     if react_type == "nuc":
         sub_dict = retrieve_amine_rdf_descriptors(
             geometries, atomproperties, increment=inc, ref_atoms=nuc_el_ref_atoms
@@ -59,6 +58,7 @@ class PropheticInput:
     failures = field(default="")
     roles_d = field(default={})
     atomprops = field(default=[])
+    known_ok = field(default=False)
 
     # def __attrs_post_init__(self):
     #     self.__setattr__("state", None)
@@ -73,6 +73,7 @@ class PropheticInput:
 
         This will also check if the molecule is already known, and not run computation on it.
         """
+        ignore_known=self.known_ok
         if isinstance(self.struc, ml.Molecule):
             assert isinstance(self.name, str)
             assert isinstance(self.role, str)
@@ -109,6 +110,9 @@ class PropheticInput:
         elif (
             self.state == "multi"
         ):  # Normal case - just don't do computations again on structures we already know about - checking presence in each dictionary.
+            if ignore_known is True:
+                self.struc = ml.Collection(name="pruned_precalc", molecules=self.struc.molecules)
+                return
             self.known = []
             pruned_struc = []
             for smi, role, mol in zip(self.smi, self.role, self.struc.molecules):
@@ -123,10 +127,12 @@ class PropheticInput:
             if len(self.known) == 0:  # Makes this easy later.
                 self.known = False
             else:
-                Warning(f"Structures already in database were requested: {self.known}")
+                print(f"Structures already in database were requested: {self.known}")
+                if ignore_known is True:
+                    self.struc = ml.Collection(name="pruned_precalc", molecules=self.struc.molecules)
             self.struc = ml.Collection(name="pruned_precalc", molecules=pruned_struc)
 
-    def conformer_pipeline(self):
+    def conformer_pipeline(self,concurrent=16,nprocs=2):
         """
         Calculate conformers
         """
@@ -140,7 +146,7 @@ class PropheticInput:
             self.state == "single" and self.known is False
         ):  # Single molecule; must be list to make col
             col = ml.Collection(name="molecule", molecules=[self.struc])
-        elif self.state == "multi":
+        elif self.state == "multi" and self.known_ok is False:
             if self.known is False:
                 col = self.struc
             elif isinstance(self.known, list):
@@ -150,6 +156,8 @@ class PropheticInput:
                         f for f in self.struc.molecules if f.name not in self.known
                     ],
                 )  ## Making sure that we ignore known structures here - note that they will be called up again using their proper name
+        elif self.state == "multi" and self.known_ok is True:
+            col = self.struc
         else:
             raise Exception(
                 "Defined self.state as something weird for conformer pipeline... try agian."
@@ -158,7 +166,7 @@ class PropheticInput:
         crest = ml.CRESTDriver(
             name="confs",
             scratch_dir=str(Project().scratch) + "/crest_scratch_1/",
-            nprocs=2,
+            nprocs=nprocs,
         )
         concur_1 = ml.Concurrent(
             col,
@@ -166,7 +174,7 @@ class PropheticInput:
             logfile=str(Project().scratch) + "/out1.log",
             update=30,
             timeout=10000,
-            concurrent=16,
+            concurrent=concurrent,
         )
         output = concur_1(crest.conformer_search)(ewin=8, mdlen=5, constr_val_angles=[])
         buffer = []
@@ -188,12 +196,12 @@ class PropheticInput:
             logfile=str(Project().scratch) + "/out2.log",
             update=30,
             timeout=10000,
-            concurrent=16,
+            concurrent=concurrent,
         )
         crest = ml.CRESTDriver(
             name="confs",
             scratch_dir=str(Project().scratch) + "/crest_scratch_2/",
-            nprocs=2,
+            nprocs=nprocs,
         )
         output2 = concur_2(crest.confomer_screen)(
             method="gfn2", ewin=12
@@ -259,14 +267,14 @@ class PropheticInput:
                     br_str.append(mol)
                     if nb is False:
                         nb = True
-            if na == True:
+            if na is True:
                 ACOL.to_zip(
                     str(self.parser.path_to_write) + "/newtotal_nucleophile.zip"
                 )
                 ml.Collection(name="proph_nuc", molecules=am_str).to_zip(
                     str(self.parser.path_to_write) + "/prophetic_nucleophile.zip"
                 )
-            if nb == True:
+            if nb is True:
                 BCOL.to_zip(
                     str(self.parser.path_to_write) + "/newtotal_electrophile.zip"
                 )
@@ -379,7 +387,7 @@ class PropheticInput:
             raise RuntimeError(
                 "DEBUG: State error for PropheticInput class -- as a result, outputs not serializing."
             )
-        if substrate_indicies != None:
+        if substrate_indicies is not None:
             nuc_indicies, el_indicies = substrate_indicies
             with open(
                 f"{self.parser.path_to_write}/nucleophile_indicies.json", "w"
@@ -402,14 +410,14 @@ class PropheticInput:
         return k
 
     @classmethod
-    def from_col(cls, col, smi_list, role_list, parser):
+    def from_col(cls, col, smi_list, role_list, parser,known_ok=False):
         """
         Initiate pipelien for new molecules
 
         collection, smiles list, role list
         """
         k = cls(
-            [f.name for f in col.molecules], role_list, smi_list, col, parser=parser
+            [f.name for f in col.molecules], role_list, smi_list, col, parser=parser, known_ok=known_ok
         )
         k.check_input()
         return k

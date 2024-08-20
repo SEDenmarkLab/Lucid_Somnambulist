@@ -1,7 +1,6 @@
 import os
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-import molli as ml
 from somn.workflows.calculate import main as calc_sub
 from somn.calculate import preprocess
 from somn.build.assemble import (
@@ -42,6 +41,7 @@ def main(
     For substrate masking, the boolean argument is being passed to a few functions down. The assemble_*_descriptors_from_handles function will handle it.
 
     """
+
     if (
         "unique_couplings" in locals()
     ):  ## Running in development or a separate script, where a few variables have been created.
@@ -50,13 +50,12 @@ def main(
         unique_couplings = project.unique_couplings
         combos = project.combos
         dataset = project.dataset
-
+        
     assert bool(
         set([val_schema])
         & set(["to_vi", "vi_to", "random", "vo_to", "to_vo", "noval_to", "to_noval"])
     )
-    if mask_substrates == True:
-        import pandas as pd
+    if mask_substrates is True:
         from somn.build.assemble import load_substrate_masks
 
         sub_mask = load_substrate_masks()
@@ -165,6 +164,12 @@ def partition_pipeline_noval(
     Partition pipeline, but for models with no validation set
     DEV - DEPRECIATED/NEEDS SOME DEVELOPMENT
     """
+    import os
+    import pandas as pd
+    project = Project()
+    outdir = deepcopy(f"{project.partitions}/")
+    os.makedirs(outdir + "real/", exist_ok=True)
+    realout = outdir + "real/"
     x_tr = assemble_descriptors_from_handles(
         tr.index.tolist(), desc=rand, sub_mask=sub_mask
     )
@@ -187,7 +192,9 @@ def partition_pipeline_noval(
     ) = preprocess.new_mask_random_feature_arrays(
         (x_tr_real, x_te_real), (x_tr, x_te), _vt=vt
     )  # Use this for only train/test
-    if serialize_rand == True:
+    if serialize_rand is True:
+        os.makedirs(outdir + "rand/", exist_ok=True)
+        randout = outdir + "rand/"
         x_tr_.to_feather(randout + name_ + "_xtr.feather")
         x_te_.to_feather(randout + name_ + "_xte.feather")
         tr.transpose().reset_index(drop=True).to_feather(
@@ -263,7 +270,7 @@ def partition_pipeline_val(
     ) = preprocess.new_mask_random_feature_arrays(
         (x_tr_real, x_va_real, x_te_real), (x_tr, x_va, x_te), _vt=vt
     )
-    if serialize_rand == True:
+    if serialize_rand is True:
         ### Rand copies of X
         x_tr_.to_feather(randout + name_ + "_rand-feat_xtr.feather")
         x_va_.to_feather(randout + name_ + "_rand-feat_xva.feather")
@@ -309,11 +316,11 @@ def check_sub_status():
     if len(k) == 2:
         return True
     elif len(k) == 1:
-        raise Exception("Substrate descriptors are being mixed up -- DEBUG")
+        print("Substrate descriptors are being mixed up -- DEBUG")
     elif len(k) == 0:
         return False
     else:
-        raise Exception(
+        print(
             "DEBUG - inappropriate number of files in DESC_ directory that look like substrate descriptor files"
         )
 
@@ -334,7 +341,7 @@ def get_precalc_sub_desc():
     Check status, then load sub descriptors if they are precalculated
     """
     status = check_sub_status()
-    if status == True:  # Already calculated
+    if status is True:  # Already calculated
         amf, brf, rand_fp = fetch_precalc_sub_desc()
         import pickle
 
@@ -352,7 +359,7 @@ def normal_partition_prep(project: Project):
 
     # Checking project status to make sure sub descriptors are calculated
     sub_desc = get_precalc_sub_desc()
-    if sub_desc == False:  # Need to calculate
+    if sub_desc is False:  # Need to calculate
         real, rand = calc_sub(
             project, optional_load="maxdiff_catalyst", substrate_pre=("corr", 0.90)
         )
@@ -375,79 +382,12 @@ def normal_partition_prep(project: Project):
     combos = deepcopy(
         unique_couplings
     )  # This will significantly cut down on the number of partitions
-    import os
+    # import os
 
     outdir = deepcopy(f"{project.partitions}/")
-    os.makedirs(outdir + "real/", exist_ok=True)
-    os.makedirs(outdir + "rand/", exist_ok=True)
-    realout = outdir + "real/"
-    randout = outdir + "rand/"
+    # os.makedirs(outdir + "real/", exist_ok=True)
+    # os.makedirs(outdir + "rand/", exist_ok=True)
+    # realout = outdir + "real/"
+    # randout = outdir + "rand/"
     return outdir, combos, unique_couplings, real, rand  # DEV HERE
 
-
-# if __name__ == "__main__":
-#     from sys import argv
-
-#     if argv[1] == "new":
-#         assert len(argv) >= 3
-#         project = Project()
-#         project.save(identifier=argv[2])
-#     else:
-#         try:
-#             project = Project.reload(how=argv[1])
-#         except:
-#             raise Exception(
-#                 "Must pass valid identifier or 'last' to load project. Can say 'new' and give an identifier"
-#             )
-
-#     # project = Project() ## DEBUG
-#     (
-#         amines,
-#         bromides,
-#         dataset,
-#         handles,
-#         unique_couplings,
-#         a_prop,
-#         br_prop,
-#         base_desc,
-#         solv_desc,
-#         cat_desc,
-#     ) = preprocess.load_data(optional_load="maxdiff_catalyst")
-
-#     # Checking project status to make sure sub descriptors are calculated
-#     sub_desc = get_precalc_sub_desc()
-#     # print("DEV", type(sub_desc), sub_desc[0])
-#     if sub_desc == False:  # Need to calculate
-#         real, rand = calc_sub(
-#             project, optional_load="maxdiff_catalyst", substrate_pre=("corr", 0.90)
-#         )
-#         sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
-#     else:
-#         sub_am_dict, sub_br_dict, rand = sub_desc
-#         real = (sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc)
-
-#     # sub_am_dict, sub_br_dict, cat_desc, solv_desc, base_desc = real
-#     # print(rand)
-#     # Val have out of sample reactants
-#     # combos = preprocess.get_all_combos(unique_couplings)
-#     combos = deepcopy(
-#         unique_couplings
-#     )  # This will significantly cut down on the number of partitions
-#     import pandas as pd
-
-#     # print(pd.DataFrame(combos).to_string())
-#     outdir = deepcopy(f"{project.partitions}/")
-#     os.makedirs(outdir + "real/", exist_ok=True)
-#     os.makedirs(outdir + "rand/", exist_ok=True)
-#     realout = outdir + "real/"
-#     randout = outdir + "rand/"
-
-#     main(
-#         project,
-#         val_schema="vi_to",
-#         vt=0,
-#         mask_substrates=True,
-#         rand=rand,
-#         real=real,
-#         serialize_rand=False,
-#     )  ## Correlation cutoff is under development: should not be implemented here.

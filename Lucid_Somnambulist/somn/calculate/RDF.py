@@ -166,7 +166,6 @@ def calculate_electrophile_rdf_descriptors(
     assert apd is not None
     failures = []
     molecule_rdfs = {}
-
     def automatically_identify_ref_atoms():
         reference = []
         for mol in col:
@@ -192,9 +191,9 @@ def calculate_electrophile_rdf_descriptors(
                 elif isinstance(k, ml.dtypes.Atom):
                     reference.append(k)
                 else:
-                    ValueError()
+                    raise ValueError("Ref atom failed in rdf calculation")
 
-        except:
+        except Exception:
             warnings.warn(
                 "Calculating RDF descriptors failed because a ref_atom \
 argument was passed which was neither an atom class nor an atom index. None is a valid case, \
@@ -211,7 +210,7 @@ and will result in a guess of the reference halide atom (Br > Cl)."
         conn = list(mol.get_connected_atoms(ref))
         try:
             assert len(conn) == 1
-        except:
+        except Exception:
             if mol.name not in failures:
                 failures.append(mol.name)
             continue
@@ -219,7 +218,7 @@ and will result in a guess of the reference halide atom (Br > Cl)."
         ipso_idx = mol.atoms.index(ipso_atom)
         halide_idx = mol.atoms.index(ref)
         rdk_mol = Chem.MolFromMol2Block(mol.to_mol2(), sanitize=False)
-        if rdk_mol == None:
+        if rdk_mol is None:
             obconv = openbabel.OBConversion()
             obconv.SetInAndOutFormats("mol2", "smi")
             obmol = openbabel.OBMol()
@@ -240,7 +239,7 @@ and will result in a guess of the reference halide atom (Br > Cl)."
             orth_out = get_orthogonal_plane(
                 coords, halide_idx, ipso_idx, a, b, c, leftref
             )
-            if orth_out == None:
+            if orth_out is None:
                 raise Exception(
                     f"Cannot find orthogonal plane direction for molecule {mol.name}, molecule number {col.molecules.index(mol)} in collection"
                 )
@@ -306,7 +305,7 @@ def retrieve_chloride_rdf_descriptors(
     """
     mol_rdfs = {}  # Going to store dfs in here with name for retrieval for now
     for mol in col:
-        labels = [f.symbol for f in mol.atoms]
+        # labels = [f.symbol for f in mol.atoms]
         cl_atom = mol.get_atoms_by_symbol(symbol="Cl")[0]
         cl_idx = mol.atoms.index(cl_atom)
         conn = mol.get_connected_atoms(cl_atom)
@@ -320,7 +319,7 @@ def retrieve_chloride_rdf_descriptors(
             print("foundglitch")
         ipso_idx = mol.atoms.index(ipso_atom)
         rdk_mol = Chem.MolFromMol2Block(mol.to_mol2(), sanitize=False)
-        if rdk_mol == None:
+        if rdk_mol is None:
             obconv = openbabel.OBConversion()
             obconv.SetInAndOutFormats("mol2", "smi")
             obmol = openbabel.OBMol()
@@ -339,7 +338,7 @@ def retrieve_chloride_rdf_descriptors(
             coords = conf.coord
             a, b, c, d = get_molplane(coords, cl_idx, ipso_idx, leftref)
             orth_out = get_orthogonal_plane(coords, cl_idx, ipso_idx, a, b, c, leftref)
-            if orth_out == None:
+            if orth_out is None:
                 raise Exception(
                     f"Cannot find orthogonal plane direction for molecule {mol.name}, molecule number {col.molecules.index(mol)} in collection"
                 )
@@ -407,10 +406,10 @@ def retrieve_bromide_rdf_descriptors(
     for mol in col:
         rdf_df = pd.DataFrame(index=["sphere_" + str(i) for i in range(10)])
         rdf_df.name = mol.name
-        labels = [f.symbol for f in mol.atoms]
+        # labels = [f.symbol for f in mol.atoms]
         try:
             br_atom = mol.get_atoms_by_symbol(symbol="Br")[0]
-        except:
+        except Exception:
             raise Exception(
                 f"Looks like Br RDF was called on a non-bromide, structure {mol.name}"
             )
@@ -426,7 +425,7 @@ def retrieve_bromide_rdf_descriptors(
             print("foundglitch")
         ipso_idx = mol.atoms.index(ipso_atom)
         rdk_mol = Chem.MolFromMol2Block(mol.to_mol2(), sanitize=False)
-        if rdk_mol == None:
+        if rdk_mol is None:
             obconv = openbabel.OBConversion()
             obconv.SetInAndOutFormats("mol2", "smi")
             obmol = openbabel.OBMol()
@@ -532,9 +531,9 @@ def retrieve_amine_rdf_descriptors(
                     reference.append(k)
                 else:
                     ValueError()
-        except:
+        except Exception:
             warnings.warn(
-                "Calculating RDF descriptors failed because a ref_atom \
+"Calculating RDF descriptors failed because a ref_atom \
 argument was passed which was neither an atom class nor an atom index. None is a valid case, \
 and will result in a guess of the reference halide atom (Br > Cl)."
             )
@@ -552,11 +551,12 @@ and will result in a guess of the reference halide atom (Br > Cl)."
             ref_ = get_amine_ref_n(mol)
             reference.append(ref_)
     assert len(col.molecules) == len(reference)
-    for mol, ref in zip(col, reference):
+    for mol, ref in zip(col.molecules, reference):
         rdf_df = pd.DataFrame(index=["sphere_" + str(i) for i in range(10)])
         rdf_df.name = mol.name
         n_idx = mol.atoms.index(ref)
-        assert ref.symbol == "N"
+        try: assert ref.symbol == "N"  # noqa: E701
+        except Exception: raise Exception("DEBUG")  # noqa: E701
         conf_rdfs = {}
         a_idx_l = [mol.atoms.index(f) for f in mol.atoms]
         for k, conf in enumerate(mol.conformers):
@@ -588,6 +588,7 @@ and will result in a guess of the reference halide atom (Br > Cl)."
             desc_df[prop] = pd.concat([pd.Series(f) for f in avg_array], axis=0)
         desc_df.index = ["slice_" + str(f + 1) for f in range(10)]
         molecule_rdfs[mol.name] = desc_df
+    # print(molecule_rdfs)
     return molecule_rdfs
 
 
@@ -598,7 +599,7 @@ def get_rdf(
     all_atoms_property_list: list,
     inc_size=0.90,
     first_int: float = 1.80,
-    radial_scaling: int or None = 0,
+    radial_scaling: int = 0,
 ):
     """
     Takes coordinates for molecule, reference atom index, list of atom indices to compute for, and property list ordered by atom idx
@@ -629,10 +630,10 @@ def get_rdf(
         property = list(all_atoms_property_list)[x]
         try:
             property_ = float(property)
-        except:
+        except Exception:
             property_ = 4.1888 * vdw_dict[property] ** 3
         const = first_int
-        if radial_scaling == 0 or radial_scaling == None:
+        if radial_scaling == 0 or radial_scaling is None:
             pass
         elif type(radial_scaling) is int and radial_scaling != 0:
             property_ = property_ / (dist**radial_scaling)
@@ -840,50 +841,50 @@ def select_left_reference(mol: ml.Molecule, ipso_atom, halide_atom):
     )
 
 
-def evaluate_atom_heirarchy(
-    mol: ml.Molecule, halide: ml.dtypes.Atom, ortho: list, meta: list
-):
-    """
-    Pass an ortho atom list or meta atom list
-    """
-    from mendeleev import element
+# def evaluate_atom_heirarchy(
+#     mol: ml.Molecule, halide: ml.dtypes.Atom, ortho: list, meta: list
+# ):
+#     """
+#     Pass an ortho atom list or meta atom list
+#     """
+#     from mendeleev import element
 
-    o_elms = [element(f.symbol) for f in ortho]
-    o_aos = [f.atomic_number for f in o_elms]
-    if o_aos[0] == o_aos[1]:  # Not simple; have to look through graph
-        ortho_substitutents, meta_ring_atoms = sort_graph_search_atoms(
-            mol, halide, meta
-        )
-        a, b = [set(mol.get_bonds_with_atom(meta_ring_atoms[f])) for f in range(2)]
-        c, d = [set(mol.get_bonds_with_atom(ortho_substituents[f])) for f in range(2)]
+#     o_elms = [element(f.symbol) for f in ortho]
+#     o_aos = [f.atomic_number for f in o_elms]
+#     if o_aos[0] == o_aos[1]:  # Not simple; have to look through graph
+#         ortho_substitutents, meta_ring_atoms = sort_graph_search_atoms(
+#             mol, halide, meta
+#         )
+#         a, b = [set(mol.get_bonds_with_atom(meta_ring_atoms[f])) for f in range(2)]
+#         c, d = [set(mol.get_bonds_with_atom(ortho_substituents[f])) for f in range(2)]
 
-        meta_symbol_sets = [set([g.symbol for g in f]) for f in meta]
-        m_elms = [[element(f.symbol).atomic_number for f in g] for g in meta]
-        m_avg = [sum(k) for k in m_elms]
-        if m_avg[0] != m_avg[1]:  # One side is more branched than the other
-            return ortho[m_avg.index(max(m_avg))]  # Side with most branching
-        else:  # Ortho substitutions are identical - need to look at meta position
-            m_en = [
-                [element(f.symbol).electronegativity("allen") for f in g] for g in meta
-            ]
-            m_en_max = [max(k) for k in m_elms]
-            if (
-                m_en_max[0] != m_en_max[1]
-            ):  # One meta position is more electronegative (e.g., N vs C)
-                return ortho[m_en_max.index(max(m_en_max))]
+#         meta_symbol_sets = [set([g.symbol for g in f]) for f in meta]
+#         m_elms = [[element(f.symbol).atomic_number for f in g] for g in meta]
+#         m_avg = [sum(k) for k in m_elms]
+#         if m_avg[0] != m_avg[1]:  # One side is more branched than the other
+#             return ortho[m_avg.index(max(m_avg))]  # Side with most branching
+#         else:  # Ortho substitutions are identical - need to look at meta position
+#             m_en = [
+#                 [element(f.symbol).electronegativity("allen") for f in g] for g in meta
+#             ]
+#             m_en_max = [max(k) for k in m_elms]
+#             if (
+#                 m_en_max[0] != m_en_max[1]
+#             ):  # One meta position is more electronegative (e.g., N vs C)
+#                 return ortho[m_en_max.index(max(m_en_max))]
 
-    else:  # Ortho atoms are not both carbon
-        sym = [f.symbol for f in ortho]
-        if "N" in sym:  # Highest priority (arbitrary)
-            return ortho[sym.index("N")]
-        if "S" in sym:  # Second priority (arbitrary)
-            return ortho[sym.index("S")]
-        if "O" in sym:  # Third priority (arbitrary)
-            return ortho[sym.index("O")]
-        else:  # If not one of those heteroatoms, use the highest MW (e.g., weird Se heterocycle, etc.)
-            return ortho[
-                o_aos.index(max(o_aos))
-            ]  # get ortho atom with largest ao if both sides differ
+#     else:  # Ortho atoms are not both carbon
+#         sym = [f.symbol for f in ortho]
+#         if "N" in sym:  # Highest priority (arbitrary)
+#             return ortho[sym.index("N")]
+#         if "S" in sym:  # Second priority (arbitrary)
+#             return ortho[sym.index("S")]
+#         if "O" in sym:  # Third priority (arbitrary)
+#             return ortho[sym.index("O")]
+#         else:  # If not one of those heteroatoms, use the highest MW (e.g., weird Se heterocycle, etc.)
+#             return ortho[
+#                 o_aos.index(max(o_aos))
+#             ]  # get ortho atom with largest ao if both sides differ
 
 
 def sort_graph_search_atoms(mol: ml.Molecule, halide: ml.dtypes.Atom, meta: list):
@@ -943,20 +944,20 @@ def get_left_reference(mol: Chem.rdchem.Mol, ipso_idx, br_idx):
     return leftref
     """
     ipso_reference = mol.GetAtomWithIdx(ipso_idx)
-    br_ref = mol.GetAtomWithIdx(br_idx)
+    br_ref = mol.GetAtomWithIdx(br_idx)  # noqa: F841
     ortho_het, meta_het = _get_ortho_meta_symbols(mol, ipso_idx)
     if len(ortho_het) == 0:  # no ortho heteroatoms
         less_sub = get_less_substituted_ortho(mol, ipso_idx)
-        if less_sub == None:  # ortho both the same
+        if less_sub is None:  # ortho both the same
             if len(meta_het) == 0:  # no meta het, so using substitution
                 less_meta_sub = get_less_substituted_meta(mol, ipso_idx)
-                if less_meta_sub == None:
+                if less_meta_sub is None:
                     nbrs = [
                         f for f in ipso_reference.GetNeighbors() if f.GetIdx() != br_idx
                     ]
                     leftref = nbrs[0].GetIdx()  # arbitrary; symmetric
                 elif (
-                    less_meta_sub != None
+                    less_meta_sub is not None
                 ):  # using less substituted meta atom for left reference
                     leftref = less_meta_sub
             elif len(meta_het) == 1:  # list of tuples (symbol, idx, atomic num)
@@ -970,7 +971,7 @@ def get_left_reference(mol: Chem.rdchem.Mol, ipso_idx, br_idx):
                     leftref = meta_het[1][1]
                 elif meta_het[0][2] == meta_het[1][2]:
                     leftref = meta_het[0][1]  # arbitrary if they are the same
-        elif less_sub != None:
+        elif less_sub is not None:
             leftref = less_sub  # If one side is less substituted AND no heteroatoms were found
     elif len(ortho_het) == 1:
         leftref = ortho_het[0][1]  # heteroatom in ortho defines

@@ -8,19 +8,20 @@ import tensorflow as tf
 import pandas as pd
 from glob import glob
 from somn.build.assemble import assemble_descriptors_from_handles
-from datetime import date
+# from datetime import date
 from somn import Project
-from somn.learn.learning import tf_organizer, tfDriver
+# from somn.learn.learning import tf_organizer, tfDriver
+from somn.learn.learning import tfDriver
 from somn.build.assemble import (
-    load_calculated_substrate_descriptors,
+    # load_calculated_substrate_descriptors,
     load_substrate_masks,
 )
-from somn.calculate.preprocess import load_data
-from somn.workflows.partition import (
-    check_sub_status,
-    fetch_precalc_sub_desc,
-    get_precalc_sub_desc,
-)
+# from somn.calculate.preprocess import load_data
+# from somn.workflows.partition import (
+#     check_sub_status,
+#     fetch_precalc_sub_desc,
+#     get_precalc_sub_desc,
+# )
 from pathlib import Path
 import warnings
 
@@ -60,14 +61,14 @@ def hypermodel_inference(
     # import logging
     # tf.get_logger().setLevel(logging.ERROR)
     output_buffer = []
-    if all_predictions == False:
+    if all_predictions is False:
         total_requests, requested_pairs, reactant_indicies = prep_requests()
         import numpy as np
 
         nuc_idx_input = np.array(reactant_indicies)[:, 0]
         el_idx_input = np.array(reactant_indicies)[:, 1]
         ref_idx = (nuc_idx_input, el_idx_input)
-    elif all_predictions == True:
+    elif all_predictions is True:
         requested_pairs = _generate_full_space()
         total_requests = None
     else:

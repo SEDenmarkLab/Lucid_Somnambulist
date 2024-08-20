@@ -1,12 +1,12 @@
 import molli as ml
-from molli.dtypes.molecule import Atom
-import pandas as pd
+# from molli.dtypes.molecule import Atom
+# import pandas as pd
 import numpy as np
-from pandas._libs.missing import NA
-import json
-from glob import glob
-import os
-from scipy.spatial.transform import Rotation as R
+# from pandas._libs.missing import NA
+# import json
+# from glob import glob
+# import os
+# from scipy.spatial.transform import Rotation as R
 
 """
 This should be updated with the most recently tested version [4.11.2023]. The ligand library from RB
@@ -45,7 +45,7 @@ P_SP3 = "P.3"
 F = "F"
 Cl = "Cl"
 Br = "Br"
-I = "I"
+I = "I"  # noqa: E741
 # misc
 Si = "Si"
 Na = "Na"
@@ -95,7 +95,7 @@ vdw_dict[Si] = {a_i: 4.500, N_i: 4.200, A_i: 3.320, G_i: 1.345, rad: 2.10}
 vdw_dict[Na] = {rad: 2.27}
 
 
-def get_ref_atoms(mol):
+def get_ref_atoms(mol,align_dict):
     """
     Takes molecule in, and returns atom instances for the appropraite atoms as a list
 
@@ -179,11 +179,11 @@ def calculate_ASO(grid: ml.Grid, mol: ml.Molecule):
 
 
 def trim_nico3(mol: ml.Molecule):
-    atoms = mol.atoms
-    bonds = mol.bonds
-    conformers = mol.conformers
+    # atoms = mol.atoms
+    # bonds = mol.bonds
+    # conformers = mol.conformers
     ni_atom = mol.get_atoms_by_symbol("Ni")[0]
-    p_atom = mol.get_atoms_by_symbol("P")[0]
+    # p_atom = mol.get_atoms_by_symbol("P")[0]
     ni_c_atoms = mol.get_connected_atoms(ni_atom)
     ni_c_atoms_ = [f for f in ni_c_atoms if "P" not in f.label]
     ni_o_atoms = []

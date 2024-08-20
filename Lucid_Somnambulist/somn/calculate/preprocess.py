@@ -4,7 +4,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import numpy as np
 import warnings
 
-warnings.simplefilter(action="ignore", category=FutureWarning)
+
 import pandas as pd
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import MinMaxScaler, MultiLabelBinarizer
@@ -16,20 +16,13 @@ from somn.util.project import Project
 
 from somn import data
 
+
+
+
+
 data.load_sub_mols()
 data.load_all_desc()
-
-from somn.data import (
-    ACOL,
-    BCOL,
-    DATA,
-    AMINES,
-    BROMIDES,
-    CATDESC,
-    SOLVDESC,
-    BASEDESC,
-)
-
+warnings.simplefilter(action="ignore", category=FutureWarning)
 
 def load_data(optional_load=None):
     """
@@ -37,9 +30,19 @@ def load_data(optional_load=None):
     (amines,bromides,dataset,handles,unique_couplings,a_prop,br_prop,base_desc,solv_desc,cat_desc)
 
     """
-    if optional_load == None:  # So this doesn't fail when no options are called.
+    from somn.data import (
+        ACOL,
+        BCOL,
+        DATA,
+        AMINES,
+        BROMIDES,
+        CATDESC,
+        SOLVDESC,
+        BASEDESC,
+    )
+    if optional_load is None:  # So this doesn't fail when no options are called.
         requests = []
-    elif optional_load != None:
+    elif optional_load is not None:
         requests = optional_load.split(",")
     # amine molecules are stored as ACOL global variable, bromide molecules are stored as BCOL global variable
     ### Define a copy (to protect the global one) for each component needed
@@ -109,14 +112,20 @@ def calcDrop(res):
 
 def corrX_new(df, cut=0.9, bool_out=True, get_const=False):
     # Get correlation matrix and upper triagle
-    corr_mtx = df.corr().abs()
+    
+    # corr_mtx = pd.DataFrame(np.corrcoef(df.values)).T    
+    # corr_mtx.index = df.columns
+    # corr_mtx.columns = df.columns
+    corr_mtx = df.corr().abs().fillna(value=0.0)
+    # print(corr_mtx)
     avg_corr = corr_mtx.mean(axis=1)
-    up = corr_mtx.where(np.triu(np.ones(corr_mtx.shape), k=1).astype(np.bool))
-
+    # print(avg_corr)
+    up = corr_mtx.where(np.triu(np.ones_like(corr_mtx)).astype(np.bool_))
+    # print(up)
     dropcols = list()
 
-    res = pd.DataFrame(columns=(["v1", "v2", "v1.target", "v2.target", "corr", "drop"]))
-
+    result_columns = ["v1", "v2", "v1.target", "v2.target", "corr", "drop"]
+    res_temp = []
     for row in range(len(up) - 1):
         col_idx = row + 1
         for col in range(col_idx, len(up)):
@@ -137,26 +146,31 @@ def corrX_new(df, cut=0.9, bool_out=True, get_const=False):
                         up.iloc[row, col],
                         drop,
                     ],
-                    index=res.columns,
+                    index=result_columns,
                 )
-
-                res = res.append(s, ignore_index=True)
-
+                res_temp.append(s)
+    res = pd.concat(res_temp,axis=1).transpose()
+    # print(res)
+    # print(res.loc['v1'])
+    # raise Exception("DEBUG")
+    # res = pd.DataFrame(data = res_temp,columns=(["v1", "v2", "v1.target", "v2.target", "corr", "drop"]))
+    # res = res.append(s, ignore_index=True)
+        # print(res)
     dropcols_names = calcDrop(res)
-    if bool_out == False:  # Don't want boolean, instead want column names
-        if get_const == True:  # Find constant columns and add names to drop list
+    if bool_out is False:  # Don't want boolean, instead want column names
+        if get_const is True:  # Find constant columns and add names to drop list
             const_cols = [
                 f for f in corr_mtx.columns if corr_mtx[f].isnull().values.all()
             ]  # True if it should be kept
             return dropcols_names.extend(const_cols)
-        elif get_const == False:
+        elif get_const is False:
             return dropcols_names
 
-    elif bool_out == True:  # Want boolean and column names
+    elif bool_out is True:  # Want boolean and column names
         maskout = [
             ~np.array(f in dropcols_names) for f in df.columns.to_list()
         ]  # True if it should be kept
-        if get_const == True:
+        if get_const is True:
             const_col_mask = ~np.array(
                 [
                     corr_mtx[f].isnull().values.all() for f in corr_mtx.columns
@@ -229,7 +243,7 @@ def preprocess_feature_arrays(
     use dfout[key] to retrieve column-instance/row-feature sub dataframes
 
     """
-    if labels == None:
+    if labels is None:
         labels = [str(f) for f in range(len(feature_dataframes))]
         combined_df = pd.concat(
             feature_dataframes, axis=1, keys=labels
@@ -240,19 +254,19 @@ def preprocess_feature_arrays(
         filtered_df = combined_df.iloc[
             mask, :
         ]  # Get only indices with more than one unique value
-        if type(_vt) == float:
+        if type(_vt) is float:
             vt = VarianceThreshold(threshold=_vt)
         elif _vt == "old":
             vt = VarianceThreshold(threshold=0.04)
-        elif _vt == None:
+        elif _vt is None:
             vt = VarianceThreshold(threshold=1e-4)
         vt_f = vt.fit_transform(filtered_df.transpose().to_numpy())
         sc = MinMaxScaler().fit_transform(vt_f)
         filtered_df_scale = pd.DataFrame(np.transpose(sc), columns=filtered_df.columns)
         output = tuple([filtered_df_scale[lbl] for lbl in labels])
-        if save_mask == True:
+        if save_mask is True:
             return output, mask
-        elif save_mask == False:
+        elif save_mask is False:
             return output
 
 
@@ -276,15 +290,15 @@ def platewise_splits(
     test_list overrides num_coup, and sets those couplings as the out of sample ones. However, this only does internal validation.
 
     """
-    if val_int == False:
+    if val_int is False:
         handles = data_df.index
         reacts = [f.rsplit("_", 3)[0] for f in handles]
         set_ = sorted(list(set(reacts)))  # all amine_bromide combos
-        if test_list == None:
+        if test_list is None:
             test = random.sample(
                 set_, num_coup
             )  # random sampling of PLATES - does not ensure out of sample reactants for reactants used in multiple plates
-        elif type(test_list) == list:
+        elif type(test_list) is list:
             test = test_list
         temp = [f for f in set_ if f not in test]  # temp is train and val
         val = random.sample(temp, num_coup)  # val is sampling of temp (train + val)
@@ -293,24 +307,24 @@ def platewise_splits(
         va_h = [f for f in handles if f.rsplit("_", 3)[0] in val]
         te_h = [f for f in handles if f.rsplit("_", 3)[0] in test]
         mask_list = [tr_h, va_h, te_h]
-        if save_mask == False:
+        if save_mask is False:
             out = tuple([data_df.loc[msk, :] for msk in mask_list])
             return out
-        if save_mask == True:
+        if save_mask is True:
             out = tuple([data_df.loc[msk, :] for msk in mask_list] + [val, test])
             return out
     elif (
-        val_int == True
+        val_int is True
     ):  ##This is to keep test plates out of sample, BUT validation and train data from shared plates. This may be necessary on account of the stochasticity of modeling
         handles = data_df.index
         reacts = [f.rsplit("_", 3)[0] for f in handles]
         set_ = sorted(list(set(reacts)))
         if (
-            test_list == None
+            test_list is None
         ):  # This is for randomly sampling a number of couplings ONLY IF TEST_LIST NOT SPECIFIED
             test = random.sample(set_, num_coup)
         elif (
-            type(test_list) == list
+            type(test_list) is list
         ):  # If test_list is specified, then this overrides everything else
             test = test_list
         te_h = [f for f in handles if f.rsplit("_", 3)[0] in test]
@@ -322,10 +336,10 @@ def platewise_splits(
         )  # handles sampled randomly from train&val list of handles (temp)
         tr_h = [f for f in temp if f not in va_h]
         mask_list = [tr_h, va_h, te_h]
-        if save_mask == False:
+        if save_mask is False:
             out = tuple([data_df.loc[msk, :] for msk in mask_list])
             return out
-        if save_mask == True:
+        if save_mask is True:
             out = tuple([data_df.loc[msk, :] for msk in mask_list] + [test])
             return out
 
@@ -375,9 +389,9 @@ def split_outsamp_reacts(
     outsamp_handles = sorted(
         list(set(amine_out_hand + bromide_out_hand))
     )  # remove duplicates (from any matches to both reactants) and provide consistent ordering
-    if separate == False:
+    if separate is False:
         return outsamp_handles
-    elif separate == True:
+    elif separate is True:
         am_f = []
         br_f = []
         comb = [
@@ -416,13 +430,13 @@ def zero_nonzero_rand_splits(
     zero_mask = self.data.to_numpy() < yield_cutoff
     nonzero_data = self.data[~zero_mask]
     zero_data = self.data[zero_mask]
-    if validation == False:
+    if validation is False:
         tr_z, te_z = self.random_splits(zero_data, n_splits=n_splits, fold=fold)
         tr_n, te_n = self.random_splits(nonzero_data, n_splits=n_splits, fold=fold)
         tr = pd.concat(tr_z, tr_n, axis=1)
         te = pd.concat(te_z, te_n, axis=1)
         return tr, te
-    elif validation == True:
+    elif validation is True:
         tr_z, va_z, te_z = self.random_splits(
             zero_data, n_splits=n_splits, fold=fold, validation=validation
         )
@@ -450,11 +464,11 @@ def random_splits(df, validation=False, n_splits: int = 1, fold: int = 7):
     """
     no_exp = len(df.index)
     rand_arr = np.random.randint(1, high=fold + 1, size=no_exp, dtype=int)
-    if validation == False:
+    if validation is False:
         train_mask = (rand_arr > 1).tolist()
         test_mask = (rand_arr == 1).tolist()
         mask_list = [train_mask, test_mask]
-    elif validation == True:
+    elif validation is True:
         train_mask = (rand_arr > 2).tolist()
         validate_mask = (rand_arr == 2).tolist()
         test_mask = (rand_arr == 1).tolist()
@@ -495,7 +509,7 @@ def preprocess_prophetic_features(
         os.makedirs(
             f"{project.partitions}/prophetic_{prediction_experiment}/", exist_ok=False
         )
-    except:
+    except Exception:
         from pathlib import Path
         from warnings import warn
 
@@ -589,10 +603,10 @@ def new_mask_random_feature_arrays(
     combined_df = pd.concat(
         real_feature_dataframes, axis=1, keys=labels
     )  # concatenate instances on columns
-    if prophetic == False:  # Using random features
+    if prophetic is False:  # Using random features
         comb_rand = pd.concat(rand_feat_dataframes, axis=1, keys=labels)
     elif (
-        prophetic == True
+        prophetic is True
     ):  # MUST be a single df in a tuple/list, and is for prophetic reactions being masked
         comb_rand = rand_feat_dataframes[0]
     mask = list(
@@ -604,7 +618,7 @@ def new_mask_random_feature_arrays(
     filtered_rand = comb_rand.iloc[mask, :]
     if _vt == "old":
         _vt = 0.04  # This preserves an old version of vt, and the next condition ought to still be "if" so that it still runs when this is true
-    elif _vt == None:
+    elif _vt is None:
         _vt = 0
     ### Transposing features to columns, instances to rows ###
     vt = VarianceThreshold(threshold=_vt)
@@ -621,9 +635,9 @@ def new_mask_random_feature_arrays(
     processed_real_feats = pd.DataFrame(
         np.transpose(proc_df_real.to_numpy()), columns=filtered_df.columns
     )
-    if prophetic == False:
+    if prophetic is False:
         output_rand = tuple([processed_rand_feats[lbl] for lbl in labels])
-    elif prophetic == True:
+    elif prophetic is True:
         output_rand = processed_rand_feats
     output_real = tuple([processed_real_feats[lbl] for lbl in labels])
     ### mask is nunique (basically single value column filter), and variances will be useful IF someone wants to apply a specific cutoff
@@ -713,13 +727,13 @@ def preprocess_maxdiff(input: pd.DataFrame, concat_grid_desc=True, threshold=0.8
         category = aso + aeif
         temp = deepcopy(df)
         temp.columns = category
-        if type(threshold) == tuple:
+        if type(threshold) is tuple:
             assert len(threshold) == 2
             asot, aeift = threshold
             aso_d, aeif_d = pull_type_(temp)
             aso_out = diff_then_scale(aso_d, asot)
             aeif_out = diff_then_scale(aeif_d, aeift)
-            if keyed == True:
+            if keyed is True:
                 out = pd.concat((aso_out, aeif_out), axis=1, keys=["aso", "aeif"])
             else:
                 out = pd.concat((aso_out, aeif_out), axis=1)
@@ -729,8 +743,8 @@ def preprocess_maxdiff(input: pd.DataFrame, concat_grid_desc=True, threshold=0.8
             return out
 
     feat_copy = deepcopy(input)
-    if concat_grid_desc == True:
+    if concat_grid_desc is True:
         output = _maxdiff_then_scale(feat_copy, threshold=threshold)
-    elif concat_grid_desc == False:
+    elif concat_grid_desc is False:
         output = diff_then_scale(feat_copy, threshold=threshold)
     return output

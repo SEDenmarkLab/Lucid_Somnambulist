@@ -5,5 +5,10 @@
         "unique": "IID-Models-2024",
         "identifier": "latest",
         "latest": "24-june"
+    },
+    "latest-models": {
+        "path": "somn_scratch/latest-models/",
+        "timestamp": "2024-08-04",
+        "unique": "latest-models"
     }
 }

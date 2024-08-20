@@ -1,6 +1,7 @@
-from sys import argv
+# from sys import argv
 from argparse import ArgumentParser
-import somn
+
+# import somn
 
 use_msg = """
 Welcome to the somn command-line interface. 
@@ -20,19 +21,35 @@ partition [project ID, new or old project with no partitions]
 To train a new model set on partitions, use:
 learn [project ID with partitions] [new ID for model set] > learn[identifier, e.g. '001'].log 2>&1 & disown 
 """
+
+
 def _build_from_smiles(args):
     """
     Utility to build .mol2 files from smiles - can be used for debugging/inspecting
-    """ 
+    """
     from somn.build.parsing import InputParser
-    input_smi,out_dir = args.options
-    p = InputParser(serialize=True,path_to_write=f"somn_mol_buffer/{out_dir}")
-    col,smi = p.get_mol_from_smiles(input_smi,names=[f"{out_dir}".strip("/").strip(r"\\")])
-    print(f"""
+
+    input_smi, out_dir = args.options
+    p = InputParser(serialize=True, path_to_write=f"somn_mol_buffer/{out_dir}")
+    col, smi = p.get_mol_from_smiles(
+        input_smi, names=[f"{out_dir}".strip("/").strip(r"\\")]
+    )
+    print(
+        f"""
 Check the directory somn_mol_buffer/{out_dir} for output files.
     
     """
     )
+
+
+def _recalculate(args):
+    """
+    Utility to recalc descriptors
+    """
+    from somn.workflows.calculate import recalculate_dataset_descriptors
+
+    con, np = args.options
+    recalculate_dataset_descriptors(int(con), int(np))
 
 
 def _run_predictions(args):
@@ -62,7 +79,7 @@ def _train_models(args):
 
     try:
         learn(args=opts)
-    except:
+    except Exception:
         Warning(
             f"Looks like {opts} in the learning workfow led to an error. Check if job trained any partitions, \
 and if it did, then try re-starting the job with the same input arguments (known memory leak in Keras backend can cause this) \
@@ -90,7 +107,7 @@ def _generate_partitions(args):
     else:
         try:
             project = Project.reload(how=opts[0])
-        except:
+        except Exception:
             raise Exception(
                 "Must pass valid identifier or 'last' to load project. Can also say 'new' and give an identifier"
             )
@@ -111,7 +128,7 @@ def _generate_partitions(args):
 
     # Checking project status to make sure sub descriptors are calculated
     sub_desc = get_precalc_sub_desc()
-    if sub_desc == False:  # Need to calculate
+    if not sub_desc:  # Need to calculate
         real, rand, unique_couplings, dataset = calc_sub(
             project, optional_load="maxdiff_catalyst", substrate_pre=("corr", 0.90)
         )
@@ -137,11 +154,7 @@ def _generate_partitions(args):
     # The amine_bromide individual elements in this list will direct out-of-sample partitioning (if relevant in val_schema).
     # Any specific set of out-of-sample partitions can be designed and introduced here. This *could* be an optional input from
     # the user (e.g. a csv file with a list of items in it).
-    import os
 
-    outdir = deepcopy(f"{project.partitions}/")
-    os.makedirs(outdir + "real/", exist_ok=True)
-    realout = outdir + "real/"
     project.combos = combos
     project.unique_couplings = unique_couplings
     project.dataset = dataset
@@ -163,7 +176,7 @@ def _calculate_descriptors(args):
     """
     Calculate substrate descriptors for an input file.
     """
-    from somn.calculate.substrate import calculate_prophetic
+    # from somn.calculate.substrate import calculate_prophetic
     from pathlib import Path
     from somn.util.project import Project
     from somn.workflows.calculate import calculate_substrate_descriptors
@@ -187,7 +200,7 @@ Please check your arguments: somn calculate [path_to_csv] [optional: concurrent 
 [optional: nprocs per job]"
             )
         calculate_substrate_descriptors(requests, concurrent=concurrent, nprocs=nprocs)
-    except:
+    except Exception:
         raise Exception(
             f"Check input to descriptor calculation request - it seems something went wrong. Some suggestions: \
 Check command arguments: Pass a file path to requested molecules, then the number of concurrent \
@@ -223,7 +236,7 @@ Here is a simple summary/guide:
 {use_msg}"""
 
 
-splash = f"""
+splash = """
                                       
                                                
            ____    ___     ___ ___     ___     
@@ -257,6 +270,7 @@ def main():
             "visualize",
             "help",
             "generate",
+            "recalculate",
         ],
         dest="operation",
         default="help",
@@ -270,7 +284,7 @@ def main():
     if args.operation == "predict":  ## Make predictions
         try:
             _run_predictions(args)
-        except:
+        except Exception:
             raise Warning(
                 f"Looks like handling the predict workflow with the arguments: [{args.options}] failed. \
 Check that a project ID, model set ID, and a new identifier are present (in that order)."
@@ -280,7 +294,7 @@ Check that a project ID, model set ID, and a new identifier are present (in that
     elif args.operation == "learn":  ## Train models
         try:
             _train_models(args)
-        except:
+        except Exception:
             Warning(
                 f"Looks like handling arguments for model training failed with {args.options}. \
 Ensure that a project ID and a new, unique model set ID are being passed (in that order)."
@@ -288,15 +302,15 @@ Ensure that a project ID and a new, unique model set ID are being passed (in tha
     elif args.operation == "partition":  ## Generate partitions
         try:
             _generate_partitions(args)
-        except:
-            Warning(
+        except Exception:
+            raise Exception(
                 f"Looks like handling the partition arguments {args.options} led to an error. \
 Ensure that project ID is provided, or specify 'new'."
             )
     elif args.operation == "calculate":
         try:
             _calculate_descriptors(args)
-        except:
+        except Exception:
             Warning(
                 f"Looks like handling the 'calculate' arguments {args.options} led to an error. \
 Ensure that a valid path to reactants is provided."
@@ -305,13 +319,14 @@ Ensure that a valid path to reactants is provided."
         args.operation == "initialize"
     ):  ## Set up somn_scratch for the first time, test install
         ## PROJECT CLASS LOADED FOR FIRST TIME - WILL MAKE SOMN_SCRATCH DIRECTORY
-        from somn.util.project import Project
+        # from somn.util.project import Project
 
         if "models" in args.options:
             from pathlib import Path
             import subprocess
             import os
-            import json
+
+            # import json
 
             os.makedirs("somn_scratch/", exist_ok=True)
         try:
@@ -331,17 +346,20 @@ Ensure that a valid path to reactants is provided."
             # proj.update(upd)
             # with open(f"{data_module_path}/projects.JSON", "w") as p:
             #     json.dump(proj, p)
-        except:
+        except Exception:
             import warnings
 
             warnings.warn(
-"It looks like no pre-trained models were supplied; skipping initialization step. \
+                "It looks like no pre-trained models were supplied; skipping initialization step. \
 if this is an error, please check documentation and ensure that all files are in \
 the somn home directory (at the same level as the somn initialize command is run)"
             )
     elif args.operation == "generate":
         _build_from_smiles(args)
-    
+
+    elif args.operation == "recalculate":
+        _recalculate(args)
+
     elif args.operation in ["add", "visualize"]:
         raise Exception(
             f"DEV - {args.operation} implementation through CLI is under development"

@@ -21,10 +21,12 @@ class Project(object):
 
     _instance = None
 
-    def __new__(cls, path="./somn_scratch/"):
+    def __new__(cls, path="./somn_scratch/",id=None):
         if cls._instance is None:
             cls._instance = super(Project, cls).__new__(cls)
-            unique = uuid1().hex
+            if id == None: unique = uuid1().hex
+            elif type(id) == str: unique=id
+            else: raise ValueError("Passed improper id to new project instance")
             cls.unique = unique
             _path = Path(path) / unique
             cls.path = _path

@@ -4,9 +4,8 @@ import os
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import numpy as np
-from itertools import product
+# from somn.data import BASEDESC, SOLVDESC, CATDESC
 
-from somn.data import BASEDESC, SOLVDESC, CATDESC
 
 
 def get_labels(sub_df_dict, sub):
@@ -39,7 +38,7 @@ def vectorize_substrate_desc(sub_df_dict, sub, feat_mask=None):
     if isinstance(feat_mask, pd.Series):
         try:
             assert all([isinstance(f, (np.bool_, bool)) for f in feat_mask])
-        except:
+        except Exception:
             raise Exception(
                 "Feature mask passed for substrate preprocessing is a Series, but appears to not ONLY contain boolean values."
             )
@@ -51,7 +50,7 @@ def vectorize_substrate_desc(sub_df_dict, sub, feat_mask=None):
     elif isinstance(feat_mask, pd.DataFrame):
         try:
             assert all([isinstance(f, (np.bool_, bool)) for f in feat_mask["0"]])
-        except:
+        except Exception:
             raise Exception(
                 "Feature mask passed as a dataframe, and could not interpret which column to use. Check input."
             )
@@ -63,7 +62,7 @@ def vectorize_substrate_desc(sub_df_dict, sub, feat_mask=None):
     elif isinstance(feat_mask, np.ndarray):
         try:
             assert all([isinstance(f, (np.bool_, bool)) for f in feat_mask])
-        except:
+        except Exception:
             raise Exception(
                 "Feature mask passed for substrate preprocessing does not ONLY contain boolean values"
             )
@@ -74,7 +73,7 @@ def vectorize_substrate_desc(sub_df_dict, sub, feat_mask=None):
             raise Exception(
                 "A mask for substrate descriptors was passed, but it does not match the length of the raw features."
             )
-    elif feat_mask == None:
+    elif feat_mask is None:
         return subdesc
     else:
         raise Exception(
@@ -128,10 +127,10 @@ def assemble_descriptors_from_handles(handle_input, desc: tuple, sub_mask=None):
 
 
     """
-    if type(handle_input) == str:
+    if type(handle_input) is str:
         rxn_hndls = [f for f in handle_input.split(",") if f != ""]
         prophetic = True
-    elif type(handle_input) == list:
+    elif type(handle_input) is list:
         rxn_hndls = [tuple(f.rsplit("_")) for f in handle_input]
         prophetic = False
     else:
@@ -140,7 +139,7 @@ def assemble_descriptors_from_handles(handle_input, desc: tuple, sub_mask=None):
         )
     if sub_mask is None:
         subm = None
-    elif type(sub_mask) == tuple:
+    elif type(sub_mask) is tuple:
         assert len(sub_mask) == 2
         subm = list(sub_mask)
     am_dict, br_dict, cat_real, solv_real, base_real = desc
@@ -267,7 +266,7 @@ def load_calculated_substrate_descriptors():
     try:
         with open(f"{project.descriptors}/random_am_br_cat_solv_base.p", "rb") as k:
             rand = pickle.load(k)
-    except:
+    except Exception:
         raise Exception(
             "Have not calculated descriptors in this session - need to either update data/ or calculate new descriptors in this session."
         )
