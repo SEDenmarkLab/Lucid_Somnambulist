@@ -390,7 +390,7 @@ def main(
             am_mask = preprocess.corrX_new(
                 full_am_df, cut=value_, get_const=True, bool_out=True
             )
-            print(am_mask)
+            # print(am_mask)
             br_mask = preprocess.corrX_new(
                 full_br_df, cut=value_, get_const=True, bool_out=True
             )

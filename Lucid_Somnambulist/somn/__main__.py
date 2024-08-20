@@ -102,7 +102,7 @@ def _generate_partitions(args):
 
     if opts[0] == "new":
         assert len(opts) >= 2
-        project = Project()
+        project = Project(id=opts[1])
         project.save(identifier=opts[1])
     else:
         try:

@@ -1,10 +1,10 @@
 from pathlib import Path
-import shutil as su
+# import shutil as su
 from uuid import uuid1
 import json
-from json import JSONDecoder
+# from json import JSONDecoder
 from collections import OrderedDict
-from attrs import define, field
+# from attrs import define, field
 
 
 class Project(object):
@@ -24,8 +24,8 @@ class Project(object):
     def __new__(cls, path="./somn_scratch/",id=None):
         if cls._instance is None:
             cls._instance = super(Project, cls).__new__(cls)
-            if id == None: unique = uuid1().hex
-            elif type(id) == str: unique=id
+            if id is None: unique = uuid1().hex
+            elif type(id) is str: unique=id
             else: raise ValueError("Passed improper id to new project instance")
             cls.unique = unique
             _path = Path(path) / unique
@@ -55,7 +55,7 @@ class Project(object):
             "timestamp": rf"{timestamp}",
             "unique": rf"{cls.unique}",
         }
-        if type(identifier) == str:
+        if type(identifier) is str:
             output["identifier"] = identifier
 
         pkg = cls.get_json()

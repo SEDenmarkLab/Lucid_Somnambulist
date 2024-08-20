@@ -8,7 +8,8 @@
     },
     "latest-models": {
         "path": "somn_scratch/latest-models/",
-        "timestamp": "2024-08-04",
-        "unique": "latest-models"
+        "timestamp": "2024-08-20",
+        "unique": "latest-models",
+        "identifier": "latest-models"
     }
 }
