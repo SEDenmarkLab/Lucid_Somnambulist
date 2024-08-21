@@ -4,18 +4,18 @@ channels:
   - defaults
 dependencies:
   - python=3.11.9
-  - pandas=1.5.2
+  - pandas=2.2.2
   - seaborn=0.12.2
   - scikit-learn=1.5.1
   - pyarrow=15.0
   - openbabel=3.1.1
   - ipykernel=6.15.0
-  - pytables=3.7.0
+  - pytables=3.9.2
   - scipy=1.14.0
   - rdkit=2024.03.5
-  - pip>=23
+  - pip>=24
   # - pip:
-  #   - Pillow==9.3.0
+  #   - Pillow==10.4.0
   #   - PyYAML==6.0
   #   - colorama==0.4.6
   #   - tensorflow==2.17.0
