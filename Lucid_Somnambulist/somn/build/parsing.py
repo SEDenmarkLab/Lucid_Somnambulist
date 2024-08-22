@@ -19,7 +19,7 @@ class InputParser:
     Input parsing class with built-in warnings and error serialization features
     """
 
-    def __init__(self, serialize=False, path_to_write="somn_failed_to_parse/"):
+    def __init__(self, serialize=False, path_to_write="somn_input_parse_buffer/"):
         self.ser = serialize
         self.path_to_write = path_to_write
         import somn.data
@@ -82,6 +82,60 @@ class InputParser:
             ]  # Output uses a tab between name and smiles ... why, obabel?
             output[mol.name] = smi
         return output
+
+    def get_mol_from_mixed_input(self,user_input,recursive_mode=False,names="none"):
+        """
+        Accepts mol2/smiles mixed inputs, and returns molli collection and smiles dictionary
+        """
+        from openbabel import pybel as pb
+        if names == "none":
+            flag_ = "".join(
+                random.SystemRandom().choice(string.digits + string.ascii_lowercase)
+                for _ in range(3)
+            )
+            if recursive_mode is True:
+                flags = [flag_+f"_{i+1}" for i in range(len(user_input))]
+        elif type(names) is str:
+            flag_ = names
+        elif type(names) is list or type(names) is tuple:
+            flags = names
+            assert len(flags) == len(user_input)
+        def try_smi_then_mol2(inp,name):
+            try:
+                mol = ml.Molecule.from_mol2(inp)
+                mol.name = name
+                col = ml.Collection(name="addh",molecules=[mol])
+                smi_d = self.get_smi_from_mols(col)
+                return col,smi_d
+            except ValueError:
+                try:
+                    obmol = pb.readstring(format="smi",string=inp)
+                    obmol.addh()
+                    obmol.make3D()
+                    obmol.write(format="mol2",filename=f"{self.path_to_write}{name}.mol2")
+                    mol = ml.Molecule.from_file(f"{self.path_to_write}{name}.mol2")
+                    mol.name = name
+                    col = ml.Collection(name="addh",molecules=[mol])
+                    smi_d = {mol.name:inp}
+                    return col,smi_d
+                except IOError or OSError:
+                    ## Don't know what the input is - not mol2 or smiles
+                    raise Exception(f"Looks like a user input as not recognized: \n\n {inp}")
+        if recursive_mode is False:
+            col,smi_d = try_smi_then_mol2(user_input,flag_)
+            return col,smi_d
+        elif recursive_mode is True:
+            mols = []
+            smi_d = {}
+            for inp,name in zip(user_input,flags):
+                ci,si = try_smi_then_mol2(inp,name)
+                mols.append(ci[0])
+                smi_d.update(si)
+            col = ml.Collection(name='addh',molecules=mols)
+            return col,smi_d
+
+            
+
 
     def get_mol_from_smiles(self, user_input, recursive_mode=False, names="none"):
         """
@@ -267,12 +321,12 @@ class InputParser:
             "nuc_idx",
             "el_idx",
         ]:
-            nucs, smiles_d = self.get_mol_from_smiles(
+            nucs, smiles_d = self.get_mol_from_mixed_input(
                 df.iloc[:, 1].to_list(),
                 recursive_mode=True,
                 names=df.iloc[:, 3].to_list(),
             )
-            elecs, smiles_d_ = self.get_mol_from_smiles(
+            elecs, smiles_d_ = self.get_mol_from_mixed_input(
                 df.iloc[:, 2].to_list(),
                 recursive_mode=True,
                 names=df.iloc[:, 4].to_list(),
