@@ -656,7 +656,7 @@ def get_rdf(
             hl.append(property_)
         elif dist > const + inc_size * 8 and dist <= const + inc_size * 9:
             il.append(property_)
-        elif dist > const + inc_size * 9:
+        elif dist > const + inc_size * 9 and dist <= const + (inc_size * 10): #DEV rdfcutoff
             jl.append(property_)
     series_ = pd.Series(
         [
@@ -744,7 +744,7 @@ def get_atom_ind_rdf(
                 hl.append(1)
             elif dist > const + inc_size * 8 and dist <= const + inc_size * 9:
                 il.append(1)
-            elif dist > const + inc_size * 9:
+            elif dist > const + inc_size * 9 and dist <= const + (inc_size * 10): #DEV rdfcutoff
                 jl.append(1)
         series_ = [
             sum(al),
