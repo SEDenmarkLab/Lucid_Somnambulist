@@ -107,20 +107,20 @@ class InputParser:
                 col = ml.Collection(name="addh",molecules=[mol])
                 smi_d = self.get_smi_from_mols(col)
                 return col,smi_d
-            except ValueError:
-                try:
+            except:
+                # try:
                     obmol = pb.readstring(format="smi",string=inp)
                     obmol.addh()
                     obmol.make3D()
-                    obmol.write(format="mol2",filename=f"{self.path_to_write}{name}.mol2")
+                    obmol.write(format="mol2",filename=f"{self.path_to_write}{name}.mol2",overwrite=True)
                     mol = ml.Molecule.from_file(f"{self.path_to_write}{name}.mol2")
                     mol.name = name
                     col = ml.Collection(name="addh",molecules=[mol])
                     smi_d = {mol.name:inp}
                     return col,smi_d
-                except IOError or OSError:
-                    ## Don't know what the input is - not mol2 or smiles
-                    raise Exception(f"Looks like a user input as not recognized: \n\n {inp}")
+                # except IOError or OSError:
+                #     ## Don't know what the input is - not mol2 or smiles
+                #     raise Exception(f"Looks like a user input as not recognized: \n\n {inp}")
         if recursive_mode is False:
             col,smi_d = try_smi_then_mol2(user_input,flag_)
             return col,smi_d
