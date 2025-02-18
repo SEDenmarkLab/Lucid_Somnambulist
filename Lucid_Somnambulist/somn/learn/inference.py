@@ -56,9 +56,6 @@ def hypermodel_inference(
     """
     project must contain (1) partitions, and (2) pre-trained hypermodels.
     """
-    # os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    # import logging
-    # tf.get_logger().setLevel(logging.ERROR)
     output_buffer = []
     if all_predictions == False:
         total_requests, requested_pairs, reactant_indicies = prep_requests()
@@ -80,7 +77,6 @@ should be False under normal circumstances, and True for specific development ap
     _, _, _, real, rand = normal_partition_prep(project=project)
     pred_str = ",".join(requested_pairs)
     sub_masks = load_substrate_masks()
-    ### Building prophetic feature array with matching substrate and other preprocessing
     if all_predictions == False:
         prophetic_raw = assemble_desc_for_inference_mols(
             project=project,
@@ -114,7 +110,6 @@ should be False under normal circumstances, and True for specific development ap
 generation of the prophetic feature array. Check project directory for \
 {project.unique}"
         )
-    ### Raw feature arrays are assembled. Now, partition-specific preprocessing is needed.
     from somn.calculate.preprocess import preprocess_prophetic_features
 
     print("""Assembling features for requested predictions.""")
@@ -126,7 +121,6 @@ generation of the prophetic feature array. Check project directory for \
         vt=vt,
     )
     print("""Features for predictions have been processed...getting predictions now.""")
-    ### Suppress annoying tensorflow prints ###
     import contextlib,os
     @contextlib.contextmanager
     def suppress_print():
@@ -156,7 +150,7 @@ generation of the prophetic feature array. Check project directory for \
         else:
             assert (
                 feat.index.to_list() == pred_idx
-            )  # All index lists should match or something BAD is happening
+            )
         with suppress_print():
             for model in models:
                 predictions = model.predict(feat.values)
@@ -196,8 +190,7 @@ def prep_requests():
     pathlib.Path(f"{Project().scratch}/all_requests.csv").unlink(missing_ok=True)
     assert (
         len(files) > 0
-    )  ### DEBUG - If this fails, the user is PROBABLY running this from the wrong "home" directory
-    # Quick check for formatting
+    )
     
     df = pd.read_csv(files[0], header=0, index_col=None, dtype=str)
     if len(df.columns) < 2:
@@ -211,45 +204,130 @@ Shoult have format (col0):SMILES,(col1):role (nuc or el),(col2, optional):mol_na
         df = pd.read_csv(file, header=0, index_col=None, dtype=str)
         tot.append(df)
     total_requests = pd.concat(tot, axis=0)
-    ### CHECKING USER INPUT NAMES FOR ERROR-INDUCING ISSUES ###
-    from somn.data import load_reactant_smiles
+    pd.options.mode.chained_assignment = None ## Suppress chained assignments - we actually want it here
+    ### REMOVING NAME CHECK - SEGMENTING PROPHETIC FEATURES FROM NON-PROPHETIC TO AVOID NAME CONFLICTS ###
+    
+    # from somn.data import load_reactant_smiles
 
-    known_amines, known_bromides = load_reactant_smiles()
-    for k, h in zip((known_amines, known_bromides), ("nuc_name", "el_name")):
-        name_check = lambda x: (
-            x if x not in k.keys() else "pr-" + x
-        )  # Define explicit check if compound is known
-        p = [
-            f.replace("_", "-") for f in total_requests[h]
-        ]  # Explicitly replace all underscores to prevent error later
-        fixed = pd.Series(data=list(map(name_check, p)), name=h)  # Apply name check
-        total_requests[h] = fixed  # Replace request data with "fixed" values
+    # known_amines, known_bromides = load_reactant_smiles()
+    # for k, h in zip((known_amines, known_bromides), ("nuc_name", "el_name")):
+    #     name_check = lambda x: (
+    #         x if x not in k.keys() else "pr-" + x
+    #     )  # Define explicit check if compound is known
+    #     p = [
+    #         f.replace("_", "-") for f in total_requests[h]
+    #     ]  # Explicitly replace all underscores to prevent error later
+    #     fixed = pd.Series(data=list(map(name_check, p)), name=h)  # Apply name check
+    #     total_requests[h] = fixed  # Replace request data with "fixed" values
     # Overwrite end of compound name with iterable if there are repeats within requests
-    req_am = total_requests["nuc_name"]
-    req_br = total_requests["el_name"]
-    am_check = req_am.duplicated()
-    br_check = req_br.duplicated()
-    fix_am = []
-    fix_br = []
-    check = 0
-    for i, (am, br) in enumerate(zip(req_am, req_br)):
-        checked = False
-        if am_check.iloc[i] == True:
-            fix_am.append(am + f"-{check}")
-            checked = True
-        if am_check.iloc[i] == False:
-            fix_am.append(am)
-        if br_check.iloc[i] == True:
-            fix_br.append(br + f"-{check}")
-            checked = True
-        if br_check.iloc[i] == False:
-            fix_br.append(br)
-        if checked == True:
-            check += 1
-    # Swap out names with changed repeats
-    total_requests["nuc_name"] = fix_am
-    total_requests["el_name"] = fix_br
-    ### CHANGE END ###
+    ### Making sure no "_" values pass - should be redundant with any frontend interface checks ###
+    if any("_" in f for f in total_requests["nuc_name"]) or any("_" in f for f in total_requests["el_name"]):
+        am_buffer_1 = [f.replace("_", "-") for f in total_requests["nuc_name"]]
+        br_buffer_1 = [f.replace("_", "-") for f in total_requests["el_name"]]
+        total_requests["nuc_name"] = am_buffer_1
+        total_requests["el_name"] = br_buffer_1
+        with open(f"{Project().output}/name_contained_underscore.txt",'w') as g:
+            g.write(" ")
+        # g = pd.DataFrame([pd.Series(am_buffer_1,index=total_requests["nuc_name"].index,name="updated-nuc-names"),
+        #                    pd.Series(total_requests["nuc_name"]),
+        #                    pd.Series(br_buffer_1,index=total_requests["el_name"].index,name="updated-el-names"),
+        #                    pd.Series(total_requests["el_name"])
+        #                    ],
+        #                    index=total_requests.index,
+        #                    )
+        # g.to_csv(f"{Project().output}/updated_request_names.csv")
+        # del g
+    #### "_" check end ####
+
+    # am_check = total_requests["nuc_name"].duplicated(keep=False)
+    # br_check = total_requests["el_name"].duplicated(keep=False)
+    # duplicated_amines = total_requests["nuc_name"][am_check]
+    # duplicated_bromides = total_requests["el_name"][br_check]
+
+    def find_and_enumerate_duplicates(series):
+        duplicates = series[series.duplicated(keep=False)]  # Find all duplicated values
+        if duplicates.empty:
+            return pd.DataFrame()  # Return an empty DataFrame
+        # Group by duplicated values and count occurrences
+        duplicate_counts = duplicates.value_counts()
+        indices = {}
+        for value in duplicate_counts.index:
+            indices[value] = list(series[series == value].index)
+        df = pd.DataFrame({'value': duplicate_counts.index,
+                            'count': duplicate_counts.values})
+        df['indices'] = df['value'].apply(lambda x: indices[x])
+        return df.sort_values(by='count', ascending=False)                                                                                                          
+
+    ### Fixing names in case they are duplicated - this ensures that unique descriptors are calculated ###
+    duplic_names = False
+    for ser in (total_requests[["nuc_name","nuc"]],total_requests[["el_name","el"]]):
+        dupl_n = find_and_enumerate_duplicates(ser.iloc[:,0]) #names unique, don't really care if smiles are repeated
+        if dupl_n.empty:
+            continue
+        else:
+            dup_smi = find_and_enumerate_duplicates(ser.iloc[:,1])
+            if dup_smi.empty: #SMILES not duplicated with names, but names are. Need to be enumerated.
+                duplic_names=True
+                vals = dupl_n["value"]
+                cnts = dupl_n["count"]
+                idxs = dupl_n["indices"]
+                for v,c,i in zip(vals,cnts,idxs):
+                    r = range(c)
+                    for idx,nv in zip(i,[f"{v}-{f}" for f in r]):
+                        ser.iloc[:,0][idx] = nv
+                total_requests[ser.columns[0]] = ser.iloc[:,0]
+                total_requests[ser.columns[1]] = ser.iloc[:,1]
+            else:
+                if dup_smi["indices"].sort_values().equals(dupl_n["indices"].sort_values()): #names and smiles duplicated together
+                    continue
+                else: #both names and smiles duplicated, but not together
+                    duplic_names = True
+                    ### SMILES ###
+                    from copy import deepcopy
+                    sv = dup_smi["value"]
+                    # if isinstance(sv,str):
+                    #     tmp = deepcopy(sv)
+                    #     sv = pd.Series([sv],name="value")
+                    svnt = dup_smi["count"]
+                    sidx = dup_smi["indices"]
+                    # print(type(sidx))
+                    # raise Exception("DEBUG")
+                    # if isinstance(sidx,list):
+                    #     tmp = deepcopy(sidx)
+                    #     sidx = pd.Series([tmp],name="indices")
+                    ### NAMES ###
+                    idxs = dupl_n["indices"] 
+                    for smi,svnt,smi_indices in zip(sv,svnt,sidx):## Complicated case - some repeats good, some repeats bad
+                        if smi_indices in idxs.to_list(): #means name and smi are duplicated in matching fashion
+                            continue
+                        else:
+                            name = ser[ser.iloc[:,1] == smi].iloc[:,0][0] #First name given to this smiles
+                            for idx,nv in zip(smi_indices,[name for f in range(svnt)]):
+                                ser.iloc[:,0][idx] = nv
+                    dupl_n_2 = find_and_enumerate_duplicates(ser.iloc[:,0])
+                    if dupl_n_2.empty:
+                        total_requests[ser.columns[0]] = ser.iloc[:,0]
+                        total_requests[ser.columns[1]] = ser.iloc[:,1]
+                        continue
+                    vals2 = dupl_n_2["value"]
+                    cnts2 = dupl_n_2["count"]
+                    idxs2 = dupl_n_2["indices"]                           
+                    for nm,cn,indexes in zip(vals2,cnts2,idxs2):
+                        if indexes in sidx.to_list(): ## We already know this - these are supposed to match
+                            continue
+                        else: # need to fix names that don't have matching SMILES
+                            r = range(cn)
+                            for idx,nv in zip(indexes,[f"{nm}-{f}" for f in r]):
+                                ser.iloc[:,0][idx] = nv
+                    total_requests[ser.columns[0]] = ser.iloc[:,0]
+                    total_requests[ser.columns[1]] = ser.iloc[:,1]
+            # total_requests[ser.columns[0].name] = ser.iloc[:,0]
+            # total_requests[ser.columns[1].name] = ser.iloc[:,1]                                    
+    if duplic_names == True:
+        with open(f"{Project().output}/duplicate_names_detected.txt",'w') as g:
+            g.write(" ")
+        total_requests.to_csv(f"{Project().output}/fixed_input_requests.csv",header=True,index=False)
+    ### Predict update1 - calculate ALL substrate inputs, and rely on duplicate checks on frontend ###
     total_requests.to_csv(
         f"{Project().scratch}/all_requests.csv", header=True, index=False
     )  # These are pre-screened for compatibility
@@ -261,7 +339,7 @@ Shoult have format (col0):SMILES,(col1):role (nuc or el),(col2, optional):mol_na
         pair_idx = [data[5], data[6]]
         req_pairs.append(pair)
         indicies.append(pair_idx)
-
+    pd.options.mode.chained_assignment = 'warn' ## Resetting to default setting, done with chained assignments
     return total_requests, req_pairs, indicies
 
 
@@ -405,9 +483,9 @@ calculate descriptors for prophetic molecules"
     )
     ### Now we're ready to assemble features
     am, br, ca, so, ba = desc
-    am.update(p_a_desc)
-    br.update(p_b_desc)
-    upd_desc = (am, br, ca, so, ba)
+    # am.update(p_a_desc)
+    # br.update(p_b_desc)
+    upd_desc = (p_a_desc, p_b_desc, ca, so, ba)
     prophetic_features = assemble_descriptors_from_handles(
         pred_str, desc=upd_desc, sub_mask=sub_masks
     )
