@@ -90,41 +90,43 @@ class PropheticInput:
             raise Exception(
                 "Prophetic structure input must be single structure or multiple - check input types"
             )
-        ### Check smiles against database
-        inv_am = {v: k for k, v in ASMI.items()}
-        inv_br = {v: k for k, v in BSMI.items()}
-        if (
-            self.state == "single"
-        ):  # Special case - if it fails, just kill job and give the user the right name.
-            if self.role == "nuc" and self.smi in ASMI.values():
-                raise Exception(
-                    f"Structure is already in database, and computing single structure\nHere is the name of that structure:{inv_am[self.smi]}"
-                )
-            elif self.role == "el" and self.smi in BSMI.values():
-                raise Exception(
-                    f"Structure is already in database, and computing single structure\nHere is the name of that structure:{inv_br[self.smi]}"
-                )
-            else:
-                self.known = False
-        elif (
-            self.state == "multi"
-        ):  # Normal case - just don't do computations again on structures we already know about - checking presence in each dictionary.
-            self.known = []
-            pruned_struc = []
-            for smi, role, mol in zip(self.smi, self.role, self.struc.molecules):
-                if role == "el" and smi in inv_br.keys():
-                    self.known.append(
-                        inv_br[smi]
-                    )  # Adding name of mol from database because the new mol smiles matches it. These will be skipped
-                elif role == "nuc" and smi in inv_am.keys():
-                    self.known.append(inv_am[smi])
-                else:
-                    pruned_struc.append(mol)
-            if len(self.known) == 0:  # Makes this easy later.
-                self.known = False
-            else:
-                Warning(f"Structures already in database were requested: {self.known}")
-            self.struc = ml.Collection(name="pruned_precalc", molecules=pruned_struc)
+        ### Check smiles against database ## DEPRECIATED IN IMAGE 1.2
+        # inv_am = {v: k for k, v in ASMI.items()}
+        # inv_br = {v: k for k, v in BSMI.items()}
+        # if (
+        #     self.state == "single"
+        # ):  # Special case - if it fails, just kill job and give the user the right name.
+        #     if self.role == "nuc" and self.smi in ASMI.values():
+        #         raise Exception(
+        #             f"Structure is already in database, and computing single structure\nHere is the name of that structure:{inv_am[self.smi]}"
+        #         )
+        #     elif self.role == "el" and self.smi in BSMI.values():
+        #         raise Exception(
+        #             f"Structure is already in database, and computing single structure\nHere is the name of that structure:{inv_br[self.smi]}"
+        #         )
+        #     else:
+        #         self.known = False
+        # if (
+        #     self.state == "multi"
+        # ):  # Normal case - just don't do computations again on structures we already know about - checking presence in each dictionary.
+        #     self.known = []
+        #     pruned_struc = []
+        #     for smi, role, mol in zip(self.smi, self.role, self.struc.molecules):
+        #         if role == "el" and smi in inv_br.keys():
+        #             self.known.append(
+        #                 inv_br[smi]
+        #             )  # Adding name of mol from database because the new mol smiles matches it. These will be skipped
+        #         elif role == "nuc" and smi in inv_am.keys():
+        #             self.known.append(inv_am[smi])
+        #         else:
+        #             pruned_struc.append(mol)
+        #     if len(self.known) == 0:  # Makes this easy later.
+        #         self.known = False
+        #     else:
+        #         Warning(f"Structures already in database were requested: {self.known}")
+        #     self.struc = ml.Collection(name="pruned_precalc", molecules=pruned_struc)
+        if (self.state == "multi"): ## THIS WILL IGNORE KNOWN VS UKNOWN AND CALCULATE EVERYTHING
+            self.known=False
 
     def conformer_pipeline(self):
         """
@@ -154,6 +156,11 @@ class PropheticInput:
             raise Exception(
                 "Defined self.state as something weird for conformer pipeline... try agian."
             )
+        if len(col) == 0:
+            with open(f"{Project().output}/structure_gen_failed.txt",'w') as g:
+                g.write("No structures passed to conformer generation - initial geometry creation failed")
+            raise Exception("Structure generation failed - didn't make it past initial generation.")
+        
         # Perform sequential search and screen of conformers.
         crest = ml.CRESTDriver(
             name="confs",
