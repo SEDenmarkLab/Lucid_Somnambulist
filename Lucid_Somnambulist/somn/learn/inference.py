@@ -409,13 +409,17 @@ This may cause an error if new molecules are requested now which were not calcul
     from somn.calculate.substrate import calculate_prophetic
     import molli as ml
     import json
-
-    prophetic_amine_col = ml.Collection.from_zip(
-        f"{project.structures}/{prediction_experiment}/prophetic_nucleophile.zip"
-    )
-    prophetic_bromide_col = ml.Collection.from_zip(
-        f"{project.structures}/{prediction_experiment}/prophetic_electrophile.zip"
-    )
+    try:
+        prophetic_amine_col = ml.Collection.from_zip(
+            f"{project.structures}/{prediction_experiment}/prophetic_nucleophile.zip"
+        )
+        prophetic_bromide_col = ml.Collection.from_zip(
+            f"{project.structures}/{prediction_experiment}/prophetic_electrophile.zip"
+        )
+    except:
+        with open(f"{project.output}/{prediction_experiment}/structure_generation_failed.txt",'w') as g:
+            g.write("Could not open one or more of the structures; could not proceed to making predictions.")
+        raise Exception("Structure Generation Failed.")
 
     # p_ap = json.load(
     #     open(f"{project.structures}/{prediction_experiment}/newmol_ap_buffer.json")
